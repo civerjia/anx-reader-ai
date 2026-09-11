@@ -131,6 +131,28 @@ installed.
 flutter test integration_test/sherpa_tts_test.dart -d macos
 ```
 
+## Building this fork
+
+Codegen is broken on the current upstream tip, for a reason that has nothing
+to do with this feature: `v1.15.0-alpha.21` added `forui ^0.26.0`, which
+requires Dart 3.13, while `riverpod_generator 2.x` / `custom_lint 0.7.x` pin
+`analyzer ^7`, and that analyzer cannot serialize Dart 3.13 syntax. So
+`dart run build_runner build` dies with
+`Missing implementation of visitDotShorthandPropertyAccess` and no `.g.dart`
+is produced. Upstream's own CI for alpha.21 never completed either.
+
+Until that is resolved upstream (riverpod 4 brings `analyzer >=13`), the
+offline TTS work was verified on a branch rebased onto the last green tag:
+
+```bash
+git checkout run/alpha20-sherpa   # v1.15.0-alpha.20 + this feature
+dart run build_runner build --delete-conflicting-outputs
+flutter test integration_test/sherpa_tts_test.dart -d macos
+```
+
+Building the macOS app locally also needs your own signing identity; the
+Debug configuration in `macos/Runner.xcodeproj` points at the upstream team.
+
 ## Limitations
 
 - HarmonyOS (`ohos`) has no sherpa-onnx binary in the plugin, so the offline
