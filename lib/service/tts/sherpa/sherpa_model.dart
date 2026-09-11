@@ -1,8 +1,6 @@
 import 'dart:io';
 
-import 'package:anx_reader/utils/get_path/get_base_path.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 /// Model families of sherpa-onnx offline TTS that Anx exposes.
 enum SherpaModelType {
@@ -117,48 +115,16 @@ class SherpaModelSpec {
 }
 
 /// Locates model directories and the files inside them.
+///
+/// This class stays free of app and plugin imports so it can be unit tested:
+/// the directories a relative path may live in are passed in as [roots].
 class SherpaModelResolver {
   /// Directory name used for models that are stored inside the app sandbox.
   static const String modelsFolderName = 'tts_models';
 
-  static List<String> _rootCache = const [];
-
-  /// Directories a relative model path may live in.
-  ///
-  /// The platform documents directory comes first: on iOS and macOS it is the
-  /// folder exposed to Finder / the Files app, which is the only convenient
-  /// place for a user to drop a few hundred megabytes of ONNX files.
-  static Future<List<String>> modelRoots() async {
-    if (_rootCache.isNotEmpty) return _rootCache;
-
-    final roots = <String>[];
-    try {
-      final docs = await getApplicationDocumentsDirectory();
-      roots.add(p.join(docs.path, modelsFolderName));
-      roots.add(docs.path);
-    } catch (_) {
-      // Documents directory is not available on every platform.
-    }
-    if (documentPath.isNotEmpty) {
-      roots.add(p.join(documentPath, modelsFolderName));
-      roots.add(documentPath);
-    }
-    // Only cache once the Anx document path is known, otherwise an early
-    // call during startup would pin an incomplete list.
-    if (documentPath.isNotEmpty) _rootCache = roots;
-    return roots;
-  }
-
-  /// The default place to put models, shown in the settings hint.
-  static Future<String> defaultModelsDir() async {
-    final roots = await modelRoots();
-    return roots.isEmpty
-        ? p.join(documentPath, modelsFolderName)
-        : roots.first;
-  }
-
   /// Resolve a user supplied path to an existing directory.
-  static Future<String> resolveDir(String input) async {
+  static Future<String> resolveDir(String input,
+      {List<String> roots = const []}) async {
     final raw = input.trim();
     if (raw.isEmpty) {
       throw SherpaModelException('No sherpa-onnx model directory configured');
@@ -168,7 +134,7 @@ class SherpaModelResolver {
     if (p.isAbsolute(raw)) {
       candidates.add(raw);
     } else {
-      for (final root in await modelRoots()) {
+      for (final root in roots) {
         candidates.add(p.join(root, raw));
       }
     }
@@ -187,7 +153,9 @@ class SherpaModelResolver {
   /// directory), then against the shared model roots, so a vocoder that is
   /// downloaded separately can sit next to the models instead of inside one.
   static Future<String> resolveFile(String input,
-      {String? relativeTo, String what = 'File'}) async {
+      {String? relativeTo,
+      List<String> roots = const [],
+      String what = 'File'}) async {
     final raw = input.trim();
     if (raw.isEmpty) {
       throw SherpaModelException('$what is not configured');
@@ -198,7 +166,7 @@ class SherpaModelResolver {
       candidates.add(raw);
     } else {
       if (relativeTo != null) candidates.add(p.join(relativeTo, raw));
-      for (final root in await modelRoots()) {
+      for (final root in roots) {
         candidates.add(p.join(root, raw));
       }
     }
@@ -213,12 +181,14 @@ class SherpaModelResolver {
 
   /// Build the model layout for [dir], picking the files [type] needs.
   ///
+  /// [searchRoots] are the directories a relative [dirInput] is looked up in.
   /// [preferInt8] decides which variant wins when a model ships both a float
   /// and a quantised file. [vocoderOverride] and [referenceAudio] may point
   /// outside the model directory.
   static Future<SherpaModelSpec> resolve({
     required String dirInput,
     required SherpaModelType type,
+    List<String> searchRoots = const [],
     bool preferInt8 = true,
     int numThreads = 2,
     String provider = 'cpu',
@@ -230,7 +200,7 @@ class SherpaModelResolver {
     String lang = '',
     bool debug = false,
   }) async {
-    final dir = await resolveDir(dirInput);
+    final dir = await resolveDir(dirInput, roots: searchRoots);
     final threads = numThreads < 1 ? 1 : numThreads;
     final entries = Directory(dir).listSync();
     final names = entries
@@ -299,7 +269,7 @@ class SherpaModelResolver {
     Future<String> vocoder(List<String> hints) async {
       if (vocoderOverride.trim().isNotEmpty) {
         return resolveFile(vocoderOverride,
-            relativeTo: dir, what: 'Vocoder');
+            relativeTo: dir, roots: searchRoots, what: 'Vocoder');
       }
       for (final hint in hints) {
         final found = pickOnnx([hint]);
@@ -364,7 +334,9 @@ class SherpaModelResolver {
           referenceAudio: referenceAudio.trim().isEmpty
               ? ''
               : await resolveFile(referenceAudio,
-                  relativeTo: dir, what: 'Reference audio'),
+                  relativeTo: dir,
+                  roots: searchRoots,
+                  what: 'Reference audio'),
           referenceText: referenceText,
           numSteps: numSteps < 1 ? 1 : numSteps,
           numThreads: threads,

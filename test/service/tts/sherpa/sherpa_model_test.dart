@@ -183,7 +183,9 @@ void main() {
       expect(decoded!.sampleRate, 24000);
       expect(decoded.samples.length, samples.length);
       for (var i = 0; i < samples.length; i++) {
-        expect(decoded.samples[i], closeTo(samples[i], 1 / 32767));
+        // 16 bit quantisation, plus the 32767 / 32768 asymmetry between
+        // encoding and decoding.
+        expect(decoded.samples[i], closeTo(samples[i], 1 / 16384));
       }
     });
 
