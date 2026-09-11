@@ -56,6 +56,8 @@ class SherpaModelSpec {
     this.dataDir = '',
     this.dictDir = '',
     this.lexicon = '',
+    this.ruleFsts = '',
+    this.ruleFars = '',
     this.acousticModel = '',
     this.encoder = '',
     this.decoder = '',
@@ -77,6 +79,8 @@ class SherpaModelSpec {
   final String dataDir;
   final String dictDir;
   final String lexicon;
+  final String ruleFsts;
+  final String ruleFars;
   final String acousticModel;
   final String encoder;
   final String decoder;
@@ -100,6 +104,8 @@ class SherpaModelSpec {
         dataDir,
         dictDir,
         lexicon,
+        ruleFsts,
+        ruleFars,
         acousticModel,
         encoder,
         decoder,
@@ -246,6 +252,24 @@ class SherpaModelResolver {
     String optionalDir(String name) =>
         dirNames.contains(name) ? p.join(dir, name) : '';
 
+    // Text normalisation rules that ship with several Chinese models.
+    // sherpa-onnx applies them in order, and numbers have to come last so
+    // dates and phone numbers are matched first.
+    String rules(String extension) {
+      const order = ['date', 'phone', 'number'];
+      final found = names.where((n) => n.endsWith(extension)).toList()
+        ..sort((a, b) {
+          int rank(String n) {
+            final hit = order.indexWhere((k) => n.toLowerCase().contains(k));
+            return hit < 0 ? order.length : hit;
+          }
+
+          final byRank = rank(a).compareTo(rank(b));
+          return byRank != 0 ? byRank : a.compareTo(b);
+        });
+      return found.map(abs).join(',');
+    }
+
     // sherpa-onnx accepts several lexicons joined by a comma, which is how
     // the bilingual Kokoro model handles Chinese plus English.
     String lexicons() {
@@ -261,9 +285,18 @@ class SherpaModelResolver {
           .where((n) =>
               n.toLowerCase().startsWith('lexicon') &&
               n.toLowerCase().endsWith('.txt'))
-          .map(abs)
           .toList();
-      return found.join(',');
+
+      // The bilingual Kokoro model ships a US and a GB English lexicon.
+      // sherpa-onnx keeps the first pronunciation it reads and warns about
+      // every duplicate, so load only one of them, as the upstream example
+      // does. The lexicon setting overrides this.
+      final hasUsEnglish = found.any((n) => n.toLowerCase().contains('-us-en'));
+      return found
+          .where((n) =>
+              !hasUsEnglish || !n.toLowerCase().contains('-gb-en'))
+          .map(abs)
+          .join(',');
     }
 
     Future<String> vocoder(List<String> hints) async {
@@ -294,6 +327,8 @@ class SherpaModelResolver {
           dataDir: optionalDir('espeak-ng-data'),
           dictDir: optionalDir('dict'),
           lexicon: lexicons(),
+          ruleFsts: rules('.fst'),
+          ruleFars: rules('.far'),
           lang: lang,
           numThreads: threads,
           provider: provider,
@@ -309,6 +344,8 @@ class SherpaModelResolver {
           voices: requireFile('voices.bin', 'Kitten voices'),
           tokens: requireFile('tokens.txt', 'tokens'),
           dataDir: optionalDir('espeak-ng-data'),
+          ruleFsts: rules('.fst'),
+          ruleFars: rules('.far'),
           numThreads: threads,
           provider: provider,
           debug: debug,
@@ -331,6 +368,8 @@ class SherpaModelResolver {
           vocoder: await vocoder(['vocos', 'vocoder', 'hifigan']),
           dataDir: optionalDir('espeak-ng-data'),
           lexicon: lexicons(),
+          ruleFsts: rules('.fst'),
+          ruleFars: rules('.far'),
           referenceAudio: referenceAudio.trim().isEmpty
               ? ''
               : await resolveFile(referenceAudio,
@@ -362,6 +401,8 @@ class SherpaModelResolver {
           dataDir: optionalDir('espeak-ng-data'),
           dictDir: optionalDir('dict'),
           lexicon: lexicons(),
+          ruleFsts: rules('.fst'),
+          ruleFars: rules('.far'),
           numThreads: threads,
           provider: provider,
           debug: debug,
@@ -378,6 +419,8 @@ class SherpaModelResolver {
           dataDir: optionalDir('espeak-ng-data'),
           dictDir: optionalDir('dict'),
           lexicon: lexicons(),
+          ruleFsts: rules('.fst'),
+          ruleFars: rules('.far'),
           numThreads: threads,
           provider: provider,
           debug: debug,
