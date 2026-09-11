@@ -103,20 +103,27 @@ class SherpaTtsEngine {
 
   /// Load [spec] if a different model (or none) is currently loaded.
   Future<void> ensureReady(SherpaModelSpec spec) async {
-    if (_loadedKey == spec.engineKey && _sendPort != null) return;
-
-    final loading = _loading;
-    if (loading != null) {
-      await loading.future;
-      if (_loadedKey == spec.engineKey && _sendPort != null) return;
+    // Wait out a load that is already in flight; it may be loading exactly
+    // the model we want. A failed load is not our error to report here, the
+    // caller that started it gets it, so fall through and try again.
+    while (true) {
+      if (_isReady(spec)) return;
+      final loading = _loading;
+      if (loading == null) break;
+      try {
+        await loading.future;
+      } catch (_) {
+        // Retry on the next turn of the loop.
+      }
     }
 
-    await shutdown();
-
+    // Claim the load before the first await so two callers cannot both
+    // spawn an isolate.
     final completer = Completer<void>();
     _loading = completer;
 
     try {
+      await shutdown();
       final receivePort = ReceivePort();
       _receivePort = receivePort;
       _isolate = await Isolate.spawn(_workerEntry, receivePort.sendPort,
@@ -130,7 +137,7 @@ class SherpaTtsEngine {
           _numSpeakers = message.numSpeakers;
           _sampleRate = message.sampleRate;
           _loadedKey = spec.engineKey;
-          if (!completer.isCompleted) completer.complete();
+          _finishLoading(completer);
         } else if (message is _GenerateDone) {
           final pending = _pending.remove(message.id);
           pending?.complete(SherpaAudio(
@@ -144,10 +151,8 @@ class SherpaTtsEngine {
                 SherpaModelException('sherpa-onnx: ${message.message}'));
           } else {
             AnxLog.severe('SherpaTts worker error: ${message.message}');
-            if (!completer.isCompleted) {
-              completer.completeError(
-                  SherpaModelException('sherpa-onnx: ${message.message}'));
-            }
+            _finishLoading(completer,
+                SherpaModelException('sherpa-onnx: ${message.message}'));
           }
         }
       });
@@ -157,10 +162,26 @@ class SherpaTtsEngine {
           'SherpaTts loaded ${spec.type.label} from ${spec.dir} '
           '(speakers: $_numSpeakers, sampleRate: $_sampleRate)');
     } catch (e) {
+      if (identical(_loading, completer)) _loading = null;
       await shutdown();
       rethrow;
     } finally {
-      _loading = null;
+      if (identical(_loading, completer)) _loading = null;
+    }
+  }
+
+  bool _isReady(SherpaModelSpec spec) =>
+      _loadedKey == spec.engineKey && _sendPort != null;
+
+  /// Release the load slot before waking anyone up, so a waiter that retries
+  /// sees a free slot instead of the completer it just awaited.
+  void _finishLoading(Completer<void> completer, [Object? error]) {
+    if (identical(_loading, completer)) _loading = null;
+    if (completer.isCompleted) return;
+    if (error == null) {
+      completer.complete();
+    } else {
+      completer.completeError(error);
     }
   }
 
