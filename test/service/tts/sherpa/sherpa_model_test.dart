@@ -75,6 +75,37 @@ void main() {
       expect(spec.lexicon, p.join(dir.path, 'lexicon-zh.txt'));
     });
 
+    test('keeps one English lexicon and orders the rule FSTs', () async {
+      // The layout of the real kokoro-multi-lang-v1_0 release.
+      final real = _modelDir('kokoro-real', [
+        'model.onnx',
+        'voices.bin',
+        'tokens.txt',
+        'lexicon-gb-en.txt',
+        'lexicon-us-en.txt',
+        'lexicon-zh.txt',
+        'date-zh.fst',
+        'number-zh.fst',
+        'phone-zh.fst',
+      ], dirs: [
+        'espeak-ng-data',
+        'dict',
+      ]);
+      addTearDown(() => real.deleteSync(recursive: true));
+
+      final spec = await SherpaModelResolver.resolve(
+        dirInput: real.path,
+        type: SherpaModelType.kokoro,
+      );
+
+      // Loading both English lexicons only produces duplicate warnings.
+      expect(spec.lexicon.split(',').map(p.basename).toList(),
+          ['lexicon-us-en.txt', 'lexicon-zh.txt']);
+      // Numbers have to be normalised after dates and phone numbers.
+      expect(spec.ruleFsts.split(',').map(p.basename).toList(),
+          ['date-zh.fst', 'phone-zh.fst', 'number-zh.fst']);
+    });
+
     test('reports the missing file by name', () async {
       final incomplete = _modelDir('kokoro-bad', ['model.onnx', 'voices.bin']);
       addTearDown(() => incomplete.deleteSync(recursive: true));

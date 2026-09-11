@@ -77,6 +77,15 @@ The **rate** slider in the reading view is used as a speed multiplier, where
 `1.0` is the model's natural pace. **Pitch** is ignored: these models do not
 expose it.
 
+Two things in the folder are picked up without any setting:
+
+- `*.fst` text normalisation rules (`date-zh.fst`, `phone-zh.fst`,
+  `number-zh.fst` ship with the Chinese models) are applied in that order, so
+  "2026 年" and phone numbers are read as words rather than digits.
+- When a model carries both a US and a GB English lexicon, only the US one is
+  loaded; sherpa-onnx keeps the first pronunciation it reads and warns about
+  every duplicate. Set **Lexicon files** to override.
+
 ## 中文快速上手
 
 1. 下载并解压模型（上面的命令），ZipVoice 记得把 `vocos_24khz.onnx` 放进模型文件夹。
@@ -102,10 +111,25 @@ TTS; changing any model setting reloads it on the next sentence.
 
 ## Performance notes
 
-- Expect roughly 0.2–0.5× real time per sentence for Kokoro int8 on a modern
-  phone, which is comfortably faster than playback. ZipVoice is heavier.
+Measured with `kokoro-multi-lang-v1_0` (float model, 2 threads) on an Apple
+silicon Mac: the model loads in about 0.5 s and synthesis runs at 0.37–0.51×
+real time, i.e. comfortably ahead of playback.
+
 - Memory is the real constraint on mobile: prefer the int8 models.
-- The first sentence pays for model loading (a few seconds).
+- The first sentence pays for model loading.
+- ZipVoice is heavier than Kokoro; raise **Threads** and keep the sampling
+  steps low.
+
+## Checking a model on a device
+
+`integration_test/sherpa_tts_test.dart` loads the model, synthesizes a
+bilingual sentence and writes `sherpa_tts_sample.wav` next to the app's data,
+printing the load and synthesis times. It skips itself when no model is
+installed.
+
+```bash
+flutter test integration_test/sherpa_tts_test.dart -d macos
+```
 
 ## Limitations
 

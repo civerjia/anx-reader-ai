@@ -367,6 +367,10 @@ class SherpaTtsEngine {
       provider: spec.provider,
     );
 
-    return sherpa_onnx.OfflineTtsConfig(model: model);
+    return sherpa_onnx.OfflineTtsConfig(
+      model: model,
+      ruleFsts: spec.ruleFsts,
+      ruleFars: spec.ruleFars,
+    );
   }
 }
