@@ -1,5 +1,7 @@
 import 'package:anx_reader/l10n/generated/L10n.dart';
 import 'package:anx_reader/service/config/config_item.dart';
+import 'package:anx_reader/utils/log/common.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -266,6 +268,10 @@ class _ServiceConfigFormState extends State<ServiceConfigForm> {
           },
         );
 
+      case ConfigItemType.directory:
+      case ConfigItemType.file:
+        return _buildPathField(item);
+
       case ConfigItemType.tip:
         return Padding(
           padding: const EdgeInsets.only(bottom: 8.0),
@@ -308,4 +314,55 @@ class _ServiceConfigFormState extends State<ServiceConfigForm> {
         );
     }
   }
+
+  /// Text field with a picker button, used for local file or folder paths.
+  /// The field stays editable so a path can also be typed or pasted, and so
+  /// it still works where the platform has no folder picker.
+  Widget _buildPathField(ConfigItem item) {
+    final current = _currentConfig[item.key]?.toString() ??
+        item.defaultValue?.toString() ??
+        '';
+    final isDirectory = item.type == ConfigItemType.directory;
+
+    return TextField(
+      decoration: InputDecoration(
+        labelText: item.label,
+        helperText: item.description,
+        helperMaxLines: 5,
+        border: const OutlineInputBorder(),
+        suffixIcon: IconButton(
+          icon: Icon(isDirectory ? Icons.folder_open : Icons.attach_file),
+          tooltip: item.label,
+          onPressed: () => _pickPath(item),
+        ),
+      ),
+      controller: TextEditingController(text: current)
+        ..selection = TextSelection.collapsed(offset: current.length),
+      onChanged: (value) => _updateConfig(item.key, value),
+    );
+  }
+
+  Future<void> _pickPath(ConfigItem item) async {
+    try {
+      if (item.type == ConfigItemType.directory) {
+        final path = await FilePicker.platform.getDirectoryPath();
+        if (path != null) _updateConfig(item.key, path);
+        return;
+      }
+
+      final extensions = item.allowedExtensions;
+      final result = await FilePicker.platform.pickFiles(
+        type: extensions == null || extensions.isEmpty
+            ? FileType.any
+            : FileType.custom,
+        allowedExtensions: extensions,
+      );
+      final path = result?.files.single.path;
+      if (path != null) _updateConfig(item.key, path);
+    } catch (e) {
+      // Not every platform has a picker; the field can still be typed in.
+      AnxLog.warning('Path picker failed for ${item.key}: $e');
+    }
+  }
+
 }

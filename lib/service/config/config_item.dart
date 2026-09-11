@@ -9,6 +9,8 @@ enum ConfigItemType {
   radio('radio'),
   checkbox('checkbox'),
   toggle('toggle'),
+  directory('directory picker'),
+  file('file picker'),
   tip('tip');
 
   const ConfigItemType(this.label);
@@ -30,6 +32,8 @@ class ConfigItem {
   final double? max;
   final double? step;
   final String? unit;
+  // File picker specific properties
+  final List<String>? allowedExtensions;
 
   ConfigItem({
     required this.key,
@@ -43,6 +47,7 @@ class ConfigItem {
     this.max,
     this.step,
     this.unit,
+    this.allowedExtensions,
   });
 
   Map<String, dynamic> toJson() {
@@ -58,6 +63,7 @@ class ConfigItem {
       'max': max,
       'step': step,
       'unit': unit,
+      'allowedExtensions': allowedExtensions,
     };
   }
 }
