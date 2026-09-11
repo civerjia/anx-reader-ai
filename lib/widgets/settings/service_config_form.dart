@@ -346,6 +346,7 @@ class _ServiceConfigFormState extends State<ServiceConfigForm> {
     try {
       if (item.type == ConfigItemType.directory) {
         final path = await FilePicker.platform.getDirectoryPath();
+        if (!mounted) return;
         if (path != null) _updateConfig(item.key, path);
         return;
       }
@@ -357,6 +358,7 @@ class _ServiceConfigFormState extends State<ServiceConfigForm> {
             : FileType.custom,
         allowedExtensions: extensions,
       );
+      if (!mounted) return;
       final path = result?.files.single.path;
       if (path != null) _updateConfig(item.key, path);
     } catch (e) {
