@@ -38,6 +38,22 @@ abstract class TtsServiceProvider extends ServiceProvider<dynamic> {
     throw UnimplementedError('speak() not implemented for $service');
   }
 
+  /// Mime type of the audio [speak] returns.
+  /// Online services answer with mp3; local inference returns wave.
+  String get audioMimeType => 'audio/mp3';
+
+  /// How long a single [speak] call may take before it is retried.
+  int get fetchTimeoutSeconds => 10;
+
+  /// How many [speak] calls the prefetcher may run at the same time.
+  int get maxConcurrentFetches => 5;
+
+  /// Warm up the service before the first sentence, e.g. load a local model.
+  Future<void> prepare() async {}
+
+  /// Release any resource held by the service (models, isolates, sockets).
+  Future<void> release() async {}
+
   /// Get available voices for this TTS service.
   /// Returns empty list for system TTS (handled separately).
   Future<List<TtsVoice>> getVoices() async {

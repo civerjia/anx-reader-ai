@@ -23,9 +23,14 @@ class OnlineTts extends BaseTts {
 
   // ============ Configuration ============
   static const int _bufferCapacity = 10;
-  static const int _batchSize = 5; // Max concurrent fetches
-  static const int _fetchTimeoutSeconds = 10;
   static const int _maxRetries = 2;
+
+  // Max concurrent fetches and the per sentence timeout depend on the
+  // backend: a network service answers in a second and likes parallelism,
+  // a local model is slower and runs one sentence at a time.
+  int get _batchSize => backend.maxConcurrentFetches;
+
+  int get _fetchTimeoutSeconds => backend.fetchTimeoutSeconds;
 
   // ============ Audio Player ============
   AudioPlayer? _player;
@@ -378,7 +383,8 @@ class OnlineTts extends BaseTts {
 
         // Play audio
         _playbackCompleter = Completer<void>();
-        final source = BytesSource(segment.audio!, mimeType: 'audio/mp3');
+        final source =
+            BytesSource(segment.audio!, mimeType: backend.audioMimeType);
 
         try {
           await audioPlayer.play(source);
@@ -418,6 +424,16 @@ class OnlineTts extends BaseTts {
   Future<void> speak({String? content}) async {
     _shouldStop = false;
     updateTtsState(TtsStateEnum.playing);
+
+    // Local backends load their model here, so failures surface before the
+    // reader starts scrolling through silent sentences.
+    try {
+      await backend.prepare();
+    } catch (e) {
+      updateTtsState(TtsStateEnum.stopped);
+      AnxLog.severe('TTS backend prepare failed: $e');
+      rethrow;
+    }
 
     // Sync to current location first
     try {
@@ -481,11 +497,12 @@ class OnlineTts extends BaseTts {
   /// For testing a specific voice in settings
   Future<void> speakWithVoice(String content, String voice) async {
     await stop();
+    await backend.prepare();
     final audioPlayer = await _ensurePlayer();
 
     final bytes = await backend.speak(content, voice, rate, pitch);
     if (bytes.isNotEmpty) {
-      final source = BytesSource(bytes, mimeType: 'audio/mp3');
+      final source = BytesSource(bytes, mimeType: backend.audioMimeType);
       await audioPlayer.play(source);
     }
   }
@@ -493,6 +510,7 @@ class OnlineTts extends BaseTts {
   @override
   Future<void> dispose() async {
     await stop();
+    await backend.release();
     isInit = false;
   }
 }

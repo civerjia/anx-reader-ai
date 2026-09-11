@@ -1,0 +1,316 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:anx_reader/config/shared_preference_provider.dart';
+import 'package:anx_reader/l10n/generated/L10n.dart';
+import 'package:anx_reader/service/tts/models/tts_voice.dart';
+import 'package:anx_reader/service/tts/sherpa/sherpa_model.dart';
+import 'package:anx_reader/service/tts/sherpa/sherpa_tts_engine.dart';
+import 'package:anx_reader/service/tts/tts_service.dart';
+import 'package:anx_reader/service/tts/tts_service_provider.dart';
+import 'package:anx_reader/utils/log/common.dart';
+import 'package:flutter/widgets.dart';
+import 'package:path/path.dart' as p;
+
+/// Local, offline TTS powered by sherpa-onnx.
+///
+/// Models (Kokoro, ZipVoice, VITS/Piper, Matcha, Kitten) are provided by the
+/// user as a folder of ONNX files; nothing leaves the device.
+class SherpaTtsProvider extends TtsServiceProvider {
+  factory SherpaTtsProvider() => _instance;
+
+  SherpaTtsProvider._internal();
+
+  static final SherpaTtsProvider _instance = SherpaTtsProvider._internal();
+
+  static const String _defaultModelType = 'kokoro';
+  static const int _defaultNumSteps = 4;
+  static const int _defaultNumThreads = 2;
+
+  final SherpaTtsEngine _engine = SherpaTtsEngine();
+
+  @override
+  TtsService get service => TtsService.sherpa;
+
+  @override
+  String getLabel(BuildContext context) =>
+      L10n.of(context).settingsNarrateSherpaTts;
+
+  /// Local inference returns wave, not mp3.
+  @override
+  String get audioMimeType => 'audio/wav';
+
+  /// A sentence on a phone CPU can take a few seconds, and the very first one
+  /// also pays for loading the model.
+  @override
+  int get fetchTimeoutSeconds => 180;
+
+  /// Inference runs in a single isolate, so queueing more requests in
+  /// parallel only adds latency to the sentence that is needed next.
+  @override
+  int get maxConcurrentFetches => 1;
+
+  @override
+  List<ConfigItem> getConfigItems(BuildContext context) {
+    return [
+      ConfigItem(
+        key: 'tip',
+        label: L10n.of(context).translateTip,
+        type: ConfigItemType.tip,
+        defaultValue: L10n.of(context).settingsNarrateSherpaHelpText,
+        link: 'https://k2-fsa.github.io/sherpa/onnx/tts/index.html',
+      ),
+      ConfigItem(
+        key: 'modelType',
+        label: L10n.of(context).settingsNarrateSherpaModelType,
+        type: ConfigItemType.select,
+        defaultValue: _defaultModelType,
+        options: [
+          for (final type in SherpaModelType.values)
+            {'value': type.id, 'label': type.label},
+        ],
+      ),
+      ConfigItem(
+        key: 'modelDir',
+        label: L10n.of(context).settingsNarrateSherpaModelDir,
+        description:
+            L10n.of(context).settingsNarrateSherpaModelDirDescription,
+        type: ConfigItemType.directory,
+        defaultValue: '',
+      ),
+      ConfigItem(
+        key: 'vocoder',
+        label: L10n.of(context).settingsNarrateSherpaVocoder,
+        description: L10n.of(context).settingsNarrateSherpaVocoderDescription,
+        type: ConfigItemType.file,
+        defaultValue: '',
+        allowedExtensions: const ['onnx'],
+      ),
+      ConfigItem(
+        key: 'referenceAudio',
+        label: L10n.of(context).settingsNarrateSherpaReferenceAudio,
+        description:
+            L10n.of(context).settingsNarrateSherpaReferenceAudioDescription,
+        type: ConfigItemType.file,
+        defaultValue: '',
+        allowedExtensions: const ['wav'],
+      ),
+      ConfigItem(
+        key: 'referenceText',
+        label: L10n.of(context).settingsNarrateSherpaReferenceText,
+        description:
+            L10n.of(context).settingsNarrateSherpaReferenceTextDescription,
+        type: ConfigItemType.text,
+        defaultValue: '',
+      ),
+      ConfigItem(
+        key: 'numSteps',
+        label: L10n.of(context).settingsNarrateSherpaNumSteps,
+        description: L10n.of(context).settingsNarrateSherpaNumStepsDescription,
+        type: ConfigItemType.number,
+        defaultValue: _defaultNumSteps,
+      ),
+      ConfigItem(
+        key: 'numThreads',
+        label: L10n.of(context).settingsNarrateSherpaNumThreads,
+        description:
+            L10n.of(context).settingsNarrateSherpaNumThreadsDescription,
+        type: ConfigItemType.number,
+        defaultValue: _defaultNumThreads,
+      ),
+      ConfigItem(
+        key: 'preferInt8',
+        label: L10n.of(context).settingsNarrateSherpaPreferInt8,
+        description:
+            L10n.of(context).settingsNarrateSherpaPreferInt8Description,
+        type: ConfigItemType.toggle,
+        defaultValue: true,
+      ),
+      ConfigItem(
+        key: 'lexicon',
+        label: L10n.of(context).settingsNarrateSherpaLexicon,
+        description: L10n.of(context).settingsNarrateSherpaLexiconDescription,
+        type: ConfigItemType.text,
+        defaultValue: '',
+      ),
+    ];
+  }
+
+  @override
+  Map<String, dynamic> getConfig() {
+    final config = Prefs().getOnlineTtsConfig(serviceId);
+    return {
+      'modelType': config['modelType'] ?? _defaultModelType,
+      'modelDir': config['modelDir'] ?? '',
+      'vocoder': config['vocoder'] ?? '',
+      'referenceAudio': config['referenceAudio'] ?? '',
+      'referenceText': config['referenceText'] ?? '',
+      'numSteps': config['numSteps'] ?? _defaultNumSteps,
+      'numThreads': config['numThreads'] ?? _defaultNumThreads,
+      'preferInt8': config['preferInt8'] ?? true,
+      'lexicon': config['lexicon'] ?? '',
+    };
+  }
+
+  @override
+  void saveConfig(Map<String, dynamic> config) {
+    Prefs().saveOnlineTtsConfig(serviceId, config);
+    // The next request rebuilds the engine if the model actually changed.
+    _cachedSpec = null;
+  }
+
+  SherpaModelSpec? _cachedSpec;
+  String? _cachedConfigKey;
+
+  int _asInt(dynamic value, int fallback) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  bool _asBool(dynamic value, bool fallback) {
+    if (value is bool) return value;
+    final text = value?.toString().toLowerCase();
+    if (text == 'true') return true;
+    if (text == 'false') return false;
+    return fallback;
+  }
+
+  /// Resolve the configured model directory into concrete file paths.
+  Future<SherpaModelSpec> resolveSpec() async {
+    final config = getConfig();
+    final key = config.toString();
+    final cached = _cachedSpec;
+    if (cached != null && _cachedConfigKey == key) return cached;
+
+    final spec = await SherpaModelResolver.resolve(
+      dirInput: config['modelDir']?.toString() ?? '',
+      type: SherpaModelType.fromId(config['modelType']?.toString()),
+      preferInt8: _asBool(config['preferInt8'], true),
+      numThreads: _asInt(config['numThreads'], _defaultNumThreads),
+      vocoderOverride: config['vocoder']?.toString() ?? '',
+      lexiconOverride: config['lexicon']?.toString() ?? '',
+      referenceAudio: config['referenceAudio']?.toString() ?? '',
+      referenceText: config['referenceText']?.toString() ?? '',
+      numSteps: _asInt(config['numSteps'], _defaultNumSteps),
+    );
+
+    if (spec.type.needsReferenceAudio && spec.referenceAudio.isEmpty) {
+      throw SherpaModelException(
+          '${spec.type.label} clones a voice, so it needs a reference wave '
+          'file and the text spoken in it.');
+    }
+
+    _cachedSpec = spec;
+    _cachedConfigKey = key;
+    return spec;
+  }
+
+  /// Load the model ahead of the first sentence.
+  @override
+  Future<void> prepare() async {
+    await _engine.ensureReady(await resolveSpec());
+  }
+
+  /// Unload the model and stop the inference isolate.
+  @override
+  Future<void> release() async {
+    await _engine.shutdown();
+  }
+
+  @override
+  Future<Uint8List> speak(
+      String text, String? voice, double rate, double pitch) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return Uint8List(0);
+
+    final spec = await resolveSpec();
+    final audio = await _engine.generate(
+      spec: spec,
+      text: trimmed,
+      speed: _speedFromRate(rate),
+      sid: _speakerId(voice),
+    );
+
+    if (audio.samples.isEmpty) return Uint8List(0);
+    return audio.toWav();
+  }
+
+  /// Anx exposes rate as a 0..2 multiplier; sherpa-onnx wants a speed factor
+  /// where 1.0 is the model's natural pace.
+  double _speedFromRate(double rate) {
+    if (rate <= 0.05) return 1.0;
+    return rate.clamp(0.2, 3.0);
+  }
+
+  int _speakerId(String? voiceOverride) {
+    final raw = (voiceOverride == null || voiceOverride.isEmpty)
+        ? getSelectedVoice()
+        : voiceOverride;
+    return int.tryParse(raw.trim()) ?? 0;
+  }
+
+  @override
+  Future<List<TtsVoice>> getVoices() async {
+    final spec = await resolveSpec();
+    await _engine.ensureReady(spec);
+
+    if (!spec.type.hasSpeakerId) {
+      final name = spec.referenceAudio.isEmpty
+          ? spec.type.label
+          : p.basenameWithoutExtension(spec.referenceAudio);
+      return [
+        TtsVoice(
+          shortName: '0',
+          name: name,
+          locale: spec.type.label,
+          description: spec.dir,
+        ),
+      ];
+    }
+
+    final names = _voiceNames(spec.dir);
+    final count = _engine.numSpeakers > 0 ? _engine.numSpeakers : 1;
+    return [
+      for (var sid = 0; sid < count; sid++)
+        TtsVoice(
+          shortName: '$sid',
+          name: sid < names.length ? '$sid · ${names[sid]}' : 'Speaker $sid',
+          locale: spec.type.label,
+          description: sid < names.length ? names[sid] : '',
+        ),
+    ];
+  }
+
+  /// Optional speaker names, one per line, in `voices.txt` or `speakers.txt`
+  /// next to the model. sherpa-onnx models ship speaker ids only.
+  List<String> _voiceNames(String dir) {
+    for (final name in ['voices.txt', 'speakers.txt']) {
+      final file = File(p.join(dir, name));
+      if (!file.existsSync()) continue;
+      try {
+        return file
+            .readAsLinesSync()
+            .map((line) => line.trim())
+            .where((line) => line.isNotEmpty && !line.startsWith('#'))
+            .toList();
+      } catch (e) {
+        AnxLog.warning('Failed to read $name: $e');
+      }
+    }
+    return const [];
+  }
+
+  @override
+  TtsVoice convertVoiceModel(dynamic voiceData) {
+    if (voiceData is TtsVoice) return voiceData;
+    if (voiceData is Map<String, dynamic>) return TtsVoice.fromMap(voiceData);
+    return const TtsVoice(shortName: '0', name: 'Speaker 0', locale: '');
+  }
+
+  @override
+  String getSelectedVoice() {
+    final selected = Prefs().getTtsVoiceModel(serviceId);
+    return selected.isEmpty ? '0' : selected;
+  }
+}

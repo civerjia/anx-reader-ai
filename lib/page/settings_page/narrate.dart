@@ -432,18 +432,11 @@ class _NarrateSettingsState extends ConsumerState<NarrateSettings>
           border: OutlineInputBorder(),
         ),
         items: [
-          DropdownMenuItem(
-              value: 'system',
-              child: Text(L10n.of(context).settingsNarrateSystemTts)),
-          DropdownMenuItem(
-              value: 'aliyun',
-              child: Text(L10n.of(context).settingsNarrateAliyunTts)),
-          DropdownMenuItem(
-              value: 'azure',
-              child: Text(L10n.of(context).settingsNarrateAzureTts)),
-          DropdownMenuItem(
-              value: 'openai',
-              child: Text(L10n.of(context).settingsNarrateOpenAiTts)),
+          for (final service in tts_svc.TtsService.values)
+            DropdownMenuItem(
+              value: service.provider.serviceId,
+              child: Text(service.getLabel(context)),
+            ),
         ],
         onChanged: (value) async {
           if (value != null && value != currentServiceId) {

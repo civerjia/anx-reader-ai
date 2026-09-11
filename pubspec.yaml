@@ -93,6 +93,8 @@ dependencies:
   web_socket_channel: ^3.0.2
   crypto: ^3.0.6
   audioplayers: ^6.4.0
+  # Local, offline TTS (Kokoro / ZipVoice / VITS / Matcha / Kitten).
+  sherpa_onnx: ^1.13.8
   in_app_purchase: ^3.2.1
   asn1lib: ^1.6.2
   in_app_purchase_storekit: ^0.3.21
