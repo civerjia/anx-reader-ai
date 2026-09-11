@@ -5,6 +5,7 @@ import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/l10n/generated/L10n.dart';
 import 'package:anx_reader/service/tts/models/tts_voice.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_model.dart';
+import 'package:anx_reader/service/tts/sherpa/sherpa_model_roots.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_tts_engine.dart';
 import 'package:anx_reader/service/tts/tts_service.dart';
 import 'package:anx_reader/service/tts/tts_service_provider.dart';
@@ -185,6 +186,7 @@ class SherpaTtsProvider extends TtsServiceProvider {
 
     final spec = await SherpaModelResolver.resolve(
       dirInput: config['modelDir']?.toString() ?? '',
+      searchRoots: await SherpaModelRoots.all(),
       type: SherpaModelType.fromId(config['modelType']?.toString()),
       preferInt8: _asBool(config['preferInt8'], true),
       numThreads: _asInt(config['numThreads'], _defaultNumThreads),
