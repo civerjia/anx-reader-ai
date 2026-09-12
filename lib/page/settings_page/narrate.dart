@@ -44,6 +44,52 @@ class _NarrateSettingsState extends ConsumerState<NarrateSettings>
   final Map<String, bool> _modelLoadingStates = {};
   bool _mainTestLoading = false;
 
+  /// Something long enough to judge a voice by, in the voice's own language.
+  ///
+  /// A Chinese voice reading "Hello, this is a test." says nothing about how
+  /// it will read a book, and one short sentence is over before the prosody
+  /// shows. Each sample is a couple of sentences and includes a year, which
+  /// is where text normalisation usually goes wrong.
+  static const Map<String, String> _sampleTexts = {
+    'zh': '夜色渐深，他合上书走到窗前，看见二〇二六年的第一场雪。'
+        '风从山谷那边过来，带着松针和湿土的气味，像是有人在远处轻轻叹了口气。',
+    'en': 'The lamp threw a small circle of light onto the desk, and beyond '
+        'it the house was quiet. She read the last three pages twice, not '
+        'because they were difficult, but because she did not want the story '
+        'to end before the winter of 2026 did.',
+    'ja': '夜が更けて、彼は本を閉じ、窓辺に立った。谷の向こうから風が吹いてきて、'
+        '松の葉と湿った土の匂いがした。二〇二六年の最初の雪だった。',
+    'ko': '밤이 깊어지자 그는 책을 덮고 창가로 갔다. 골짜기 너머에서 바람이 불어와 '
+        '솔잎과 젖은 흙 냄새가 났다. 2026년의 첫눈이었다.',
+  };
+
+  /// The sample for a locale like `zh-CN`, falling back to English.
+  static String _sampleFor(String locale) {
+    final language = locale.split(RegExp(r'[-_]')).first.toLowerCase();
+    return _sampleTexts[language] ?? _sampleTexts['en']!;
+  }
+
+  /// What to read when testing [voice]: whatever the user typed, or a sample
+  /// in the voice's language when the field still holds one of ours.
+  String _testTextFor(TtsVoice? voice) {
+    final current = _testTextController.text.trim();
+    final untouched = current.isEmpty || _sampleTexts.containsValue(current);
+    if (!untouched) return current;
+
+    final sample = _sampleFor(voice?.locale ?? '');
+    if (sample != current) _testTextController.text = sample;
+    return sample;
+  }
+
+  TtsVoice? _voiceByShortName(String shortName) {
+    for (final voices in groupedVoices.values) {
+      for (final voice in voices) {
+        if (voice.shortName == shortName) return voice;
+      }
+    }
+    return null;
+  }
+
   Future<void> _testSpeak(String text, String? voiceShortName,
       {bool isMainButton = false}) async {
     if (isMainButton) {
@@ -124,12 +170,18 @@ class _NarrateSettingsState extends ConsumerState<NarrateSettings>
     final serviceId = Prefs().ttsService;
     selectedVoiceModel =
         tts_svc.getTtsService(serviceId).provider.getSelectedVoice();
-    _testTextController.text = "Hello, this is a test.";
+    _testTextController.text = _sampleTexts['en']!;
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
+    // Start from the reader's own language rather than always English.
+    if (_sampleTexts.containsValue(_testTextController.text.trim())) {
+      _testTextController.text =
+          _sampleFor(Localizations.localeOf(context).toLanguageTag());
+    }
 
     _highlightAnimation = ColorTween(
       begin: Theme.of(context).colorScheme.primaryContainer.withAlpha(100),
@@ -524,7 +576,7 @@ class _NarrateSettingsState extends ConsumerState<NarrateSettings>
                     icon: Icon(Icons.play_arrow),
                     label: Text(L10n.of(context).commonTest),
                     onPressed: () => _testSpeak(
-                        _testTextController.text, selectedVoiceModel,
+                        _testTextFor(_currentModelDetails), selectedVoiceModel,
                         isMainButton: true),
                   ),
                 ),
@@ -739,8 +791,8 @@ class _NarrateSettingsState extends ConsumerState<NarrateSettings>
                             isLoading: _modelLoadingStates[shortName] ?? false,
                             icon: Icon(Icons.play_arrow),
                             label: Text(L10n.of(context).commonTest),
-                            onPressed: () =>
-                                _testSpeak(_testTextController.text, shortName),
+                            onPressed: () => _testSpeak(
+                                _testTextFor(voice), shortName),
                           ),
                           AnxButton(
                             type: AnxButtonType.outlined,
