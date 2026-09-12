@@ -123,6 +123,7 @@ class LocalLlmChatModel extends BaseChatModel<LocalLlmChatModelOptions> {
       };
       out.add(LLMMessage(role: role, content: text));
     }
+
     return out;
   }
 

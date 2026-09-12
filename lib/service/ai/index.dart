@@ -10,6 +10,7 @@ import 'package:anx_reader/service/ai/ai_key_rotator.dart';
 import 'package:anx_reader/enums/ai_prompts.dart';
 import 'package:anx_reader/service/ai/langchain_ai_config.dart';
 import 'package:anx_reader/service/ai/local/local_llm_budget.dart';
+import 'package:anx_reader/service/ai/local/local_llm_library_digest.dart';
 import 'package:anx_reader/service/ai/langchain_registry.dart';
 import 'package:anx_reader/service/ai/langchain_runner.dart';
 import 'package:anx_reader/utils/ai_reasoning_parser.dart';
@@ -68,6 +69,9 @@ Stream<String> aiGenerateStream(
 
   return _generateStream(
       localAnswerTokens: localAnswerTokens,
+      // Free chat is where questions about the reader's own library come from;
+      // a summary or a lookup already carries everything it needs.
+      attachLibraryDigest: purpose == null,
       messages: messages,
       identifier: identifier,
       overrideConfig: config,
@@ -88,6 +92,7 @@ Stream<String> _generateStream({
   required bool useAgent,
   required LangchainAiRegistry registry,
   required int localAnswerTokens,
+  required bool attachLibraryDigest,
 }) async* {
   AnxLog.info('aiGenerateStream called identifier: $identifier');
   final sanitizedMessages = _sanitizeMessagesForPrompt(messages);
@@ -124,6 +129,21 @@ Stream<String> _generateStream({
               'aiGenerateStream (new): ${provider.id}, model: ${config.model}, baseUrl: ${config.baseUrl}');
 
           final agentCapable = useAgent && supportsAgentMode(provider.protocol);
+
+          // A provider that cannot call tools has no way to look anything up,
+          // so hand it the reader's own data rather than let it invent some.
+          var messagesForModel = sanitizedMessages;
+          if (attachLibraryDigest &&
+              !supportsAgentMode(provider.protocol) &&
+              registry.ref != null) {
+            final digest = await buildLibraryDigest(registry.ref!);
+            if (digest != null) {
+              messagesForModel = [
+                ChatMessage.system(digest),
+                ...sanitizedMessages,
+              ];
+            }
+          }
           final pipeline = registry.resolveByProtocol(provider.protocol, config,
               useAgent: agentCapable, localAnswerTokens: localAnswerTokens);
           final model = pipeline.model;
@@ -132,7 +152,7 @@ Stream<String> _generateStream({
           yield* _executeStream(
             model: model,
             pipeline: pipeline,
-            sanitizedMessages: sanitizedMessages,
+            sanitizedMessages: messagesForModel,
             useAgent: agentCapable,
           );
 

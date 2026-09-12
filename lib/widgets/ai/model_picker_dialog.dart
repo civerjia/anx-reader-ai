@@ -1,6 +1,7 @@
 import 'package:anx_reader/l10n/generated/L10n.dart';
 import 'package:anx_reader/models/ai_provider.dart';
 import 'package:anx_reader/service/ai/ai_model_service.dart';
+import 'package:anx_reader/service/ai/local/local_llm_models.dart';
 import 'package:anx_reader/widgets/common/anx_button.dart';
 import 'package:flutter/material.dart';
 
@@ -40,6 +41,11 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
   List<String>? _fetchedModels;
   bool _isFetching = false;
   String? _fetchError;
+  List<LocalLlmModelFile>? _localModels;
+
+  /// A local model is a file that has to exist. There is nothing to type and
+  /// nothing to fetch from an endpoint, so this dialog shows a different body.
+  bool get _isLocal => widget.provider.protocol == AiProtocol.local;
 
   bool get _canFetch =>
       widget.provider.protocol == AiProtocol.openai &&
@@ -52,6 +58,68 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
     _controller = TextEditingController(
       text: widget.currentModel ?? '',
     );
+    if (_isLocal) _loadLocalModels();
+  }
+
+  Future<void> _loadLocalModels() async {
+    final models = await LocalLlmModels.listInstalled();
+    if (!mounted) return;
+    setState(() => _localModels = models);
+  }
+
+  List<Widget> _buildLocalBody(BuildContext context) {
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
+    final models = _localModels;
+
+    if (models == null) {
+      return const [
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 16),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ];
+    }
+    if (models.isEmpty) {
+      return [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Text(
+            l10n.settingsAiProviderLocalNoModels,
+            style: theme.textTheme.bodyMedium,
+          ),
+        ),
+      ];
+    }
+    return [
+      ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.4,
+        ),
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: models.length,
+          itemBuilder: (context, index) {
+            final model = models[index];
+            final isSelected = _controller.text == model.name;
+            return ListTile(
+              dense: true,
+              leading: Icon(
+                isSelected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                size: 18,
+              ),
+              title: Text(model.name, maxLines: 2),
+              subtitle: Text(model.sizeLabel),
+              selected: isSelected,
+              selectedColor: theme.colorScheme.primary,
+              onTap: () => setState(() => _controller.text = model.name),
+            );
+          },
+        ),
+      ),
+    ];
   }
 
   @override
@@ -106,7 +174,9 @@ class _ModelPickerDialogState extends State<_ModelPickerDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+          children: _isLocal
+              ? _buildLocalBody(context)
+              : [
             // Manual input row
             Row(
               children: [
