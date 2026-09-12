@@ -30,11 +30,13 @@ class SherpaTtsProvider extends TtsServiceProvider {
 
   static const String _defaultModelType = 'kokoro';
 
-  /// Measured on an iPhone 16 Pro reading a book: CoreML holds RTF 0.65
-  /// while the CPU, once the phone is warm, drops to 1.41 and can no longer
-  /// keep ahead of playback. sherpa-onnx builds CoreML into its iOS binary
-  /// only, and falls back to the CPU with a log line everywhere else.
-  static String get _defaultProvider => Platform.isIOS ? 'coreml' : 'cpu';
+  /// The CPU, measured on an iPhone 16 Pro with two threads and the same
+  /// model: RTF 0.38, against 0.54 on CoreML and 0.66 for the quantised
+  /// model on CoreML. Kokoro's shapes change with every sentence, so CoreML
+  /// takes only part of the graph, pays to copy tensors across each
+  /// boundary, and compiles the model again on the first sentence after a
+  /// load. The setting is there for models that do map cleanly.
+  static const String _defaultProvider = 'cpu';
   static const int _defaultNumSteps = 4;
   /// Threads scale the model almost linearly: measured on one machine with
   /// the same sentence, RTF went 0.53 at one thread, 0.29 at two, 0.165 at
