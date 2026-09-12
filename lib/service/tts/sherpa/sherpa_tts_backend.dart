@@ -51,6 +51,11 @@ class SherpaTtsProvider extends TtsServiceProvider {
   @override
   String get audioMimeType => 'audio/wav';
 
+  double _playbackRate = 1.0;
+
+  @override
+  double get playbackRate => _playbackRate;
+
   /// A sentence on a phone CPU can take a few seconds, and the very first one
   /// also pays for loading the model.
   @override
@@ -420,7 +425,9 @@ class SherpaTtsProvider extends TtsServiceProvider {
 
     final spec = await resolveSpec();
     final sid = _speakerId(voice);
-    final speed = SherpaPace.speed(rate: rate, factor: _paceFactor(spec, sid));
+    final split = SherpaPace.split(rate: rate, factor: _paceFactor(spec, sid));
+    _playbackRate = split.playback;
+    final speed = split.model;
 
     final watch = Stopwatch()..start();
     final audio = await _engine.generate(
@@ -463,7 +470,8 @@ class SherpaTtsProvider extends TtsServiceProvider {
   /// slow on one and rushed on another. A sentence or two is enough, after
   /// which the factor is stored and reused.
   void _measurePace(SherpaModelSpec spec, int sid, String text,
-      SherpaAudio audio, double speed, int elapsedMs) {
+      SherpaAudio audio, double appliedSpeed, int elapsedMs) {
+    final speed = appliedSpeed;
     final key = spec.paceKey(sid);
     if (audio.sampleRate <= 0) return;
     final seconds = audio.samples.length / audio.sampleRate;
@@ -477,7 +485,9 @@ class SherpaTtsProvider extends TtsServiceProvider {
     final ratio = expected > 0 ? seconds / expected : 1.0;
     final suspicious = ratio < 0.6;
     final line = 'SherpaTts said ${syllables.toStringAsFixed(0)} syllables in '
-        '${seconds.toStringAsFixed(1)}s (x${ratio.toStringAsFixed(2)}) "$tail"';
+        '${seconds.toStringAsFixed(1)}s at model speed '
+        '${speed.toStringAsFixed(2)} x player ${_playbackRate.toStringAsFixed(2)} '
+        '(x${ratio.toStringAsFixed(2)}) "$tail"';
     if (suspicious) {
       AnxLog.warning('$line - shorter than the text warrants');
     } else {

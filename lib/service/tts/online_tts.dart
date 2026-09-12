@@ -426,6 +426,9 @@ class OnlineTts extends BaseTts {
 
         final playStart = DateTime.now();
         try {
+          // The backend may have capped how fast it asked the model to
+          // talk; the player makes up the difference.
+          await audioPlayer.setPlaybackRate(backend.playbackRate);
           await audioPlayer.play(source);
           await _playbackCompleter!.future;
         } catch (e) {
@@ -436,7 +439,9 @@ class OnlineTts extends BaseTts {
         // the end of the sentence off, which is otherwise hard to tell from
         // a model that simply stopped talking.
         final playedMs = DateTime.now().difference(playStart).inMilliseconds;
-        final clipMs = _waveDurationMs(segment.audio!);
+        // A clip played faster than real time is shorter by design.
+        final rate = backend.playbackRate <= 0 ? 1.0 : backend.playbackRate;
+        final clipMs = (_waveDurationMs(segment.audio!) / rate).round();
         if (clipMs > 0 && playedMs < clipMs - 250) {
           AnxLog.warning('TTS playback ended early: ${playedMs}ms of ${clipMs}ms'
               ' - "${segment.sentence.text}"');
@@ -571,6 +576,7 @@ class OnlineTts extends BaseTts {
     final bytes = await backend.speak(content, voice, rate, pitch);
     if (bytes.isNotEmpty) {
       final source = BytesSource(bytes, mimeType: backend.audioMimeType);
+      await audioPlayer.setPlaybackRate(backend.playbackRate);
       await audioPlayer.play(source);
     }
   }
