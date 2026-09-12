@@ -597,6 +597,7 @@
   "dictionaryImported": "已导入：{names}",
   "dictionaryImportNothing": "所选文件中没有找到 StarDict 词典",
   "dictionaryOnlineTranslate": "在线翻译",
+  "dictionarySystemLookUp": "系统词典",
   "knowledgeBase": "离线百科",
   "knowledgeBaseHint": "来自 Kiwix 的维基百科包，保存在本机。AI 回答前会先在这里查证，事实来自条目而不是凭记忆。只有你选择后才会下载。",
   "knowledgeInstalled": "已在本机",

@@ -3,6 +3,7 @@ import 'package:anx_reader/enums/lang_list.dart';
 import 'package:anx_reader/l10n/generated/L10n.dart';
 import 'package:anx_reader/service/dictionary/dictionary_service.dart';
 import 'package:anx_reader/service/dictionary/stardict.dart';
+import 'package:anx_reader/service/dictionary/system_dictionary.dart';
 import 'package:anx_reader/service/translate/index.dart';
 import 'package:anx_reader/widgets/common/axis_flex.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +31,8 @@ class _TranslationMenuState extends State<TranslationMenu> {
   Widget? _translationWidget;
   // Local dictionary entries for a word or short term; null until looked up.
   List<DictionaryEntry>? _entries;
+  // Whether iOS's own dictionaries have the term, for a button to open them.
+  bool _systemHasDefinition = false;
   Timer? _debounceTimer;
   bool _translationInitialized = false;
 
@@ -66,6 +69,9 @@ class _TranslationMenuState extends State<TranslationMenu> {
       } catch (_) {
         entries = const [];
       }
+      SystemDictionary.hasDefinition(widget.content).then((has) {
+        if (mounted && has) setState(() => _systemHasDefinition = true);
+      });
     }
     if (!mounted) return;
     setState(() {
@@ -99,21 +105,39 @@ class _TranslationMenuState extends State<TranslationMenu> {
           Text(entry.definition, style: const TextStyle(fontSize: 14)),
           const SizedBox(height: 8),
         ],
-        if (_translationWidget == null)
-          PointerInterceptor(
-            child: TextButton.icon(
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
+        Wrap(
+          spacing: 12,
+          children: [
+            if (_translationWidget == null)
+              PointerInterceptor(
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  onPressed: () => setState(_translateOnline),
+                  icon: const Icon(Icons.translate, size: 16),
+                  label: Text(L10n.of(context).dictionaryOnlineTranslate),
+                ),
               ),
-              onPressed: () => setState(_translateOnline),
-              icon: const Icon(Icons.translate, size: 16),
-              label: Text(L10n.of(context).dictionaryOnlineTranslate),
-            ),
-          ),
+            if (_systemHasDefinition) _systemDictionaryButton(),
+          ],
+        ),
       ],
     );
   }
+
+  Widget _systemDictionaryButton() => PointerInterceptor(
+        child: TextButton.icon(
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
+          ),
+          onPressed: () => SystemDictionary.show(widget.content),
+          icon: const Icon(Icons.menu_book_outlined, size: 16),
+          label: Text(L10n.of(context).dictionarySystemLookUp),
+        ),
+      );
 
   @override
   void dispose() {
@@ -200,6 +224,10 @@ class _TranslationMenuState extends State<TranslationMenu> {
                     // Show translation widget if initialized, otherwise show loading placeholder
                     if (_entries?.isNotEmpty ?? false)
                       _dictionaryEntries(_entries!),
+                    // With no local entry the system dictionary still belongs
+                    // above the online translation.
+                    if ((_entries?.isEmpty ?? false) && _systemHasDefinition)
+                      _systemDictionaryButton(),
                     if (_translationWidget != null)
                       _translationWidget!
                     else if (_entries == null)

@@ -700,6 +700,7 @@
   },
   "dictionaryImportNothing": "No StarDict dictionary found in the selected files",
   "dictionaryOnlineTranslate": "Translate online",
+  "dictionarySystemLookUp": "System dictionary",
   "knowledgeBase": "Offline encyclopedia",
   "knowledgeBaseHint": "Wikipedia packs from Kiwix, kept on this device. The AI looks things up here before answering, so its facts come from the articles rather than from memory. Nothing is downloaded until you choose a pack.",
   "knowledgeInstalled": "On this device",
