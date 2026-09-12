@@ -204,84 +204,42 @@ Float32List normalizeLoudness(
   double maxGain = 12.0,
   double ceiling = 0.95,
 }) {
-  // Even out the swings inside the sentence first: matching averages alone
-  // leaves one sentence opening far below the next, which is what a
-  // listener hears after every pause.
-  final levelled = SherpaLoudness.level(samples, sampleRate);
-  final gain = SherpaLoudness.gainFor(levelled, sampleRate,
-      target: targetLufs, maxGain: maxGain);
-  if ((gain - 1).abs() < 0.02) return levelled;
+  if (samples.isEmpty) return samples;
 
-  final knee = ceiling * 0.8;
-  final range = ceiling - knee;
-  final out = Float32List(levelled.length);
-  for (var i = 0; i < levelled.length; i++) {
-    final value = levelled[i] * gain;
-    final level = value.abs();
-    if (level <= knee) {
-      out[i] = value;
-      continue;
-    }
-    // Soft knee: continuous at the knee, asymptotic to the ceiling.
-    final shaped = knee + range * _tanh((level - knee) / range);
-    out[i] = value.isNegative ? -shaped : shaped;
+  var gain = SherpaLoudness.gainFor(samples, sampleRate,
+      target: targetLufs, maxGain: maxGain);
+
+  // Never gain past the peak. Reshaping samples to fit under a ceiling
+  // squashes the loud syllables and leaves the quiet ones alone, which is
+  // heard as the volume moving about inside the sentence - the very thing
+  // this is supposed to remove. A sentence that cannot reach the target
+  // without clipping simply stays a decibel or two below it.
+  var peak = 0.0;
+  for (final sample in samples) {
+    final level = sample.abs();
+    if (level > peak) peak = level;
+  }
+  if (peak <= 0) return samples;
+  final headroom = ceiling / peak;
+  if (gain > headroom) gain = headroom;
+
+  if ((gain - 1).abs() < 0.02) return samples;
+
+  final out = Float32List(samples.length);
+  for (var i = 0; i < samples.length; i++) {
+    out[i] = samples[i] * gain;
   }
   return out;
 }
 
-/// Loudness of the speech in a clip.
-///
-/// Blocked and gated the way broadcast metering is, because the average
-/// sample level of a whole sentence says little about how loud it sounds.
-/// Blocks that are mostly pause are dropped twice over: by an absolute
-/// floor, and by a gate ten decibels below the average of what is left.
-///
-/// The block has to shrink for short sentences. A book is full of them, and
-/// measuring a half second sentence as if it were four hundred milliseconds
-/// of speech plus silence reads far too quiet, which used to make every
-/// short sentence come out louder than the rest.
-double gatedLevel(Float32List samples, int sampleRate) {
-  if (samples.isEmpty || sampleRate <= 0) return 0;
-
-  const floor = 0.005 * 0.005; // below this a block is silence
-  // Short blocks, so that a sentence of half a second is measured the same
-  // way as one of ten seconds: a long block spanning speech and the pause
-  // after it reads too quiet, and a book is mostly short sentences.
-  final block = math.min((sampleRate * 0.08).round(), samples.length);
-  if (block <= 0) return plainLevel(samples);
-
-  final hop = math.max(1, block ~/ 2);
-  final powers = <double>[];
-  for (var start = 0; start + block <= samples.length; start += hop) {
-    var sum = 0.0;
-    for (var i = start; i < start + block; i++) {
-      sum += samples[i] * samples[i];
-    }
-    final power = sum / block;
-    if (power > floor) powers.add(power);
-  }
-
-  if (powers.isEmpty) return plainLevel(samples);
-
-  var mean = 0.0;
-  for (final power in powers) {
-    mean += power;
-  }
-  mean /= powers.length;
-
-  final gate = mean * 0.1; // ten decibels below the average
-  var kept = 0.0;
-  var count = 0;
-  for (final power in powers) {
-    if (power < gate) continue;
-    kept += power;
-    count++;
-  }
-  return math.sqrt(count == 0 ? mean : kept / count);
+double _tanh(double x) {
+  if (x > 10) return 1;
+  final e = math.exp(2 * x);
+  return (e - 1) / (e + 1);
 }
 
-/// Level of everything that is not silence, for clips too short to block
-/// and as an independent check on the blocked measure.
+/// Level of everything that is not silence: a plain check on the loudness
+/// measurement, in the log beside it.
 double plainLevel(Float32List samples) {
   var sum = 0.0;
   var count = 0;
@@ -292,10 +250,4 @@ double plainLevel(Float32List samples) {
   }
   if (count == 0) return 0;
   return math.sqrt(sum / count);
-}
-
-double _tanh(double x) {
-  if (x > 10) return 1;
-  final e = math.exp(2 * x);
-  return (e - 1) / (e + 1);
 }
