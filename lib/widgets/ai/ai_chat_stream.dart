@@ -13,6 +13,7 @@ import 'package:anx_reader/service/ai/ai_history.dart';
 import 'package:anx_reader/service/ai/index.dart';
 import 'package:anx_reader/utils/env_var.dart';
 import 'package:anx_reader/utils/toast/common.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:anx_reader/utils/ai_reasoning_parser.dart';
 import 'package:anx_reader/widgets/ai/model_picker_dialog.dart';
 import 'package:anx_reader/widgets/ai/tool_step_tile.dart';
@@ -256,6 +257,15 @@ class AiChatStreamState extends ConsumerState<AiChatStream> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.circle, size: 10, color: statusColor),
+                    IconButton(
+                      icon: const Icon(Icons.drive_file_rename_outline,
+                          size: 18),
+                      tooltip: L10n.of(context).commonRename,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => _renameConversation(context, entry),
+                    ),
                     DeleteConfirm(
                         delete: () => _confirmDeleteHistory(context, entry)),
                   ],
@@ -287,7 +297,52 @@ class AiChatStreamState extends ConsumerState<AiChatStream> {
     );
   }
 
+  /// Names a conversation, so a list of them is navigable.
+  ///
+  /// Without this every row reads as its own first message, which is rarely what
+  /// the conversation turned out to be about.
+  Future<void> _renameConversation(
+    BuildContext context,
+    AiChatHistoryEntry entry,
+  ) async {
+    final l10n = L10n.of(context);
+    final controller = TextEditingController(text: _deriveTitle(entry));
+    await SmartDialog.show(
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.commonRename),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+          onSubmitted: (_) => SmartDialog.dismiss(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              controller.clear();
+              SmartDialog.dismiss();
+            },
+            child: Text(l10n.commonCancel),
+          ),
+          TextButton(
+            onPressed: () => SmartDialog.dismiss(),
+            child: Text(l10n.commonConfirm),
+          ),
+        ],
+      ),
+    );
+
+    final name = controller.text.trim();
+    controller.dispose();
+    if (name.isEmpty) return;
+    await ref
+        .read(aiHistoryProvider.notifier)
+        .upsert(entry.copyWith(title: name));
+  }
+
   String _deriveTitle(AiChatHistoryEntry entry) {
+    final named = entry.title?.trim();
+    if (named != null && named.isNotEmpty) return named;
     for (final message in entry.messages) {
       if (message is HumanChatMessage) {
         final content = message.contentAsString.trim();
@@ -362,13 +417,20 @@ class AiChatStreamState extends ConsumerState<AiChatStream> {
     });
   }
 
+  /// Material collected by the last chip tap, sent once and then forgotten.
+  String? _pendingAttachment;
+
   void _sendMessage({bool isRegenerate = false}) {
     if (_isStreaming) {
       return;
     }
 
     if (inputController.text.trim().isEmpty) return;
-    final message = inputController.text.trim();
+    final typed = inputController.text.trim();
+    final attachment = _pendingAttachment;
+    _pendingAttachment = null;
+    final message =
+        attachment == null ? typed : '$typed\n\n$attachment';
     inputController.clear();
 
     _messageSubscription?.cancel();
@@ -426,6 +488,44 @@ class AiChatStreamState extends ConsumerState<AiChatStream> {
     );
     if (sendImmediately) {
       _sendMessage();
+    }
+  }
+
+  /// Fetches whatever the chip's prompt cannot work without, then fills the box.
+  ///
+  /// Resolved here rather than at send time so a failure — no book open, reader
+  /// not ready — is reported while the user is still looking at the chip,
+  /// instead of turning into an answer about a book nobody named.
+  Future<void> _useQuickPromptChip(
+    AiQuickPromptChip chip, {
+    bool sendImmediately = false,
+  }) async {
+    if (chip.attachment != null) {
+      try {
+        _pendingAttachment = await chip.attachment!();
+      } catch (e) {
+        _pendingAttachment = null;
+        if (!mounted) return;
+        AnxToast.show(L10n.of(context).aiQuickPromptNeedsBook);
+        return;
+      }
+    } else {
+      _pendingAttachment = null;
+    }
+    if (!mounted) return;
+    _useQuickPrompt(chip.prompt, sendImmediately: sendImmediately);
+  }
+
+  Future<void> _pickModel(AiProvider provider) async {
+    final selected = await showModelPickerDialog(
+      context: context,
+      provider: provider,
+      currentModel: provider.model,
+    );
+    if (selected != null && selected != provider.model) {
+      ref.read(aiProvidersProvider.notifier).updateProvider(
+            provider.copyWith(model: selected),
+          );
     }
   }
 
@@ -672,28 +772,6 @@ class AiChatStreamState extends ConsumerState<AiChatStream> {
                   child: Row(
                     children: [
                       Flexible(child: aiService),
-                      if (currentProvider != null)
-                        IconButton(
-                          icon: const Icon(Icons.tune, size: 16),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () async {
-                            final selected = await showModelPickerDialog(
-                              context: context,
-                              provider: currentProvider,
-                              currentModel: currentProvider.model,
-                            );
-                            if (selected != null &&
-                                selected != currentProvider.model) {
-                              ref
-                                  .read(aiProvidersProvider.notifier)
-                                  .updateProvider(
-                                    currentProvider.copyWith(model: selected),
-                                  );
-                            }
-                          },
-                        ),
                     ],
                   ),
                 ),
@@ -724,11 +802,11 @@ class AiChatStreamState extends ConsumerState<AiChatStream> {
               padding: EdgeInsets.only(top: i == 0 ? 0 : 8.0),
               child: GestureDetector(
                 onLongPress: () =>
-                    _useQuickPrompt(chip.prompt, sendImmediately: true),
+                    _useQuickPromptChip(chip, sendImmediately: true),
                 child: ActionChip(
                   avatar: Icon(chip.icon, size: 18),
                   label: Text(chip.label),
-                  onPressed: () => _useQuickPrompt(chip.prompt),
+                  onPressed: () => _useQuickPromptChip(chip),
                 ),
               ),
             ),
@@ -801,8 +879,16 @@ class AiChatStreamState extends ConsumerState<AiChatStream> {
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
         actions: [
+          if (currentProvider != null)
+            IconButton(
+              // Was down beside the provider name, a thumb's width from send.
+              icon: const Icon(Icons.tune),
+              tooltip: L10n.of(context).settingsAiProviderModel,
+              onPressed: () => _pickModel(currentProvider),
+            ),
           IconButton(
-            icon: const Icon(Icons.edit_document),
+            icon: const Icon(Icons.add_comment_outlined),
+            tooltip: L10n.of(context).aiNewChat,
             onPressed: _clearMessage,
           ),
           Builder(

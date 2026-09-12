@@ -14,6 +14,7 @@ class AiChatHistoryEntry {
     required this.updatedAt,
     required this.messages,
     required this.completed,
+    this.title,
   });
 
   final String id;
@@ -24,11 +25,16 @@ class AiChatHistoryEntry {
   final List<ChatMessage> messages;
   final bool completed;
 
+  /// A name the user gave this conversation, replacing the one derived from its
+  /// first message.
+  final String? title;
+
   AiChatHistoryEntry copyWith({
     List<ChatMessage>? messages,
     int? updatedAt,
     bool? completed,
     String? model,
+    String? title,
   }) {
     return AiChatHistoryEntry(
       id: id,
@@ -38,6 +44,7 @@ class AiChatHistoryEntry {
       updatedAt: updatedAt ?? this.updatedAt,
       messages: messages ?? this.messages,
       completed: completed ?? this.completed,
+      title: title ?? this.title,
     );
   }
 
@@ -49,6 +56,7 @@ class AiChatHistoryEntry {
       'createdAt': createdAt,
       'updatedAt': updatedAt,
       'completed': completed,
+      if (title != null) 'title': title,
       'messages': messages.map((m) => m.toMap()).toList(growable: false),
     };
   }
@@ -79,6 +87,9 @@ class AiChatHistoryEntry {
           ? json['updatedAt'] as int
           : DateTime.now().millisecondsSinceEpoch,
       completed: json['completed'] == true,
+      title: (json['title'] as String?)?.trim().isEmpty ?? true
+          ? null
+          : json['title'] as String,
       messages: messages,
     );
   }

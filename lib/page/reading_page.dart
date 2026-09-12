@@ -18,6 +18,7 @@ import 'package:anx_reader/page/book_player/epub_player.dart';
 import 'package:anx_reader/providers/sync.dart';
 import 'package:anx_reader/service/ai/index.dart';
 import 'package:anx_reader/service/ai/prompt_generate.dart';
+import 'package:anx_reader/service/ai/quick_prompt_chips.dart';
 import 'package:anx_reader/utils/env_var.dart';
 import 'package:anx_reader/utils/toast/common.dart';
 import 'package:anx_reader/utils/ui/status_bar.dart';
@@ -561,32 +562,9 @@ class ReadingPageState extends ConsumerState<ReadingPage>
   }
 
   List<AiQuickPromptChip> _getAiQuickPromptChips() {
-    return [
-      AiQuickPromptChip(
-        icon: EvaIcons.book,
-        label: L10n.of(context).settingsAiPromptSummaryTheChapter,
-        prompt: generatePromptSummaryTheChapter().buildString(),
-      ),
-      AiQuickPromptChip(
-        icon: Icons.menu_book_rounded,
-        label: L10n.of(context).settingsAiPromptSummaryTheBook,
-        prompt: generatePromptSummaryTheBook().buildString(),
-      ),
-      AiQuickPromptChip(
-        icon: Icons.account_tree_outlined,
-        label: L10n.of(context).settingsAiPromptMindmap,
-        prompt: generatePromptMindmap().buildString(),
-      ),
-      // User custom prompts (enabled only)
-      ...Prefs()
-          .userPrompts
-          .where((p) => p.enabled)
-          .map((userPrompt) => AiQuickPromptChip(
-                icon: Icons.person_outline,
-                label: userPrompt.name,
-                prompt: userPrompt.content,
-              )),
-    ];
+    // Shared with the home screen so both offer the same prompts, carrying the
+    // same chapter text, rather than two copies that drift apart.
+    return buildAiQuickPromptChips(context, ref);
   }
 
   Future<void> showAiChat({
