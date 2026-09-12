@@ -52,6 +52,8 @@ class OnlineTts extends BaseTts {
   Completer<void>? _playerCompleter;
   Completer<void>? _playbackCompleter;
 
+  Timer? _settingsDebounce;
+
   // ============ Lifecycle ============
   late Function getHereFunction;
   late Function getNextTextFunction;
@@ -96,15 +98,30 @@ class OnlineTts extends BaseTts {
   @override
   set pitch(double pitch) {
     Prefs().ttsPitch = pitch;
-    // Clear pending audio so it will be re-fetched with new pitch
-    _clearPendingAudio();
+    _scheduleResynthesis();
   }
 
   @override
   set rate(double rate) {
     Prefs().ttsRate = rate;
-    // Clear pending audio so it will be re-fetched with new rate
-    _clearPendingAudio();
+    _scheduleResynthesis();
+  }
+
+  /// Throw the buffered audio away once the user settles on a value.
+  ///
+  /// Dragging the slider sets the rate on every step, and each step used to
+  /// discard the whole buffer and everything already in flight; with a local
+  /// model that is seconds of inference thrown away per step, and the new
+  /// speed took correspondingly longer to be heard.
+  void _scheduleResynthesis() {
+    _settingsDebounce?.cancel();
+    _settingsDebounce = Timer(
+      const Duration(milliseconds: 400),
+      () {
+        _settingsDebounce = null;
+        _clearPendingAudio();
+      },
+    );
   }
 
   @override
@@ -447,6 +464,8 @@ class OnlineTts extends BaseTts {
 
   @override
   Future<void> stop() async {
+    _settingsDebounce?.cancel();
+    _settingsDebounce = null;
     _shouldStop = true;
     updateTtsState(TtsStateEnum.stopped);
 
