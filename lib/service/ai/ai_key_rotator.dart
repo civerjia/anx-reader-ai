@@ -5,6 +5,10 @@ class AiKeyRotator {
   /// Get the next available API key from the provider using round-robin strategy
   /// Returns null if no enabled keys are available
   static String? getNextKey(AiProvider provider) {
+    // Local models take no key. Returning empty rather than null matters: the
+    // call sites treat null as "this provider is not usable".
+    if (provider.protocol == AiProtocol.local) return '';
+
     final enabledKeys = provider.apiKeys.where((k) => k.enabled).toList();
 
     if (enabledKeys.isEmpty) {
@@ -18,6 +22,7 @@ class AiKeyRotator {
 
   /// Check if the provider has any valid (enabled and non-empty) API keys
   static bool hasValidKey(AiProvider provider) {
+    if (provider.protocol == AiProtocol.local) return true;
     return provider.apiKeys.any((k) => k.enabled && k.key.trim().isNotEmpty);
   }
 

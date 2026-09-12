@@ -92,6 +92,25 @@ class LangchainAiConfig {
   }
 
   /// Create LangchainAiConfig from AiProvider model with a specific API key
+  /// A model that runs on this device.
+  ///
+  /// There is no endpoint and no key to validate, and [model] names a weights
+  /// file on disk rather than something a server would recognise.
+  factory LangchainAiConfig.local({
+    required String providerId,
+    required String model,
+  }) {
+    final trimmedModel = model.trim();
+    if (trimmedModel.isEmpty) {
+      throw ArgumentError('Local model file is required');
+    }
+    return LangchainAiConfig(
+      identifier: providerId,
+      apiKey: '',
+      model: trimmedModel,
+    );
+  }
+
   factory LangchainAiConfig.fromProvider({
     required String providerId,
     required String model,

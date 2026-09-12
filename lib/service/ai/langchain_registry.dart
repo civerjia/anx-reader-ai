@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/models/ai_provider.dart';
 import 'package:anx_reader/providers/current_reading.dart';
+import 'package:anx_reader/service/ai/local/local_llm_chat_model.dart';
 import 'package:anx_reader/service/ai/tools/ai_tool_registry.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:langchain_anthropic/langchain_anthropic.dart';
@@ -65,6 +66,14 @@ class LangchainAiRegistry {
           config,
           _buildGoogle(config),
           useAgent: useAgent,
+        );
+      case AiProtocol.local:
+        return _buildPipeline(
+          config,
+          LocalLlmChatModel(modelName: config.model),
+          // A phone-sized model cannot drive a tool loop, and the agent path
+          // would spend its whole token budget on the scaffolding.
+          useAgent: false,
         );
       case AiProtocol.openai:
         return _buildPipeline(

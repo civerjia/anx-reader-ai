@@ -329,6 +329,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.2"
+  code_assets:
+    dependency: transitive
+    description:
+      name: code_assets
+      sha256: bf394f466ba9205f1812a0433b392d6af280f155f56651eda7c18cc32ed493b8
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.2.1"
   code_builder:
     dependency: transitive
     description:
@@ -1080,6 +1088,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.5.0+2"
+  hooks:
+    dependency: transitive
+    description:
+      name: hooks
+      sha256: eaac480a35ec0814146c2c48d96aaa829e0e44a7662c88ae84c9edf4bc35651f
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.0"
   hotreloader:
     dependency: transitive
     description:
@@ -1320,6 +1336,21 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.2"
+  llm_core:
+    dependency: transitive
+    description:
+      name: llm_core
+      sha256: "3472bd73de9f1751be89a48b1167ff4acc8ad172fea90959bd05a0231be07eb0"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.0"
+  llm_llamacpp:
+    dependency: "direct main"
+    description:
+      path: "third_party/llm_llamacpp"
+      relative: true
+    source: path
+    version: "0.5.0"
   logging:
     dependency: "direct main"
     description:
@@ -1668,10 +1699,10 @@ packages:
     dependency: transitive
     description:
       name: pub_semver
-      sha256: "7b3cfbf654f3edd0c6298ecd5be782ce997ddf0e00531b9464b55245185bbbbd"
+      sha256: "261236774e8b1d69cfc6b9eabbc96c40f25e7a2d6b171f3385d4f65d5734fb24"
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.5"
+    version: "2.2.1"
   pubspec_parse:
     dependency: "direct main"
     description:
@@ -1680,6 +1711,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.5.0"
+  record_use:
+    dependency: transitive
+    description:
+      name: record_use
+      sha256: "1cb8564af8d43b464294411db9217f5ec04891c6f22ee2c32d73ae05e88a6bd2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.1"
   retry:
     dependency: transitive
     description:

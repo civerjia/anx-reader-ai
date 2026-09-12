@@ -335,6 +335,27 @@
   "settingsAiProviderProtocolOpenai": "OpenAI Compatible",
   "settingsAiProviderProtocolClaude": "Claude (Anthropic)",
   "settingsAiProviderProtocolGemini": "Gemini (Google)",
+  "settingsAiProviderProtocolLocal": "Local (on-device)",
+  "settingsAiProviderLocalModelFile": "Model file",
+  "settingsAiProviderLocalModelHint": "Put .gguf files in {dir}",
+  "@settingsAiProviderLocalModelHint": {
+    "placeholders": {
+      "dir": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsAiProviderLocalNoModels": "No .gguf model found",
+  "settingsAiProviderLocalRescan": "Rescan",
+  "settingsAiProviderLocalMissing": "{name} (missing)",
+  "@settingsAiProviderLocalMissing": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsAiProviderLocalNote": "Runs on this device with no network. A 2B model at Q4 needs about 1.8 GB of memory; 4B does not fit on a phone.",
   "settingsAiProviderModel": "Model",
   "settingsAiProviderFetchModels": "Fetch Models",
   "settingsAiProviderApiKeys": "API Keys",

@@ -2,6 +2,9 @@
 
 These path packages are wired through `dependency_overrides` in the root `pubspec.yaml`.
 
+## llm_llamacpp
+- Make the iOS build work at all: the hook asked for a `.framework` directory where a dylib is required, the published iOS bundle ships only static archives, and the runtime loader assumed static linking. See `llm_llamacpp/PATCH.md`.
+
 ## googleai_dart
 - Preserve `thoughtSignature` on `FunctionCallPart` during JSON parse/serialize (Gemini thinking models).
 

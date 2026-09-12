@@ -1,6 +1,13 @@
 {
   "ar": [
     "bookDetailFileFormat",
+    "settingsAiProviderProtocolLocal",
+    "settingsAiProviderLocalModelFile",
+    "settingsAiProviderLocalModelHint",
+    "settingsAiProviderLocalNoModels",
+    "settingsAiProviderLocalRescan",
+    "settingsAiProviderLocalMissing",
+    "settingsAiProviderLocalNote",
     "settingsAiProviderReasoningEffort",
     "settingsAiProviderReasoningEffortHelp",
     "settingsAiProviderReasoningEffortAuto",
@@ -67,6 +74,13 @@
 
   "de": [
     "bookDetailFileFormat",
+    "settingsAiProviderProtocolLocal",
+    "settingsAiProviderLocalModelFile",
+    "settingsAiProviderLocalModelHint",
+    "settingsAiProviderLocalNoModels",
+    "settingsAiProviderLocalRescan",
+    "settingsAiProviderLocalMissing",
+    "settingsAiProviderLocalNote",
     "settingsAiProviderReasoningEffort",
     "settingsAiProviderReasoningEffortHelp",
     "settingsAiProviderReasoningEffortAuto",
@@ -133,6 +147,13 @@
 
   "es": [
     "bookDetailFileFormat",
+    "settingsAiProviderProtocolLocal",
+    "settingsAiProviderLocalModelFile",
+    "settingsAiProviderLocalModelHint",
+    "settingsAiProviderLocalNoModels",
+    "settingsAiProviderLocalRescan",
+    "settingsAiProviderLocalMissing",
+    "settingsAiProviderLocalNote",
     "settingsAiProviderReasoningEffort",
     "settingsAiProviderReasoningEffortHelp",
     "settingsAiProviderReasoningEffortAuto",
@@ -199,6 +220,13 @@
 
   "fr": [
     "bookDetailFileFormat",
+    "settingsAiProviderProtocolLocal",
+    "settingsAiProviderLocalModelFile",
+    "settingsAiProviderLocalModelHint",
+    "settingsAiProviderLocalNoModels",
+    "settingsAiProviderLocalRescan",
+    "settingsAiProviderLocalMissing",
+    "settingsAiProviderLocalNote",
     "settingsAiProviderReasoningEffort",
     "settingsAiProviderReasoningEffortHelp",
     "settingsAiProviderReasoningEffortAuto",
@@ -265,6 +293,13 @@
 
   "it": [
     "bookDetailFileFormat",
+    "settingsAiProviderProtocolLocal",
+    "settingsAiProviderLocalModelFile",
+    "settingsAiProviderLocalModelHint",
+    "settingsAiProviderLocalNoModels",
+    "settingsAiProviderLocalRescan",
+    "settingsAiProviderLocalMissing",
+    "settingsAiProviderLocalNote",
     "settingsAiProviderReasoningEffort",
     "settingsAiProviderReasoningEffortHelp",
     "settingsAiProviderReasoningEffortAuto",
@@ -331,6 +366,13 @@
 
   "ja": [
     "bookDetailFileFormat",
+    "settingsAiProviderProtocolLocal",
+    "settingsAiProviderLocalModelFile",
+    "settingsAiProviderLocalModelHint",
+    "settingsAiProviderLocalNoModels",
+    "settingsAiProviderLocalRescan",
+    "settingsAiProviderLocalMissing",
+    "settingsAiProviderLocalNote",
     "settingsAiProviderReasoningEffort",
     "settingsAiProviderReasoningEffortHelp",
     "settingsAiProviderReasoningEffortAuto",
@@ -397,6 +439,13 @@
 
   "ko": [
     "bookDetailFileFormat",
+    "settingsAiProviderProtocolLocal",
+    "settingsAiProviderLocalModelFile",
+    "settingsAiProviderLocalModelHint",
+    "settingsAiProviderLocalNoModels",
+    "settingsAiProviderLocalRescan",
+    "settingsAiProviderLocalMissing",
+    "settingsAiProviderLocalNote",
     "settingsAiProviderReasoningEffort",
     "settingsAiProviderReasoningEffortHelp",
     "settingsAiProviderReasoningEffortAuto",
@@ -463,6 +512,13 @@
 
   "pt": [
     "bookDetailFileFormat",
+    "settingsAiProviderProtocolLocal",
+    "settingsAiProviderLocalModelFile",
+    "settingsAiProviderLocalModelHint",
+    "settingsAiProviderLocalNoModels",
+    "settingsAiProviderLocalRescan",
+    "settingsAiProviderLocalMissing",
+    "settingsAiProviderLocalNote",
     "settingsAiProviderReasoningEffort",
     "settingsAiProviderReasoningEffortHelp",
     "settingsAiProviderReasoningEffortAuto",
@@ -529,6 +585,13 @@
 
   "ro": [
     "bookDetailFileFormat",
+    "settingsAiProviderProtocolLocal",
+    "settingsAiProviderLocalModelFile",
+    "settingsAiProviderLocalModelHint",
+    "settingsAiProviderLocalNoModels",
+    "settingsAiProviderLocalRescan",
+    "settingsAiProviderLocalMissing",
+    "settingsAiProviderLocalNote",
     "settingsAiProviderReasoningEffort",
     "settingsAiProviderReasoningEffortHelp",
     "settingsAiProviderReasoningEffortAuto",
@@ -595,6 +658,13 @@
 
   "ru": [
     "bookDetailFileFormat",
+    "settingsAiProviderProtocolLocal",
+    "settingsAiProviderLocalModelFile",
+    "settingsAiProviderLocalModelHint",
+    "settingsAiProviderLocalNoModels",
+    "settingsAiProviderLocalRescan",
+    "settingsAiProviderLocalMissing",
+    "settingsAiProviderLocalNote",
     "settingsAiProviderReasoningEffort",
     "settingsAiProviderReasoningEffortHelp",
     "settingsAiProviderReasoningEffortAuto",
@@ -661,6 +731,13 @@
 
   "tr": [
     "bookDetailFileFormat",
+    "settingsAiProviderProtocolLocal",
+    "settingsAiProviderLocalModelFile",
+    "settingsAiProviderLocalModelHint",
+    "settingsAiProviderLocalNoModels",
+    "settingsAiProviderLocalRescan",
+    "settingsAiProviderLocalMissing",
+    "settingsAiProviderLocalNote",
     "settingsAiProviderReasoningEffort",
     "settingsAiProviderReasoningEffortHelp",
     "settingsAiProviderReasoningEffortAuto",

@@ -94,13 +94,18 @@ Stream<String> _generateStream({
           AiKeyRotator.hasValidKey(provider)) {
         final apiKey = AiKeyRotator.getNextKey(provider);
         if (apiKey != null) {
-          config = LangchainAiConfig.fromProvider(
-            providerId: provider.id,
-            model: provider.model,
-            apiKey: apiKey,
-            url: provider.url,
-            reasoningEffort: provider.reasoningEffort,
-          );
+          config = provider.protocol == AiProtocol.local
+              ? LangchainAiConfig.local(
+                  providerId: provider.id,
+                  model: provider.model,
+                )
+              : LangchainAiConfig.fromProvider(
+                  providerId: provider.id,
+                  model: provider.model,
+                  apiKey: apiKey,
+                  url: provider.url,
+                  reasoningEffort: provider.reasoningEffort,
+                );
 
           AnxLog.info(
               'aiGenerateStream (new): ${provider.id}, model: ${config.model}, baseUrl: ${config.baseUrl}');
@@ -159,13 +164,18 @@ Stream<String> _generateStream({
             AiKeyRotator.hasValidKey(provider)) {
           final apiKey = AiKeyRotator.getNextKey(provider);
           if (apiKey != null) {
-            config = LangchainAiConfig.fromProvider(
-              providerId: provider.id,
-              model: provider.model,
-              apiKey: apiKey,
-              url: provider.url,
-              reasoningEffort: provider.reasoningEffort,
-            );
+            config = provider.protocol == AiProtocol.local
+                ? LangchainAiConfig.local(
+                    providerId: provider.id,
+                    model: provider.model,
+                  )
+                : LangchainAiConfig.fromProvider(
+                    providerId: provider.id,
+                    model: provider.model,
+                    apiKey: apiKey,
+                    url: provider.url,
+                    reasoningEffort: provider.reasoningEffort,
+                  );
 
             AnxLog.info(
                 'aiGenerateStream (no-ref new): ${provider.id}, model: ${config.model}, baseUrl: ${config.baseUrl}');

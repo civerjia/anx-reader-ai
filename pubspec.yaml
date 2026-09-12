@@ -132,8 +132,12 @@ dependencies:
   haptic_feedback: ^0.6.4+2
   in_app_purchase_android: ^0.4.0+8
   forui: ^0.26.0
+  llm_llamacpp: ^0.5.0
 
 dependency_overrides:
+  # Patched so the iOS build works at all; see third_party/llm_llamacpp/PATCH.md
+  llm_llamacpp:
+    path: third_party/llm_llamacpp
   # Patched to pass dict_dir through to sherpa-onnx; see
   # third_party/sherpa_onnx/PATCH.md
   sherpa_onnx:

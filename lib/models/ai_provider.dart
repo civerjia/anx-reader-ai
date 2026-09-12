@@ -8,7 +8,8 @@ part 'ai_provider.g.dart';
 enum AiProtocol {
   openai('openai'),
   claude('claude'),
-  gemini('gemini');
+  gemini('gemini'),
+  local('local');
 
   const AiProtocol(this.code);
   final String code;
@@ -137,6 +138,10 @@ abstract class AiProvider with _$AiProvider {
 
   /// Check if this provider has any enabled API keys
   bool get hasValidKey {
+    // A model running on this device has nothing to authenticate against. What
+    // decides whether it is usable is whether its weights are on disk, which
+    // the settings page reports separately.
+    if (protocol == AiProtocol.local) return true;
     return apiKeys.any((k) => k.enabled && k.key.isNotEmpty);
   }
 }

@@ -1,6 +1,7 @@
 import 'package:anx_reader/enums/ai_reasoning_effort.dart';
 import 'package:anx_reader/l10n/generated/L10n.dart';
 import 'package:anx_reader/models/ai_provider.dart';
+import 'package:anx_reader/service/ai/local/local_llm_models.dart';
 import 'package:anx_reader/providers/ai_providers.dart';
 import 'package:anx_reader/service/ai/ai_model_service.dart';
 import 'package:anx_reader/service/ai/index.dart';
@@ -33,6 +34,10 @@ class _AiProviderDetailPageState extends ConsumerState<AiProviderDetailPage> {
   late TextEditingController _modelController;
 
   AiProtocol _selectedProtocol = AiProtocol.openai;
+  List<LocalLlmModelFile> _localModels = const [];
+  String _localModelsDir = '';
+
+  bool get _isLocal => _selectedProtocol == AiProtocol.local;
   AiReasoningEffort _reasoningEffort = AiReasoningEffort.auto;
   List<AiApiKey> _apiKeys = [];
   bool _isModified = false;
@@ -53,6 +58,7 @@ class _AiProviderDetailPageState extends ConsumerState<AiProviderDetailPage> {
     _urlController = TextEditingController(text: provider?.url ?? '');
     _modelController = TextEditingController(text: provider?.model ?? '');
     _selectedProtocol = provider?.protocol ?? AiProtocol.openai;
+    if (_selectedProtocol == AiProtocol.local) _scanLocalModels();
     _reasoningEffort = provider?.reasoningEffort ?? AiReasoningEffort.auto;
     _apiKeys = provider?.apiKeys.toList() ?? [];
 
@@ -125,31 +131,41 @@ class _AiProviderDetailPageState extends ConsumerState<AiProviderDetailPage> {
                   value: AiProtocol.gemini,
                   label: l10n.settingsAiProviderProtocolGemini,
                 ),
+                SegmentButtonItem(
+                  value: AiProtocol.local,
+                  label: l10n.settingsAiProviderProtocolLocal,
+                ),
               ],
               onSelectionChanged: (Set<AiProtocol> selection) {
                 setState(() {
                   _selectedProtocol = selection.first;
                   _isModified = true;
                 });
+                if (_isLocal) _scanLocalModels();
               },
             ),
             const SizedBox(height: 16),
 
             // API URL
-            TextField(
-              controller: _urlController,
-              decoration: InputDecoration(
-                labelText: l10n.settingsAiProviderUrl,
-                border: const OutlineInputBorder(),
-                helperText: _selectedProtocol == AiProtocol.openai
-                    ? l10n.settingsAiProviderUrlHint
-                    : null,
+            if (!_isLocal) ...[
+              TextField(
+                controller: _urlController,
+                decoration: InputDecoration(
+                  labelText: l10n.settingsAiProviderUrl,
+                  border: const OutlineInputBorder(),
+                  helperText: _selectedProtocol == AiProtocol.openai
+                      ? l10n.settingsAiProviderUrlHint
+                      : null,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
+            ],
 
             // Model
-            Row(
+            if (_isLocal)
+              _buildLocalModelPicker(context)
+            else
+              Row(
               children: [
                 Expanded(
                   child: TextField(
@@ -176,64 +192,67 @@ class _AiProviderDetailPageState extends ConsumerState<AiProviderDetailPage> {
             _buildAdvancedSettingsCard(context),
             const SizedBox(height: 16),
 
-            // API Keys Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(l10n.settingsAiProviderApiKeys,
-                    style: Theme.of(context).textTheme.titleMedium),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: _addApiKey,
-                  tooltip: l10n.settingsAiProviderAddKey,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            if (_apiKeys.isEmpty)
-              FilledContainer(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Icon(
-                        Icons.key_off_outlined,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withAlpha(120),
-                      ),
-                      Text(
-                        l10n.settingsAiProviderNoValidKeys,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withAlpha(150),
-                            ),
-                        textAlign: TextAlign.center,
-                      ),
-                      AnxButton.icon(
-                        onPressed: _addApiKey,
-                        icon: const Icon(Icons.add),
-                        label: Text(l10n.settingsAiProviderAddKey),
-                      ),
-                    ],
+            // Nothing to authenticate against when the model is on this device.
+            if (!_isLocal) ...[
+              // API Keys Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(l10n.settingsAiProviderApiKeys,
+                      style: Theme.of(context).textTheme.titleMedium),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: _addApiKey,
+                    tooltip: l10n.settingsAiProviderAddKey,
                   ),
-                ),
-              )
-            else
-              ..._apiKeys.asMap().entries.map((entry) {
-                final index = entry.key;
-                final apiKey = entry.value;
-                return _buildApiKeyTile(apiKey, index);
-              }),
+                ],
+              ),
+              const SizedBox(height: 8),
 
-            const SizedBox(height: 24),
+              if (_apiKeys.isEmpty)
+                FilledContainer(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Icon(
+                          Icons.key_off_outlined,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withAlpha(120),
+                        ),
+                        Text(
+                          l10n.settingsAiProviderNoValidKeys,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withAlpha(150),
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
+                        AnxButton.icon(
+                          onPressed: _addApiKey,
+                          icon: const Icon(Icons.add),
+                          label: Text(l10n.settingsAiProviderAddKey),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                ..._apiKeys.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final apiKey = entry.value;
+                  return _buildApiKeyTile(apiKey, index);
+                }),
+
+              const SizedBox(height: 24),
+            ],
 
             // Test Connection Button (at bottom)
             if (provider != null)
@@ -248,6 +267,99 @@ class _AiProviderDetailPageState extends ConsumerState<AiProviderDetailPage> {
         ),
       ),
     );
+  }
+
+  /// A dropdown over what is actually on disk, not a text field.
+  ///
+  /// The value is a file that has to exist, and a typo in a free-text field
+  /// would only surface as a failed generation later.
+  Widget _buildLocalModelPicker(BuildContext context) {
+    final l10n = L10n.of(context);
+    final selected = _modelController.text.trim();
+    final names = _localModels.map((m) => m.name).toList();
+    // A model configured on another install, or since deleted, still has to be
+    // shown or the dropdown would silently change the setting.
+    final missing = selected.isNotEmpty && !names.contains(selected);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                initialValue: selected.isEmpty ? null : selected,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: l10n.settingsAiProviderLocalModelFile,
+                  border: const OutlineInputBorder(),
+                ),
+                hint: Text(l10n.settingsAiProviderLocalNoModels),
+                items: [
+                  if (missing)
+                    DropdownMenuItem(
+                      value: selected,
+                      child: Text(
+                        l10n.settingsAiProviderLocalMissing(selected),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ..._localModels.map(
+                    (model) => DropdownMenuItem(
+                      value: model.name,
+                      child: Text(
+                        '${model.name}  ·  ${model.sizeLabel}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _modelController.text = value;
+                    _isModified = true;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            AnxButton.outlined(
+              onPressed: _scanLocalModels,
+              child: Text(l10n.settingsAiProviderLocalRescan),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          l10n.settingsAiProviderLocalModelHint(_localModelsDir),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          l10n.settingsAiProviderLocalNote,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
+              ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _scanLocalModels() async {
+    final models = await LocalLlmModels.listInstalled();
+    final dir = await LocalLlmModels.defaultDir();
+    if (!mounted) return;
+    setState(() {
+      _localModels = models;
+      _localModelsDir = dir;
+      // Nothing chosen yet and exactly one model present: choose it. Leaving it
+      // empty is the state that makes the provider look broken for no reason.
+      if (_modelController.text.trim().isEmpty && models.length == 1) {
+        _modelController.text = models.first.name;
+        _isModified = true;
+      }
+    });
   }
 
   Widget _buildAdvancedSettingsCard(BuildContext context) {
@@ -601,7 +713,10 @@ class _AiProviderDetailPageState extends ConsumerState<AiProviderDetailPage> {
   void _saveProvider() {
     final l10n = L10n.of(context);
 
-    if (_nameController.text.isEmpty || _urlController.text.isEmpty) {
+    final missingTarget = _isLocal
+        ? _modelController.text.trim().isEmpty
+        : _urlController.text.isEmpty;
+    if (_nameController.text.isEmpty || missingTarget) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.commonFailed)),
       );
@@ -647,9 +762,12 @@ class _AiProviderDetailPageState extends ConsumerState<AiProviderDetailPage> {
     final l10n = L10n.of(context);
 
     final enabledKeys = _apiKeys.where((k) => k.enabled && k.key.trim().isNotEmpty);
-    if (_urlController.text.trim().isEmpty ||
-        _modelController.text.trim().isEmpty ||
-        enabledKeys.isEmpty) {
+    final notReady = _isLocal
+        ? _modelController.text.trim().isEmpty
+        : _urlController.text.trim().isEmpty ||
+            _modelController.text.trim().isEmpty ||
+            enabledKeys.isEmpty;
+    if (notReady) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.settingsAiProviderNoValidKeys)),
       );
