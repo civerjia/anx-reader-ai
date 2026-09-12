@@ -6,6 +6,7 @@ import 'package:anx_reader/l10n/generated/L10n.dart';
 import 'package:anx_reader/service/tts/models/tts_voice.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_model.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_model_roots.dart';
+import 'package:anx_reader/service/tts/sherpa/sherpa_onnx_meta.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_tts_engine.dart';
 import 'package:anx_reader/service/tts/tts_service.dart';
 import 'package:anx_reader/service/tts/tts_service_provider.dart';
@@ -271,24 +272,66 @@ class SherpaTtsProvider extends TtsServiceProvider {
       ];
     }
 
-    final names = _voiceNames(spec.dir);
+    final names = _voiceNames(spec);
     final count = _engine.numSpeakers > 0 ? _engine.numSpeakers : 1;
     return [
       for (var sid = 0; sid < count; sid++)
-        TtsVoice(
-          shortName: '$sid',
-          name: sid < names.length ? '$sid · ${names[sid]}' : 'Speaker $sid',
-          locale: spec.type.label,
-          description: sid < names.length ? names[sid] : '',
-        ),
+        _voice(sid, sid < names.length ? names[sid] : '', spec),
     ];
   }
 
-  /// Optional speaker names, one per line, in `voices.txt` or `speakers.txt`
-  /// next to the model. sherpa-onnx models ship speaker ids only.
-  List<String> _voiceNames(String dir) {
+  TtsVoice _voice(int sid, String name, SherpaModelSpec spec) {
+    if (name.isEmpty) {
+      return TtsVoice(
+        shortName: '$sid',
+        name: 'Speaker $sid',
+        locale: spec.type.label,
+      );
+    }
+    return TtsVoice(
+      shortName: '$sid',
+      name: name,
+      locale: _localeOf(name) ?? spec.type.label,
+      gender: _genderOf(name),
+      description: '#$sid',
+    );
+  }
+
+  /// Kokoro and Kitten name their voices `<language><gender>_<name>`, e.g.
+  /// `zf_xiaoxiao` is a Chinese female voice and `am_adam` an American
+  /// English male one. Decoding it lets the settings page group the 54
+  /// voices by language instead of listing bare numbers.
+  static const Map<String, String> _voiceLanguages = {
+    'a': 'en-US',
+    'b': 'en-GB',
+    'e': 'es-ES',
+    'f': 'fr-FR',
+    'h': 'hi-IN',
+    'i': 'it-IT',
+    'j': 'ja-JP',
+    'p': 'pt-BR',
+    'z': 'zh-CN',
+  };
+
+  static final RegExp _voiceNamePattern = RegExp(r'^([a-z])([fm])_');
+
+  String? _localeOf(String name) {
+    final match = _voiceNamePattern.firstMatch(name);
+    if (match == null) return null;
+    return _voiceLanguages[match.group(1)];
+  }
+
+  String _genderOf(String name) {
+    final match = _voiceNamePattern.firstMatch(name);
+    if (match == null) return '';
+    return match.group(2) == 'f' ? 'Female' : 'Male';
+  }
+
+  /// Speaker names, from a `voices.txt` next to the model if the user wrote
+  /// one, otherwise from the model's own ONNX metadata.
+  List<String> _voiceNames(SherpaModelSpec spec) {
     for (final name in ['voices.txt', 'speakers.txt']) {
-      final file = File(p.join(dir, name));
+      final file = File(p.join(spec.dir, name));
       if (!file.existsSync()) continue;
       try {
         return file
@@ -300,7 +343,10 @@ class SherpaTtsProvider extends TtsServiceProvider {
         AnxLog.warning('Failed to read $name: $e');
       }
     }
-    return const [];
+
+    final model = spec.model.isNotEmpty ? spec.model : spec.acousticModel;
+    if (model.isEmpty) return const [];
+    return SherpaOnnxMeta.speakerNames(model);
   }
 
   @override

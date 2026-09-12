@@ -68,10 +68,15 @@ picked outside the sandbox is not guaranteed to stay readable after a restart.
 - **Lexicon files** – optional override, comma separated.
 
 Then press **Get voice list**. This loads the model, so the first press can take
-a few seconds. For Kokoro the list is the speaker ids the model exposes; for
-`kokoro-multi-lang-v1_0`, speaker `45` is a Chinese female voice. Drop a
-`voices.txt` in the model folder (one name per line, in speaker id order) to see
-names instead of bare numbers.
+a few seconds.
+
+Voice names come from the model's own ONNX metadata (`speaker_names`), which is
+how a multi speaker model records which id is which voice. Kokoro and Kitten
+name theirs `<language><gender>_<name>`, so the list is grouped by language:
+`kokoro-multi-lang-v1_0` puts its eight Chinese voices (`zf_xiaobei` … 
+`zm_yunyang`, ids 45–52) under 中文 and the twenty American English ones under
+English. A `voices.txt` in the model folder (one name per line, in speaker id
+order) overrides this.
 
 The **rate** slider in the reading view is used as a speed multiplier, where
 `1.0` is the model's natural pace. **Pitch** is ignored: these models do not
@@ -140,3 +145,9 @@ flutter test integration_test/sherpa_tts_test.dart -d macos
   official Kokoro example uses, but models that *require* a jieba dictionary
   need a patched `sherpa_onnx` package.
 - Pitch control is not supported by these models.
+- Kokoro speaks Chinese through `lexicon-zh.txt` rather than a Chinese G2P, so
+  its Mandarin has a noticeable accent. For Chinese, ZipVoice with a Chinese
+  reference clip sounds considerably more natural, and `vits-zh-aishell3` is
+  natively Chinese but only 8 kHz. The nicer Chinese models
+  (`vits-melo-tts-zh_en`, `matcha-icefall-zh-baker`) need `dict_dir`, which the
+  sherpa-onnx Dart API does not forward yet.
