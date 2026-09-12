@@ -1,3 +1,4 @@
+import 'package:anx_reader/models/opds_catalog.dart';
 import 'dart:convert';
 import 'dart:core';
 
@@ -1004,6 +1005,30 @@ class Prefs extends ChangeNotifier {
   }
 
   // User prompts - simple read/write methods
+  static const String _opdsCatalogsKey = 'opdsCatalogs';
+
+  /// OPDS catalogs the reader has added, in the order they were added.
+  List<OpdsCatalog> get opdsCatalogs {
+    final jsonString = prefs.getString(_opdsCatalogsKey);
+    if (jsonString == null || jsonString.isEmpty) return [];
+    try {
+      return (jsonDecode(jsonString) as List)
+          .map((json) => OpdsCatalog.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      AnxLog.severe('Error loading OPDS catalogs: $e');
+      return [];
+    }
+  }
+
+  set opdsCatalogs(List<OpdsCatalog> catalogs) {
+    prefs.setString(
+      _opdsCatalogsKey,
+      jsonEncode(catalogs.map((c) => c.toJson()).toList()),
+    );
+    notifyListeners();
+  }
+
   List<UserPrompt> get userPrompts {
     final jsonString = prefs.getString(_userPromptsKey);
     if (jsonString == null || jsonString.isEmpty) return [];
