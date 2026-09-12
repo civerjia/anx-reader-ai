@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:anx_reader/config/shared_preference_provider.dart';
@@ -130,8 +131,11 @@ class SherpaTtsProvider extends TtsServiceProvider {
           label: L10n.of(context).settingsNarrateSherpaNumSteps,
           description:
               L10n.of(context).settingsNarrateSherpaNumStepsDescription,
-          type: ConfigItemType.number,
+          type: ConfigItemType.range,
           defaultValue: _defaultNumSteps,
+          min: 1,
+          max: 16,
+          step: 1,
         ),
       ],
       ConfigItem(
@@ -152,8 +156,11 @@ class SherpaTtsProvider extends TtsServiceProvider {
         label: L10n.of(context).settingsNarrateSherpaNumThreads,
         description:
             L10n.of(context).settingsNarrateSherpaNumThreadsDescription,
-        type: ConfigItemType.number,
+        type: ConfigItemType.range,
         defaultValue: _defaultNumThreads,
+        min: 1,
+        max: math.max(2, Platform.numberOfProcessors).toDouble(),
+        step: 1,
       ),
       ConfigItem(
         key: 'autoSpeed',
