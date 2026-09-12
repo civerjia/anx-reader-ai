@@ -115,7 +115,7 @@ class TtsHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     final session = await AudioSession.instance;
     if (await session.setActive(true)) {
       playbackState.add(playbackState.value.copyWith(
-        controls: [MediaControl.pause, MediaControl.stop],
+        controls: _playingControls,
         processingState: AudioProcessingState.ready,
         playing: true,
       ));
@@ -136,12 +136,8 @@ class TtsHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     queue.add([item]);
     mediaItem.add(item);
     playbackState.add(playbackState.value.copyWith(
-      controls: [
-        MediaControl.skipToPrevious,
-        MediaControl.pause,
-        MediaControl.stop,
-        MediaControl.skipToNext,
-      ],
+      controls: _playingControls,
+      androidCompactActionIndices: const [0, 1, 3],
       processingState: AudioProcessingState.ready,
       playing: true,
       queueIndex: 0,
@@ -160,7 +156,7 @@ class TtsHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   @override
   Future<void> pause() async {
     playbackState.add(playbackState.value.copyWith(
-      controls: [MediaControl.play, MediaControl.stop],
+      controls: _pausedControls,
       queueIndex: queue.value.isNotEmpty ? 0 : null,
       processingState: AudioProcessingState.ready,
       playing: false,
@@ -182,6 +178,43 @@ class TtsHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     tts.updateTtsState(TtsStateEnum.stopped);
     await tts.stop();
     epubPlayerKey.currentState?.ttsStop();
+  }
+
+  /// Audiobook controls: thirty seconds back and forward on the lock screen
+  /// and in the notification. Sentence by sentence was too fine to find a
+  /// place with, and headphone next/previous still steps by sentence.
+  static const List<MediaControl> _playingControls = [
+    MediaControl.rewind,
+    MediaControl.pause,
+    MediaControl.stop,
+    MediaControl.fastForward,
+  ];
+
+  static const List<MediaControl> _pausedControls = [
+    MediaControl.rewind,
+    MediaControl.play,
+    MediaControl.stop,
+    MediaControl.fastForward,
+  ];
+
+  static const Duration skipInterval = Duration(seconds: 30);
+
+  @override
+  Future<void> fastForward() => _skip(skipInterval);
+
+  @override
+  Future<void> rewind() => _skip(-skipInterval);
+
+  Future<void> _skip(Duration by) async {
+    if (tts.ttsStateNotifier.value == TtsStateEnum.stopped) return;
+    // Skipping restarts narration from the new place, so a paused reader is
+    // playing again afterwards; say so on the lock screen.
+    playbackState.add(playbackState.value.copyWith(
+      controls: _playingControls,
+      playing: true,
+    ));
+    tts.updateTtsState(TtsStateEnum.playing);
+    await tts.skip(by);
   }
 
   @override

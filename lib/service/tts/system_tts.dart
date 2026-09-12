@@ -4,6 +4,7 @@ import 'package:anx_reader/utils/platform_utils.dart';
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/page/reading_page.dart';
 import 'package:anx_reader/service/tts/base_tts.dart';
+import 'package:anx_reader/service/tts/tts_skip.dart';
 import 'package:anx_reader/service/tts/models/tts_voice.dart';
 import 'package:anx_reader/service/tts/tts_service.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -267,6 +268,25 @@ class SystemTts extends BaseTts {
     restarting = true;
     await stop();
     _currentVoiceText = await getNextTextFunction();
+    speak();
+    restarting = false;
+  }
+
+  @override
+  Future<void> skip(Duration by) async {
+    if (restarting) {
+      return;
+    }
+    restarting = true;
+    await stop();
+    final forward = !by.isNegative;
+    final landed = await stepUntil(
+      step: () async =>
+          await (forward ? getNextTextFunction() : getPrevTextFunction())
+              as String?,
+      syllables: syllablesFor(by, rate),
+    );
+    if (landed != null) _currentVoiceText = landed;
     speak();
     restarting = false;
   }

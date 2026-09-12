@@ -71,6 +71,9 @@ Future<void> main() async {
       androidNotificationChannelName: 'ANX Reader TTS',
       androidNotificationOngoing: true,
       androidStopForegroundOnPause: true,
+      // The lock screen's skip buttons say 30; TtsHandler skips 30.
+      fastForwardInterval: Duration(seconds: 30),
+      rewindInterval: Duration(seconds: 30),
     ),
   );
 

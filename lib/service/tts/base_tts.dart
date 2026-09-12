@@ -32,6 +32,10 @@ abstract class BaseTts {
 
   Future<void> next();
 
+  /// Moves narration by about [by] — forward when positive, back when
+  /// negative — and carries on reading from there.
+  Future<void> skip(Duration by);
+
   Future<void> restart();
 
   Future<void> dispose();

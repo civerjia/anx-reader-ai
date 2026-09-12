@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/page/reading_page.dart';
 import 'package:anx_reader/service/tts/base_tts.dart';
+import 'package:anx_reader/service/tts/tts_skip.dart';
 import 'package:anx_reader/service/tts/tts_service.dart';
 import 'package:anx_reader/service/tts/tts_service_provider.dart';
 import 'package:anx_reader/service/tts/models/tts_segment.dart';
@@ -66,6 +67,10 @@ class OnlineTts extends BaseTts {
 
   // ============ Lifecycle ============
   late Function getHereFunction;
+
+  /// Set by anything that has already moved the narration cursor, so the next
+  /// speak() starts from there instead of re-syncing to the page.
+  bool _keepPosition = false;
   late Function getNextTextFunction;
   late Function getPrevTextFunction;
   bool isInit = false;
@@ -587,10 +592,16 @@ class OnlineTts extends BaseTts {
       rethrow;
     }
 
-    // Sync to current location first
-    try {
-      await getHereFunction();
-    } catch (_) {}
+    // Sync to the page only when narration starts afresh. getHereFunction
+    // moves the reader's narration cursor back to the first sentence on the
+    // visible page, so calling it after next(), prev(), skip() or restart()
+    // threw away the move they had just made and read the page from the top.
+    if (!_keepPosition) {
+      try {
+        await getHereFunction();
+      } catch (_) {}
+    }
+    _keepPosition = false;
 
     // Start both loops
     unawaited(_startPrefetcher());
@@ -635,6 +646,7 @@ class OnlineTts extends BaseTts {
   Future<void> prev() async {
     await stop();
     await getPrevTextFunction();
+    _keepPosition = true;
     await speak();
   }
 
@@ -642,12 +654,29 @@ class OnlineTts extends BaseTts {
   Future<void> next() async {
     await stop();
     await getNextTextFunction();
+    _keepPosition = true;
+    await speak();
+  }
+
+  @override
+  Future<void> skip(Duration by) async {
+    await stop();
+    final forward = !by.isNegative;
+    await stepUntil(
+      step: () async =>
+          await (forward ? getNextTextFunction() : getPrevTextFunction())
+              as String?,
+      syllables: syllablesFor(by, rate),
+    );
+    // speak() resumes from wherever the steps left the reader.
+    _keepPosition = true;
     await speak();
   }
 
   @override
   Future<void> restart() async {
     await stop();
+    _keepPosition = true;
     await speak();
   }
 
