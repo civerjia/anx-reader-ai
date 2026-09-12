@@ -541,8 +541,13 @@ class SherpaTtsProvider extends TtsServiceProvider {
     final expected = syllables / SherpaPace.referencePace;
     final ratio = expected > 0 ? seconds / expected : 1.0;
     final suspicious = ratio < 0.6;
+    // Two measures, because they agree only when the blocked one is
+    // unbiased: a sentence measured through its pauses reads quiet and is
+    // then amplified too much.
     final level = gatedLevel(audio.samples, audio.sampleRate);
-    final line = 'SherpaTts level ${level.toStringAsFixed(3)} '
+    final plain = plainLevel(audio.samples);
+    final line = 'SherpaTts level ${level.toStringAsFixed(3)}'
+        '/${plain.toStringAsFixed(3)} '
         'said ${syllables.toStringAsFixed(0)} syllables in '
         '${seconds.toStringAsFixed(1)}s at model speed '
         '${speed.toStringAsFixed(2)} x player ${_playbackRate.toStringAsFixed(2)} '
