@@ -858,6 +858,8 @@
   "settingsNarrateSherpaSilenceScaleDescription": "How much of the pauses at commas to keep. Kokoro leaves gaps of nearly a second; 0.4 keeps them brisk. Anx trims them itself, well below the level where a word's tail still sounds, so shortening them costs no syllables.",
   "settingsNarrateSherpaPreferInt8": "Prefer quantized models",
   "settingsNarrateSherpaPreferInt8Description": "Use the int8 file when the folder ships both. Faster and smaller, with a small quality cost.",
+  "settingsNarrateSherpaDebug": "Log engine details",
+  "settingsNarrateSherpaDebugDescription": "Let sherpa-onnx report what it is doing, including how much of the model the neural accelerator accepted. Verbose; for diagnosing speed.",
   "settingsNarrateSherpaLexicon": "Lexicon files",
   "settingsNarrateSherpaLexiconDescription": "Optional, comma separated. Overrides the lexicon*.txt files found in the model folder.",
   "settingsNarrateSystemTts": "System TTS",

@@ -824,6 +824,8 @@
   "settingsNarrateSherpaSilenceScaleDescription": "逗号处的停顿保留多少。Kokoro 生成的停顿接近一秒，0.4 听起来更紧凑。裁剪由 Anx 自己做，判定静音的阈值远低于字尾余音，所以缩短停顿不会吃字。",
   "settingsNarrateSherpaPreferInt8": "优先使用量化模型",
   "settingsNarrateSherpaPreferInt8Description": "同时存在时优先使用 int8 文件：更快、更省内存，音质略有损失。",
+  "settingsNarrateSherpaDebug": "输出引擎日志",
+  "settingsNarrateSherpaDebugDescription": "让 sherpa-onnx 打印内部信息，包括神经网络加速器接手了模型的多少部分。日志很啰嗦，用于排查速度问题。",
   "settingsNarrateSherpaLexicon": "词典文件",
   "settingsNarrateSherpaLexiconDescription": "可选，逗号分隔。用于覆盖模型文件夹中自动识别的 lexicon*.txt。",
   "settingsNarrateSystemTts": "系统 TTS",

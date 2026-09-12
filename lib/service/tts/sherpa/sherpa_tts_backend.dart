@@ -41,9 +41,10 @@ class SherpaTtsProvider extends TtsServiceProvider {
   /// four. Since synthesis has to stay ahead of playback, and a listener
   /// speeding a book up needs RTF below 1/speed, half the cores is a much
   /// better default than two.
-  /// Leave two cores for the app and the system, take the rest.
+  /// Leave two cores for the app and the system, and stop at four: past
+  /// that the phone gets warm for a gain the listener does not need.
   static int get _defaultNumThreads =>
-      (Platform.numberOfProcessors - 2).clamp(2, 6);
+      (Platform.numberOfProcessors - 2).clamp(2, 4);
 
   final SherpaTtsEngine _engine = SherpaTtsEngine();
 
@@ -186,6 +187,13 @@ class SherpaTtsProvider extends TtsServiceProvider {
             L10n.of(context).settingsNarrateSherpaPreferInt8Description,
         type: ConfigItemType.toggle,
         defaultValue: true,
+      ),
+      ConfigItem(
+        key: 'debug',
+        label: L10n.of(context).settingsNarrateSherpaDebug,
+        description: L10n.of(context).settingsNarrateSherpaDebugDescription,
+        type: ConfigItemType.toggle,
+        defaultValue: false,
       ),
       ConfigItem(
         key: 'lexicon',
@@ -351,6 +359,7 @@ class SherpaTtsProvider extends TtsServiceProvider {
       'speedFactor': config['speedFactor'] ?? 1.0,
       'silenceScale': config['silenceScale'] ?? 0.4,
       'preferInt8': config['preferInt8'] ?? true,
+      'debug': config['debug'] ?? false,
       'lexicon': config['lexicon'] ?? '',
     };
   }
@@ -399,6 +408,7 @@ class SherpaTtsProvider extends TtsServiceProvider {
       referenceText: config['referenceText']?.toString() ?? '',
       numSteps: _asInt(config['numSteps'], _defaultNumSteps),
       silenceScale: _asDouble(config['silenceScale'], 0.4).clamp(0.1, 1.0),
+      debug: _asBool(config['debug'], false),
     );
 
     if (spec.type.needsReferenceAudio && spec.referenceAudio.isEmpty) {
