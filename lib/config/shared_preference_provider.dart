@@ -1196,6 +1196,35 @@ class Prefs extends ChangeNotifier {
     return prefs.getBool('bottomNavigatorShowStatistics') ?? true;
   }
 
+  /// How many tokens a local model may generate for one answer.
+  ///
+  /// This is a latency setting more than a quality one: generation is the slow
+  /// part, so on a phone at around 20 tok/s every 600 tokens is another half
+  /// minute of waiting. Too low and long answers are cut off mid-sentence.
+  int get localLlmMaxTokens {
+    return prefs.getInt('localLlmMaxTokens') ?? 2048;
+  }
+
+  set localLlmMaxTokens(int value) {
+    prefs.setInt('localLlmMaxTokens', value);
+    notifyListeners();
+  }
+
+  /// The context window a local model is loaded with.
+  ///
+  /// Cheaper than it looks for Qwen3.5, whose recurrent layers keep no KV cache:
+  /// measured on device, 4096 tokens costs 48 MiB and the fixed recurrent state
+  /// another 19 MiB. The reason to raise it is that a chapter summary sends the
+  /// whole chapter, which 4096 tokens will truncate.
+  int get localLlmContextSize {
+    return prefs.getInt('localLlmContextSize') ?? 8192;
+  }
+
+  set localLlmContextSize(int value) {
+    prefs.setInt('localLlmContextSize', value);
+    notifyListeners();
+  }
+
   bool get bottomNavigatorShowAI {
     return prefs.getBool('bottomNavigatorShowAI') ?? true;
   }

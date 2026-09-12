@@ -104,6 +104,30 @@ void main() {
     });
   });
 
+  group('a provider only offers itself when it can answer', () {
+    test('a local provider needs its weights chosen', () {
+      expect(_localProvider(model: '').isUsable, isFalse);
+      expect(_localProvider(model: 'Qwen3.5-2B.gguf').isUsable, isTrue);
+    });
+
+    test('a built-in shipped without a key is not offered', () {
+      final now = DateTime.now();
+      final remote = AiProvider(
+        id: 'openai',
+        title: 'OpenAI',
+        url: 'https://api.openai.com/v1',
+        protocol: AiProtocol.openai,
+        apiKeys: const [],
+        model: 'gpt-4o-mini',
+        keyIndex: 0,
+        createdAt: now,
+        updatedAt: now,
+      );
+      expect(remote.enabled, isTrue);
+      expect(remote.isUsable, isFalse);
+    });
+  });
+
   group('agent mode', () {
     test('a local provider cannot run the tool loop', () {
       // Without this the chat page, which always asks for agent mode, gets

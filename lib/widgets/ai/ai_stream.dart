@@ -53,6 +53,7 @@ class AiStreamState extends ConsumerState<AiStream> {
       regenerate: regenerate,
       useAgent: widget.useAgent,
       ref: ref,
+      purpose: widget.prompt.identifier,
     );
   }
 

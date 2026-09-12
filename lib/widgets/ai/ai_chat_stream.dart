@@ -564,7 +564,9 @@ class AiChatStreamState extends ConsumerState<AiChatStream> {
   Widget build(BuildContext context) {
     final quickPrompts = _getQuickPrompts(context);
     final allProviders = ref.watch(aiProvidersProvider);
-    final enabledProviders = allProviders.where((p) => p.enabled).toList();
+    // Only providers that can actually answer: an enabled built-in with no key
+    // is a choice that can only fail.
+    final enabledProviders = allProviders.where((p) => p.isUsable).toList();
     final currentProvider = _currentProvider(enabledProviders);
     final selectedId = Prefs().selectedAiService;
 

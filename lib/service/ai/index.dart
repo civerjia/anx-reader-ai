@@ -7,7 +7,9 @@ import 'package:anx_reader/main.dart';
 import 'package:anx_reader/models/ai_provider.dart';
 import 'package:anx_reader/providers/ai_providers.dart';
 import 'package:anx_reader/service/ai/ai_key_rotator.dart';
+import 'package:anx_reader/enums/ai_prompts.dart';
 import 'package:anx_reader/service/ai/langchain_ai_config.dart';
+import 'package:anx_reader/service/ai/local/local_llm_budget.dart';
 import 'package:anx_reader/service/ai/langchain_registry.dart';
 import 'package:anx_reader/service/ai/langchain_runner.dart';
 import 'package:anx_reader/utils/ai_reasoning_parser.dart';
@@ -49,13 +51,23 @@ Stream<String> aiGenerateStream(
   bool regenerate = false,
   bool useAgent = false,
   WidgetRef? ref,
+  AiPrompts? purpose,
 }) {
   if (useAgent) {
     assert(ref != null, 'ref must be provided when useAgent is true');
   }
   LangchainAiRegistry registry = LangchainAiRegistry(ref);
 
+  // What the answer is for decides how long it may be. Only a local model is
+  // actually capped — a remote one bills by token but does not make the user
+  // wait a minute for a dictionary entry.
+  final localAnswerTokens = localAnswerBudget(
+    purpose,
+    promptTokens: estimateTokens(messages),
+  );
+
   return _generateStream(
+      localAnswerTokens: localAnswerTokens,
       messages: messages,
       identifier: identifier,
       overrideConfig: config,
@@ -75,6 +87,7 @@ Stream<String> _generateStream({
   required bool regenerate,
   required bool useAgent,
   required LangchainAiRegistry registry,
+  required int localAnswerTokens,
 }) async* {
   AnxLog.info('aiGenerateStream called identifier: $identifier');
   final sanitizedMessages = _sanitizeMessagesForPrompt(messages);
@@ -112,7 +125,7 @@ Stream<String> _generateStream({
 
           final agentCapable = useAgent && supportsAgentMode(provider.protocol);
           final pipeline = registry.resolveByProtocol(provider.protocol, config,
-              useAgent: agentCapable);
+              useAgent: agentCapable, localAnswerTokens: localAnswerTokens);
           final model = pipeline.model;
 
           await _throttleIfNeeded();
@@ -185,7 +198,8 @@ Stream<String> _generateStream({
                 useAgent && supportsAgentMode(provider.protocol);
             final pipeline = registry.resolveByProtocol(
                 provider.protocol, config,
-                useAgent: agentCapable);
+                useAgent: agentCapable,
+                localAnswerTokens: localAnswerTokens);
             final model = pipeline.model;
 
             await _throttleIfNeeded();

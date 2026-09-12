@@ -53,6 +53,7 @@ class LangchainAiRegistry {
     AiProtocol protocol,
     LangchainAiConfig config, {
     bool useAgent = false,
+    int? localAnswerTokens,
   }) {
     switch (protocol) {
       case AiProtocol.claude:
@@ -70,7 +71,12 @@ class LangchainAiRegistry {
       case AiProtocol.local:
         return _buildPipeline(
           config,
-          LocalLlmChatModel(modelName: config.model),
+          LocalLlmChatModel(
+            modelName: config.model,
+            defaultOptions: LocalLlmChatModelOptions(
+              maxTokens: localAnswerTokens ?? 2048,
+            ),
+          ),
           // A phone-sized model cannot drive a tool loop, and the agent path
           // would spend its whole token budget on the scaffolding.
           useAgent: false,

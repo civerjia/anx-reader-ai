@@ -1,5 +1,6 @@
 import 'package:anx_reader/enums/ai_reasoning_effort.dart';
 import 'package:anx_reader/l10n/generated/L10n.dart';
+import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/models/ai_provider.dart';
 import 'package:anx_reader/service/ai/local/local_llm_models.dart';
 import 'package:anx_reader/utils/log/common.dart';
@@ -343,6 +344,64 @@ class _AiProviderDetailPageState extends ConsumerState<AiProviderDetailPage> {
                 color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
               ),
         ),
+        const SizedBox(height: 8),
+        _buildLocalSlider(
+          label: l10n.settingsAiProviderLocalChatBudget,
+          hint: l10n.settingsAiProviderLocalChatBudgetHint(
+            Prefs().localLlmMaxTokens,
+          ),
+          value: Prefs().localLlmMaxTokens,
+          min: 512,
+          max: 4096,
+          step: 256,
+          onChanged: (value) =>
+              setState(() => Prefs().localLlmMaxTokens = value),
+        ),
+        _buildLocalSlider(
+          label: l10n.settingsAiProviderLocalContext,
+          hint: l10n.settingsAiProviderLocalContextHint(
+            Prefs().localLlmContextSize,
+          ),
+          value: Prefs().localLlmContextSize,
+          min: 2048,
+          max: 32768,
+          step: 2048,
+          onChanged: (value) =>
+              setState(() => Prefs().localLlmContextSize = value),
+        ),
+      ],
+    );
+  }
+
+  /// Sliders rather than number fields: these have a sensible range and a typo
+  /// in a text field would either truncate answers or make the model wait on
+  /// memory it cannot have.
+  Widget _buildLocalSlider({
+    required String label,
+    required String hint,
+    required int value,
+    required int min,
+    required int max,
+    required int step,
+    required ValueChanged<int> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.bodyMedium),
+        Slider(
+          value: value.clamp(min, max).toDouble(),
+          min: min.toDouble(),
+          max: max.toDouble(),
+          divisions: (max - min) ~/ step,
+          label: '$value',
+          onChanged: (raw) {
+            final snapped = (raw / step).round() * step;
+            if (snapped != value) onChanged(snapped);
+          },
+        ),
+        Text(hint, style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 8),
       ],
     );
   }

@@ -136,6 +136,18 @@ abstract class AiProvider with _$AiProvider {
     return enabledKeys[index].key;
   }
 
+  /// Whether this provider is configured well enough to answer.
+  ///
+  /// "Enabled" is not the same thing: every built-in provider ships enabled
+  /// with no key, and listing those in a model picker offers the user a choice
+  /// that can only fail.
+  bool get isUsable {
+    if (!enabled) return false;
+    // A local model is configured by choosing its weights, not a key.
+    if (protocol == AiProtocol.local) return model.trim().isNotEmpty;
+    return hasValidKey;
+  }
+
   /// Check if this provider has any enabled API keys
   bool get hasValidKey {
     // A model running on this device has nothing to authenticate against. What

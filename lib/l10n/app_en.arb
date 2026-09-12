@@ -358,6 +358,24 @@
       }
     }
   },
+  "settingsAiProviderLocalChatBudget": "Chat answer limit",
+  "settingsAiProviderLocalChatBudgetHint": "{tokens} tokens. Only free chat uses this; summaries, translation and lookups get a budget sized to the task.",
+  "@settingsAiProviderLocalChatBudgetHint": {
+    "placeholders": {
+      "tokens": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsAiProviderLocalContext": "Context window",
+  "settingsAiProviderLocalContextHint": "{tokens} tokens. Raise it to fit longer chapters; cheap for this model at roughly 12 MiB per 1024 tokens.",
+  "@settingsAiProviderLocalContextHint": {
+    "placeholders": {
+      "tokens": {
+        "type": "int"
+      }
+    }
+  },
   "settingsAiProviderLocalNote": "Runs on this device with no network. A 2B model at Q4 needs about 1.8 GB of memory; 4B does not fit on a phone.",
   "settingsAiProviderModel": "Model",
   "settingsAiProviderFetchModels": "Fetch Models",

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/service/ai/local/local_llm_models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:anx_reader/utils/log/common.dart';
@@ -38,13 +39,9 @@ class LocalLlmEngine {
   /// that never stops.
   static const Duration firstChunkDeadline = Duration(seconds: 120);
 
-  /// Enough for a chapter excerpt plus an answer, without paying for KV cache
-  /// the reader will never use. Qwen3.5 trains at 256k; a phone cannot afford
-  /// anything close to that.
-  static const int contextSize = 4096;
-
   LlamaCppChatRepository? _repo;
   String? _loadedPath;
+  int? _loadedContext;
   Future<void> _tail = Future<void>.value();
 
   /// The model currently resident, for the settings page to report.
@@ -54,13 +51,17 @@ class LocalLlmEngine {
     final path = await LocalLlmModels.resolve(modelName);
     if (path == null) throw LocalLlmModelMissing(modelName);
 
-    if (_repo != null && _loadedPath == path) return _repo!;
+    final contextSize = Prefs().localLlmContextSize;
+    if (_repo != null && _loadedPath == path && _loadedContext == contextSize) {
+      return _repo!;
+    }
 
     if (_repo != null) {
       AnxLog.info('LocalLlm unloading $_loadedPath');
       _repo!.dispose();
       _repo = null;
       _loadedPath = null;
+      _loadedContext = null;
     }
 
     AnxLog.info('LocalLlm loading $path (context $contextSize)');
@@ -73,6 +74,7 @@ class LocalLlmEngine {
     );
     _repo = repo;
     _loadedPath = path;
+    _loadedContext = contextSize;
     return repo;
   }
 
@@ -150,5 +152,6 @@ class LocalLlmEngine {
     _repo?.dispose();
     _repo = null;
     _loadedPath = null;
+    _loadedContext = null;
   }
 }
