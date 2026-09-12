@@ -1,0 +1,10 @@
+StarDict's dict ifo file
+version=3.0.0
+bookname=ECDICT 英汉词典（常用词）
+wordcount=59137
+idxfilesize=1003900
+sametypesequence=m
+author=skywind3000
+website=https://github.com/skywind3000/ECDICT
+description=ECDICT by skywind3000, MIT License. Common-words edition built for Anx Reader: Collins, Oxford 3000 and exam word lists plus the 50,000 most frequent words of the BNC and contemporary corpus.
+synwordcount=32872

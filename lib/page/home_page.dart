@@ -1,3 +1,6 @@
+import 'package:flutter/services.dart';
+import 'package:anx_reader/utils/get_path/get_base_path.dart';
+import 'package:anx_reader/service/dictionary/bundled_dictionaries.dart';
 import 'dart:ui';
 
 import 'package:anx_reader/dao/database.dart';
@@ -115,6 +118,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       await Sync().syncData(SyncDirection.both, ref, trigger: SyncTrigger.auto);
     }
     loadDefaultFont();
+    installBundledDictionaries(root: getDictionaryDir(), load: rootBundle.load)
+        .catchError((Object e) {
+      AnxLog.info('Installing bundled dictionaries failed: $e');
+      return <String>[];
+    });
 
     if (AnxPlatform.isWindows) {
       await _checkWindowsWebview();

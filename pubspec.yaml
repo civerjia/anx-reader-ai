@@ -209,6 +209,7 @@ flutter:
     - assets/images/bgimg/
     - assets/icon/
     - assets/CHANGELOG.md
+    - assets/dictionaries/ecdict/
 
   fonts:
     - family: SourceHanSerif
