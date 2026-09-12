@@ -1491,7 +1491,9 @@ class Reader {
     const doc = touch?.target?.ownerDocument ?? document
     const frame = doc.defaultView?.frameElement
     const rect = frame ? frame.getBoundingClientRect() : { left: 0, top: 0 }
-    return { x: rect.left + touch.clientX, y: rect.top + touch.clientY }
+    // Fixed-layout frames are scaled; touch coordinates are in the frame's own.
+    const scale = frame?.offsetWidth ? rect.width / frame.offsetWidth : 1
+    return { x: rect.left + touch.clientX * scale, y: rect.top + touch.clientY * scale }
   }
 
   #curlDragStart = (e) => {

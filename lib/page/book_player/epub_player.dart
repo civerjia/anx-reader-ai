@@ -130,7 +130,10 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     await webViewController.callAsyncJavaScript(
         functionBody:
             "if (typeof clearSelection === 'function') { clearSelection(); } "
-            "await ${forward ? 'nextPage' : 'prevPage'}();");
+            "await ${forward ? 'nextPage' : 'prevPage'}(); "
+            // Resolve once the new page has been drawn: a snapshot taken right
+            // after would otherwise still show the page just left.
+            "await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));");
   }
 
   /// A tap, key or volume-button turn: the page is picked up by its edge and
@@ -269,6 +272,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       screenshotConfiguration: ScreenshotConfiguration(
         compressFormat: CompressFormat.JPEG,
         quality: 90,
+        afterScreenUpdates: true,
       ),
     );
     if (bytes == null) return null;
