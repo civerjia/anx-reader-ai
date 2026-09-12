@@ -221,7 +221,10 @@ Float32List normalizeLoudness(
   }
   if (peak <= 0) return samples;
   final headroom = ceiling / peak;
-  if (gain > headroom) gain = headroom;
+  if (gain > headroom) {
+    // Should be rare: the target is set low enough that peaks allow it.
+    gain = headroom;
+  }
 
   if ((gain - 1).abs() < 0.02) return samples;
 

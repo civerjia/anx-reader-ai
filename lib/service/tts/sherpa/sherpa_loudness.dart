@@ -9,9 +9,15 @@ import 'dart:typed_data';
 /// down. BS.1770 answers that with a weighting filter and a gate, and is
 /// what broadcast and streaming use for the same problem.
 class SherpaLoudness {
-  /// What a sentence is normalised to, in LUFS. Around where audiobooks and
-  /// podcasts sit, and low enough to leave room for peaks.
-  static const double targetLufs = -20.0;
+  /// What a sentence is normalised to, in LUFS.
+  ///
+  /// Low enough that no sentence needs more gain than its peaks allow. That
+  /// matters because the alternative to lowering the target is reshaping
+  /// the waveform, and a sentence stopped short of the target lands at a
+  /// different loudness from the rest: measured on Kokoro, aiming at -20
+  /// left sentences spread over 1.2 dB, and a difference is audible well
+  /// under one decibel. At -23 every sentence reaches the target exactly.
+  static const double targetLufs = -23.0;
 
   /// Blocks quieter than this carry no speech.
   static const double absoluteGate = -70.0;
