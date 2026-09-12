@@ -293,18 +293,25 @@ class SherpaTtsProvider extends TtsServiceProvider {
     return null;
   }
 
-  /// Model folders found in the standard locations.
+  /// Model folders found in the standard locations, and what each holds.
   static List<String> _installed = const [];
+  static Map<String, SherpaModelType?> _installedTypes = const {};
   static bool _scanning = false;
 
   /// Offer the installed models as a list instead of asking for a path:
   /// typing a folder name on a phone is a poor way to start an audiobook.
   /// Falls back to a path field for a model kept somewhere else.
   ConfigItem _modelDirItem(BuildContext context) {
+    final type = SherpaModelType.fromId(getConfig()['modelType']?.toString());
     _refreshInstalled();
+    // Only folders that hold a model of the chosen family: offering the
+    // Kokoro folder while ZipVoice is selected just invites a failed load.
+    final matching = _installed
+        .where((name) => _installedTypes[name] == type)
+        .toList();
     final current = getConfig()['modelDir']?.toString() ?? '';
     final canPickFromList =
-        _installed.isNotEmpty && (current.isEmpty || _installed.contains(current));
+        matching.isNotEmpty && (current.isEmpty || matching.contains(current));
 
     if (!canPickFromList) {
       return ConfigItem(
@@ -321,9 +328,9 @@ class SherpaTtsProvider extends TtsServiceProvider {
       label: L10n.of(context).settingsNarrateSherpaModelDir,
       description: L10n.of(context).settingsNarrateSherpaModelDirDescription,
       type: ConfigItemType.select,
-      defaultValue: current.isEmpty ? _installed.first : current,
+      defaultValue: current.isEmpty ? matching.first : current,
       options: [
-        for (final name in _installed) {'value': name, 'label': name},
+        for (final name in matching) {'value': name, 'label': name},
       ],
     );
   }
@@ -335,8 +342,19 @@ class SherpaTtsProvider extends TtsServiceProvider {
     _scanning = true;
     Future(() async {
       try {
-        _installed =
-            SherpaModelResolver.listInstalled(await SherpaModelRoots.all());
+        final roots = await SherpaModelRoots.all();
+        final names = SherpaModelResolver.listInstalled(roots);
+        final types = <String, SherpaModelType?>{};
+        for (final name in names) {
+          for (final root in roots) {
+            final dir = p.join(root, name);
+            if (!Directory(dir).existsSync()) continue;
+            types[name] = SherpaModelResolver.detectType(dir);
+            break;
+          }
+        }
+        _installed = names;
+        _installedTypes = types;
       } catch (e) {
         AnxLog.warning('Failed to look for installed sherpa models: $e');
       } finally {

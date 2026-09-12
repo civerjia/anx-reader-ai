@@ -215,6 +215,78 @@ void main() {
     });
   });
 
+  group('SherpaModelResolver family detection', () {
+    Directory modelDir(String name, List<String> files) {
+      final root = Directory.systemTemp.createTempSync('sherpa-kind-');
+      addTearDown(() => root.deleteSync(recursive: true));
+      final dir = Directory(p.join(root.path, name))..createSync();
+      for (final file in files) {
+        File(p.join(dir.path, file)).writeAsStringSync('');
+      }
+      return dir;
+    }
+
+    test('tells the families apart by what is in the folder', () {
+      expect(
+        SherpaModelResolver.detectType(modelDir('kokoro-multi-lang-v1_1',
+                ['model.onnx', 'voices.bin', 'tokens.txt']).path),
+        SherpaModelType.kokoro,
+      );
+      expect(
+        SherpaModelResolver.detectType(modelDir('kitten-nano',
+                ['model.onnx', 'voices.bin', 'tokens.txt']).path),
+        SherpaModelType.kitten,
+      );
+      expect(
+        SherpaModelResolver.detectType(modelDir('zipvoice-distill',
+                ['encoder.onnx', 'decoder.onnx', 'tokens.txt']).path),
+        SherpaModelType.zipvoice,
+      );
+      expect(
+        SherpaModelResolver.detectType(modelDir('matcha-icefall-zh-baker',
+                ['model-steps-3.onnx', 'tokens.txt']).path),
+        SherpaModelType.matcha,
+      );
+      expect(
+        SherpaModelResolver.detectType(modelDir('vits-melo-tts-zh_en',
+                ['model.onnx', 'tokens.txt', 'lexicon.txt']).path),
+        SherpaModelType.vits,
+      );
+    });
+
+    test('refuses to load a model as the wrong family', () async {
+      final dir = modelDir(
+          'kokoro-multi-lang-v1_1', ['model.onnx', 'voices.bin', 'tokens.txt']);
+
+      await expectLater(
+        SherpaModelResolver.resolve(
+            dirInput: dir.path, type: SherpaModelType.vits),
+        throwsA(isA<SherpaModelException>().having((e) => e.message, 'message',
+            allOf(contains('Kokoro'), contains('VITS')))),
+      );
+    });
+
+    test('lists only the folders of one family', () {
+      final root = Directory.systemTemp.createTempSync('sherpa-list-');
+      addTearDown(() => root.deleteSync(recursive: true));
+      for (final entry in {
+        'kokoro-multi-lang-v1_1': ['model.onnx', 'voices.bin'],
+        'vits-melo-tts-zh_en': ['model.onnx', 'tokens.txt'],
+      }.entries) {
+        final dir = Directory(p.join(root.path, entry.key))..createSync();
+        for (final file in entry.value) {
+          File(p.join(dir.path, file)).writeAsStringSync('');
+        }
+      }
+
+      expect(
+        SherpaModelResolver.listInstalled([root.path],
+            ofType: SherpaModelType.vits),
+        ['vits-melo-tts-zh_en'],
+      );
+    });
+  });
+
   group('SherpaModelResolver zipvoice', () {
     test('separates encoder, decoder and vocoder', () async {
       final dir = _modelDir('zipvoice', [

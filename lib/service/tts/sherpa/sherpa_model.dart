@@ -185,11 +185,49 @@ class SherpaModelResolver {
     return '';
   }
 
+  /// Which family a model folder belongs to, from what is inside it.
+  ///
+  /// The files are distinctive: a cloning model has an encoder and a
+  /// decoder, the voice bank families ship `voices.bin`, Matcha needs a
+  /// vocoder next to its acoustic model. Only Kokoro and Kitten look alike,
+  /// and their folder names say which is which.
+  static SherpaModelType? detectType(String dir) {
+    final directory = Directory(dir);
+    if (!directory.existsSync()) return null;
+
+    final files = directory
+        .listSync()
+        .whereType<File>()
+        .map((file) => p.basename(file.path).toLowerCase())
+        .toList();
+    final onnx = files.where((name) => name.endsWith('.onnx')).toList();
+    if (onnx.isEmpty) return null;
+
+    final name = p.basename(dir).toLowerCase();
+    final hasEncoder = onnx.any((file) => file.contains('encoder'));
+    final hasDecoder = onnx.any((file) => file.contains('decoder'));
+    if (hasEncoder && hasDecoder) return SherpaModelType.zipvoice;
+
+    if (files.contains('voices.bin')) {
+      return name.contains('kitten')
+          ? SherpaModelType.kitten
+          : SherpaModelType.kokoro;
+    }
+
+    if (name.contains('matcha') ||
+        onnx.any((file) => file.contains('acoustic') || file.contains('steps'))) {
+      return SherpaModelType.matcha;
+    }
+
+    return SherpaModelType.vits;
+  }
+
   /// Model folders sitting in [roots], newest looking first.
   ///
   /// A folder counts as a model when it holds a tokens file or any ONNX
   /// file, which is true of every sherpa-onnx TTS release.
-  static List<String> listInstalled(List<String> roots) {
+  static List<String> listInstalled(List<String> roots,
+      {SherpaModelType? ofType}) {
     final found = <String, String>{};
     for (final root in roots) {
       final dir = Directory(root);
@@ -201,7 +239,9 @@ class SherpaModelResolver {
           final base = p.basename(file.path).toLowerCase();
           return base == 'tokens.txt' || base.endsWith('.onnx');
         });
-        if (looksLikeModel) found[name] = entry.path;
+        if (!looksLikeModel) continue;
+        if (ofType != null && detectType(entry.path) != ofType) continue;
+        found[name] = entry.path;
       }
     }
     final names = found.keys.toList()..sort();
@@ -308,6 +348,17 @@ class SherpaModelResolver {
     bool debug = false,
   }) async {
     final dir = await resolveDir(dirInput, roots: searchRoots);
+
+    // Handing a Kokoro model to the VITS loader does not fail cleanly: it
+    // loads, produces no audio, and eventually takes the process down with
+    // it. Check before that happens.
+    final actual = detectType(dir);
+    if (actual != null && actual != type) {
+      throw SherpaModelException(
+          '${p.basename(dir)} is a ${actual.label} model, but ${type.label} '
+          'is selected. Pick ${actual.label}, or choose another folder.');
+    }
+
     final threads = numThreads < 1 ? 1 : numThreads;
     final entries = Directory(dir).listSync();
     final names = entries
