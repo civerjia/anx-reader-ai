@@ -105,6 +105,28 @@ abstract class AiProvider with _$AiProvider {
     );
   }
 
+  /// Counterpart of [AiProvider.fromJson].
+  ///
+  /// freezed only generates a serializer when `fromJson` is its own
+  /// redirecting factory. This class parses leniently by hand, so nothing was
+  /// generated and `jsonEncode` of a provider threw
+  /// `NoSuchMethodError: Class '_AiProvider' has no instance method 'toJson'`.
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'logoAsset': logoAsset,
+        'url': url,
+        'protocol': protocol.code,
+        'enabled': enabled,
+        'isBuiltin': isBuiltin,
+        'apiKeys': apiKeys.map((key) => key.toJson()).toList(),
+        'model': model,
+        'reasoningEffort': reasoningEffort.code,
+        'keyIndex': keyIndex,
+        'createdAt': createdAt?.toIso8601String(),
+        'updatedAt': updatedAt?.toIso8601String(),
+      };
+
   /// Get the current active API key (based on enabled keys and keyIndex)
   String? get currentApiKey {
     final enabledKeys = apiKeys.where((k) => k.enabled).toList();
