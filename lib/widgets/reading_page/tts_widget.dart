@@ -25,8 +25,6 @@ class _TtsWidgetState extends State<TtsWidget> {
   double volume = TtsHandler().volume;
   double pitch = TtsHandler().pitch;
   double rate = TtsHandler().rate;
-  double stopSeconds = 0;
-  Timer? stopTimer;
 
   @override
   void initState() {
@@ -242,54 +240,36 @@ class _TtsWidgetState extends State<TtsWidget> {
         }
 
         Widget stopTimerWidget() {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(20, 5, 20, 0),
-            child: Row(
-              children: [
-                const Icon(EvaIcons.clock_outline),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Slider(
-                    value: stopSeconds / 60,
-                    onChanged: (newValue) {
-                      setState(() {
-                        stopSeconds = newValue * 60;
-                        stopTimer?.cancel();
-
-                        if (stopSeconds > 0) {
-                          stopTimer = Timer.periodic(
-                            const Duration(seconds: 5),
-                            (timer) {
-                              if (stopSeconds > 5) {
-                                stopSeconds -= 5;
-                                if (mounted) {
-                                  setState(() {});
-                                }
-                                return;
-                              } else {
-                                TtsHandler().stop();
-                                stopSeconds = 0;
-                                timer.cancel();
-                                if (mounted) {
-                                  setState(() {});
-                                }
-                              }
-                            },
-                          );
-                        }
-                      });
-                    },
-                    min: 0.0,
-                    max: 60.0,
-                    label: L10n.of(context)
-                        .commonMinutesFull((stopSeconds / 60).round()),
-                  ),
+          return ValueListenableBuilder<int>(
+            valueListenable: TtsHandler().sleepSeconds,
+            builder: (context, secondsLeft, _) {
+              final minutes = (secondsLeft / 60).ceil();
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 5, 20, 0),
+                child: Row(
+                  children: [
+                    const Icon(EvaIcons.clock_outline),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Slider(
+                        value: minutes.clamp(0, 180).toDouble(),
+                        onChanged: (newValue) {
+                          TtsHandler().setSleepTimer(
+                              Duration(minutes: newValue.round()));
+                        },
+                        min: 0.0,
+                        max: 180.0,
+                        // Five minute steps: an hour was not enough for a
+                        // chapter, and nobody sets a sleep timer to 47.
+                        divisions: 36,
+                        label: L10n.of(context).commonMinutesFull(minutes),
+                      ),
+                    ),
+                    Text(L10n.of(context).ttsStopAfter(minutes)),
+                  ],
                 ),
-                Text(
-                  L10n.of(context).ttsStopAfter((stopSeconds / 60).ceil()),
-                ),
-              ],
-            ),
+              );
+            },
           );
         }
 

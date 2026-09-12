@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/page/reading_page.dart';
 import 'package:anx_reader/service/tts/base_tts.dart';
@@ -20,6 +22,37 @@ class TtsHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   BaseTts get tts => _ttsFactory.current;
+
+  // ============ Sleep timer ============
+
+  /// Seconds left before narration stops on its own, 0 when off.
+  ///
+  /// Kept here rather than in the panel that shows it: the countdown has to
+  /// survive the panel being closed, and two panels must not each start one.
+  final ValueNotifier<int> sleepSeconds = ValueNotifier<int>(0);
+  Timer? _sleepTimer;
+
+  void setSleepTimer(Duration duration) {
+    _sleepTimer?.cancel();
+    sleepSeconds.value = duration.inSeconds;
+    if (duration.inSeconds <= 0) {
+      _sleepTimer = null;
+      return;
+    }
+    _sleepTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      final left = sleepSeconds.value - 1;
+      if (left > 0) {
+        sleepSeconds.value = left;
+        return;
+      }
+      timer.cancel();
+      _sleepTimer = null;
+      sleepSeconds.value = 0;
+      stop();
+    });
+  }
+
+  void cancelSleepTimer() => setSleepTimer(Duration.zero);
 
   Function? _getCurrentText;
   Function? _getNextText;
