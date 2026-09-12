@@ -8,6 +8,11 @@ class TtsSegment {
   final TtsSentence sentence;
   Uint8List? audio;
   bool isSilent = false;
+
+  /// Why there is no audio, when the backend failed rather than the
+  /// sentence being empty. Silence from a failure must not be treated as a
+  /// sentence that simply had nothing to say.
+  String? error;
   int fetchVersion =
       0; // Version to track if audio was fetched with current settings
 
