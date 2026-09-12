@@ -438,6 +438,53 @@ void main() {
     });
   });
 
+  group('tightenPauses', () {
+    Float32List clip(int sampleRate, List<double> plan) {
+      // plan: alternating seconds of tone and of silence.
+      final out = <double>[];
+      for (var i = 0; i < plan.length; i++) {
+        final samples = (plan[i] * sampleRate).round();
+        out.addAll(List<double>.filled(samples, i.isEven ? 0.5 : 0.0));
+      }
+      return Float32List.fromList(out);
+    }
+
+    test('shortens a long pause and keeps the speech', () {
+      const sr = 24000;
+      final input = clip(sr, [0.5, 0.9, 0.5]);
+
+      final out = tightenPauses(input, sr, scale: 0.4);
+
+      // 0.9s of pause becomes 0.36s, speech untouched.
+      expect(out.length / sr, closeTo(0.5 + 0.36 + 0.5, 0.01));
+    });
+
+    test('leaves a short gap between syllables alone', () {
+      const sr = 24000;
+      final input = clip(sr, [0.3, 0.08, 0.3]);
+
+      final out = tightenPauses(input, sr, scale: 0.4);
+
+      expect(out.length, input.length);
+    });
+
+    test('never cuts a pause to nothing', () {
+      const sr = 24000;
+      final input = clip(sr, [0.3, 0.6, 0.3]);
+
+      final out = tightenPauses(input, sr, scale: 0.05);
+
+      expect(out.length / sr, closeTo(0.3 + 0.12 + 0.3, 0.01));
+    });
+
+    test('a scale of one is a no-op', () {
+      const sr = 24000;
+      final input = clip(sr, [0.3, 0.9, 0.3]);
+
+      expect(tightenPauses(input, sr, scale: 1.0).length, input.length);
+    });
+  });
+
   group('wave', () {
     test('round trips mono samples', () {
       final samples = Float32List.fromList([0, 0.5, -0.5, 0.999, -0.999]);

@@ -303,7 +303,7 @@ class SherpaTtsEngine {
           final audio = engine.generateWithConfig(
             text: message.text,
             config: sherpa_onnx.OfflineTtsGenerationConfig(
-              silenceScale: message.silenceScale,
+              silenceScale: 1.0,
               speed: message.speed,
               sid: message.sid,
               referenceAudio: referenceAudio,
@@ -314,7 +314,11 @@ class SherpaTtsEngine {
           );
           mainPort.send(_GenerateDone(
             message.id,
-            Float32List.fromList(audio.samples),
+            tightenPauses(
+              Float32List.fromList(audio.samples),
+              audio.sampleRate,
+              scale: message.silenceScale,
+            ),
             audio.sampleRate,
           ));
         } catch (e) {
@@ -387,7 +391,9 @@ class SherpaTtsEngine {
       model: model,
       ruleFsts: spec.ruleFsts,
       ruleFars: spec.ruleFars,
-      silenceScale: spec.silenceScale,
+      // Leave sherpa's own pause trimming off: it decides what silence is
+      // by amplitude alone and clips word endings. tightenPauses does it.
+      silenceScale: 1.0,
     );
   }
 }
