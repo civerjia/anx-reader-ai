@@ -162,7 +162,7 @@ class _ServiceConfigFormState extends State<ServiceConfigForm> {
                     style: const TextStyle(fontSize: 16),
                   ),
                   Text(
-                    '${currentValue.round()}$unit',
+                    '${_formatRange(currentValue, step)}$unit',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -188,9 +188,17 @@ class _ServiceConfigFormState extends State<ServiceConfigForm> {
               min: min,
               max: max,
               divisions: ((max - min) / step).round(),
-              label: '${currentValue.round()}$unit',
+              label: '${_formatRange(currentValue, step)}$unit',
               onChanged: (value) {
-                _updateConfig(item.key, value.round());
+                final snapped = step <= 0 ? value : (value / step).round() * step;
+                // A whole-number setting stays a whole number; a fractional
+                // one used to be rounded away to 0 or 1.
+                _updateConfig(
+                  item.key,
+                  step >= 1
+                      ? snapped.round()
+                      : double.parse(snapped.toStringAsFixed(2)),
+                );
               },
             ),
           ],
@@ -325,6 +333,10 @@ class _ServiceConfigFormState extends State<ServiceConfigForm> {
         );
     }
   }
+
+  /// Sliders carry whole numbers or fractions depending on their step.
+  static String _formatRange(double value, double step) =>
+      step >= 1 ? value.round().toString() : value.toStringAsFixed(2);
 
   /// Text field with a picker button, used for local file or folder paths.
   /// The field stays editable so a path can also be typed or pasted, and so
