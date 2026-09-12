@@ -1885,10 +1885,9 @@ packages:
   sherpa_onnx:
     dependency: "direct main"
     description:
-      name: sherpa_onnx
-      sha256: b7e65d5956f8c9213fd339c68ea058cdec7ad24bd35f9bfc5c18178d3d73b2f9
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/sherpa_onnx"
+      relative: true
+    source: path
     version: "1.13.8"
   sherpa_onnx_android_arm64:
     dependency: transitive

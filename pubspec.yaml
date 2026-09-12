@@ -133,6 +133,10 @@ dependencies:
   in_app_purchase_android: ^0.4.0+8
 
 dependency_overrides:
+  # Patched to pass dict_dir through to sherpa-onnx; see
+  # third_party/sherpa_onnx/PATCH.md
+  sherpa_onnx:
+    path: third_party/sherpa_onnx
   googleai_dart:
     path: third_party/googleai_dart
   langchain_google:
