@@ -5,6 +5,7 @@ import 'package:anx_reader/utils/platform_utils.dart';
 
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/dao/book.dart';
+import 'package:anx_reader/dao/series.dart';
 import 'package:anx_reader/service/book.dart';
 import 'package:anx_reader/utils/get_path/get_base_path.dart';
 import 'package:anx_reader/utils/get_path/databases_path.dart';
@@ -111,6 +112,8 @@ class DBHelper {
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await initDB();
+    // On every open rather than in a migration; see createBookSeriesSQL.
+    await _database!.execute(createBookSeriesSQL);
     return _database!;
   }
 

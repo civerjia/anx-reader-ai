@@ -119,7 +119,9 @@ class BookItem extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        book.author,
+                        book.series == null
+                            ? book.author
+                            : '${book.series!.label} · ${book.author}',
                         style: const TextStyle(
                             fontWeight: FontWeight.w300,
                             fontSize: 9,

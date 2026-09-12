@@ -1,3 +1,4 @@
+import 'package:anx_reader/models/book_series.dart';
 import 'package:anx_reader/utils/get_path/get_base_path.dart';
 
 class Book {
@@ -16,6 +17,9 @@ class Book {
   DateTime createTime;
   DateTime updateTime;
 
+  /// Read from the book file and kept in tb_book_series, not in tb_books.
+  BookSeries? series;
+
   Book(
       {required this.id,
       required this.title,
@@ -30,7 +34,8 @@ class Book {
       this.groupId = 0,
       this.md5,
       required this.createTime,
-      required this.updateTime});
+      required this.updateTime,
+      this.series});
 
   factory Book.mock() {
     return Book(
@@ -89,6 +94,7 @@ class Book {
     String? md5,
     DateTime? createTime,
     DateTime? updateTime,
+    BookSeries? series,
   }) {
     return Book(
       id: id ?? this.id,
@@ -105,6 +111,7 @@ class Book {
       md5: md5 ?? this.md5,
       createTime: createTime ?? this.createTime,
       updateTime: updateTime ?? this.updateTime,
+      series: series ?? this.series,
     );
   }
 

@@ -3,6 +3,8 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:anx_reader/config/shared_preference_provider.dart';
+import 'package:anx_reader/dao/book.dart';
+import 'package:anx_reader/dao/series.dart';
 import 'package:anx_reader/enums/hint_key.dart';
 import 'package:anx_reader/enums/sort_field.dart';
 import 'package:anx_reader/enums/sort_order.dart';
@@ -13,6 +15,9 @@ import 'package:anx_reader/models/tag.dart';
 import 'package:anx_reader/providers/book_list.dart';
 import 'package:anx_reader/providers/book_filters.dart';
 import 'package:anx_reader/providers/tags.dart';
+import 'package:anx_reader/providers/tb_groups.dart';
+import 'package:anx_reader/service/series/book_series.dart';
+import 'package:anx_reader/utils/toast/common.dart';
 import 'package:anx_reader/service/book.dart';
 import 'package:anx_reader/page/search/search_page.dart';
 import 'package:anx_reader/utils/get_path/get_temp_dir.dart';
@@ -107,6 +112,69 @@ class BookshelfPageState extends ConsumerState<BookshelfPage>
         ),
       ),
     );
+  }
+
+  Future<void> _groupSeries() async {
+    final l10n = L10n.of(context);
+    final books = await bookDao.selectNotDeleteBooks();
+    final series = await seriesDao.fetchAll();
+    final groups = await ref.read(groupDaoProvider.future);
+    final plans = planSeriesGroups(
+      [
+        for (final book in books)
+          (id: book.id, groupId: book.groupId, series: series[book.id]),
+      ],
+      {
+        for (final group in groups)
+          if (group.id > 0) group.id: group.name,
+      },
+    );
+    if (plans.isEmpty) {
+      AnxToast.show(l10n.bookshelfGroupSeriesNone);
+      return;
+    }
+    final moving = plans.fold<int>(0, (sum, plan) => sum + plan.bookIds.length);
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.bookshelfGroupSeries),
+        content: SingleChildScrollView(
+          child: Text([
+            l10n.bookshelfGroupSeriesConfirm(moving, plans.length),
+            '',
+            for (final plan in plans) '${plan.name} · ${plan.bookIds.length}',
+          ].join('\n')),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(MaterialLocalizations.of(dialogContext).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(MaterialLocalizations.of(dialogContext).okButtonLabel),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final groupNotifier = ref.read(groupDaoProvider.notifier);
+    for (final plan in plans) {
+      if (plan.createNew) {
+        await groupNotifier.insertGroup(plan.groupId, name: plan.name);
+      }
+      for (final bookId in plan.bookIds) {
+        // Only the folder changes; updateBook would also stamp every moved book
+        // as just read and reshuffle the shelf.
+        await bookDao.update(BookDao.table, {'group_id': plan.groupId},
+            where: 'id = ?', whereArgs: [bookId]);
+      }
+    }
+    await ref.read(bookListProvider.notifier).refresh();
+    await groupNotifier.refresh();
+    AnxToast.show(l10n.bookshelfGroupSeriesDone(moving));
   }
 
   Future<void> _importBook() async {
@@ -612,7 +680,7 @@ class BookshelfPageState extends ConsumerState<BookshelfPage>
                   0.0,
                   0.0,
                 ),
-                items: [
+                items: <PopupMenuEntry<dynamic>>[
                   for (var sortField in SortFieldEnum.values)
                     PopupMenuItem(
                         child: Text(
@@ -654,7 +722,12 @@ class BookshelfPageState extends ConsumerState<BookshelfPage>
                         ],
                       );
                     }),
-                  )
+                  ),
+                  const PopupMenuDivider(),
+                  PopupMenuItem(
+                    onTap: _groupSeries,
+                    child: Text(L10n.of(context).bookshelfGroupSeries),
+                  ),
                 ],
               );
             }),

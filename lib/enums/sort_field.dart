@@ -7,6 +7,7 @@ enum SortFieldEnum {
   lastReadTime,
   progress,
   importTime,
+  series,
 }
 
 extension SortFieldExtension on SortFieldEnum {
@@ -17,6 +18,7 @@ extension SortFieldExtension on SortFieldEnum {
       SortFieldEnum.lastReadTime => L10n.of(context).bookshelfLastReadTime,
       SortFieldEnum.progress => L10n.of(context).bookshelfProgress,
       SortFieldEnum.importTime => L10n.of(context).bookshelfImportTime,
+      SortFieldEnum.series => L10n.of(context).bookshelfSeries,
     };
   }
 }

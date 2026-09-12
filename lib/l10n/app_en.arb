@@ -174,6 +174,22 @@
   "bookshelfLastReadTime": "Last Read Time",
   "bookshelfProgress": "Progress",
   "bookshelfImportTime": "Import Time",
+  "bookshelfSeries": "Series",
+  "bookshelfGroupSeries": "Put series in folders",
+  "bookshelfGroupSeriesNone": "No series to put in folders. Series come from EPUB metadata; books already in a folder stay where they are.",
+  "bookshelfGroupSeriesConfirm": "Move {books} books into {folders} folders?",
+  "@bookshelfGroupSeriesConfirm": {
+    "placeholders": {
+      "books": {"type": "int"},
+      "folders": {"type": "int"}
+    }
+  },
+  "bookshelfGroupSeriesDone": "Moved {books} books into folders",
+  "@bookshelfGroupSeriesDone": {
+    "placeholders": {
+      "books": {"type": "int"}
+    }
+  },
   "notesPageDetail": "Detail",
   "notesPageExport": "Export",
   "notesPageCopied": "Copied",

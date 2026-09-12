@@ -1,17 +1,28 @@
+import 'dart:async';
+import 'dart:isolate';
+
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/dao/book.dart';
+import 'package:anx_reader/dao/series.dart';
 import 'package:anx_reader/dao/tag.dart';
 import 'package:anx_reader/enums/sort_field.dart';
 import 'package:anx_reader/enums/sort_order.dart';
 import 'package:anx_reader/models/book.dart';
+import 'package:anx_reader/models/book_series.dart';
 import 'package:anx_reader/providers/tb_groups.dart';
 import 'package:anx_reader/providers/book_filters.dart';
 import 'package:anx_reader/providers/tags.dart'
     show kNoTagFilterId, tagSelectionProvider;
+import 'package:anx_reader/service/series/book_series.dart';
+import 'package:anx_reader/utils/log/common.dart';
 import 'package:lpinyin/lpinyin.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'book_list.g.dart';
+
+// Top level so the isolate closure carries only the paths, never the notifier.
+Future<Map<int, BookSeries?>> _readSeriesInBackground(Map<int, String> paths) =>
+    Isolate.run(() => readSeriesOfFiles(paths));
 
 @riverpod
 class BookList extends _$BookList {
@@ -53,6 +64,17 @@ class BookList extends _$BookList {
   }
 
   List<Book> sortBooks(List<Book> books) {
+    if (Prefs().sortField == SortFieldEnum.series) {
+      final descending = Prefs().sortOrder == SortOrderEnum.descending;
+      books.sort((a, b) {
+        final bySeries = compareBySeries(a.series, b.series,
+            compareNames: getChineseCompareResult, descending: descending);
+        return bySeries != 0
+            ? bySeries
+            : getChineseCompareResult(a.title, b.title);
+      });
+      return books;
+    }
     books.sort((a, b) {
       int compareResult;
       switch (Prefs().sortField) {
@@ -70,6 +92,10 @@ class BookList extends _$BookList {
           break;
         case SortFieldEnum.importTime:
           compareResult = a.createTime.compareTo(b.createTime);
+          break;
+        case SortFieldEnum.series:
+          // Sorted above: series order ignores the direction within a series.
+          compareResult = 0;
           break;
       }
       return Prefs().sortOrder == SortOrderEnum.ascending
@@ -100,12 +126,19 @@ class BookList extends _$BookList {
     final selectedTags = ref.watch(tagSelectionProvider);
 
     final books = await bookDao.selectNotDeleteBooks();
+    final series = await seriesDao.fetchAll();
+    for (final book in books) {
+      book.series = series[book.id];
+    }
+    unawaited(_readMissingSeries(books, series));
     final filteredByQuery = query == null || query.isEmpty
         ? books
         : books
             .where(
               (book) =>
-                  book.title.contains(query) || book.author.contains(query),
+                  book.title.contains(query) ||
+                  book.author.contains(query) ||
+                  (book.series?.name.contains(query) ?? false),
             )
             .toList();
 
@@ -134,6 +167,30 @@ class BookList extends _$BookList {
 
     final sortedBooks = sortBooks(filteredByTags);
     return groupBooks(sortedBooks);
+  }
+
+  static bool _readingSeries = false;
+
+  /// Reads the series of books not read before — new imports, and the whole
+  /// library the first time — off the UI isolate, then shows what it found.
+  Future<void> _readMissingSeries(
+      List<Book> books, Map<int, BookSeries?> known) async {
+    if (_readingSeries) return;
+    final paths = {
+      for (final book in books)
+        if (!known.containsKey(book.id)) book.id: book.fileFullPath,
+    };
+    if (paths.isEmpty) return;
+    _readingSeries = true;
+    try {
+      final found = await _readSeriesInBackground(paths);
+      await seriesDao.saveAll(found);
+      if (found.values.any((series) => series != null)) await refresh();
+    } catch (e) {
+      AnxLog.info('Series: reading book files failed: $e');
+    } finally {
+      _readingSeries = false;
+    }
   }
 
   @override
