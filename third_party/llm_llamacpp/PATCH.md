@@ -59,9 +59,27 @@ the iOS path only:
    reached the tool call. Callers that need thinking off have to ask the model
    themselves.
 
+7. **Every request reloaded the model and re-read the whole prompt.**
+   The inference isolate loaded the weights, created a context, applied the
+   chat template, prefilled every token and then freed all of it — per
+   request. With tools and a library digest the system turn alone is about
+   2,500 tokens, paid again on every question and every step of an agent loop.
+   The model and context are now kept in the isolate between requests, keyed on
+   the settings that shape them, and a prompt is put into memory reusing what it
+   can: a pure extension evaluates only its new tokens; a model whose memory can
+   drop a suffix keeps the shared prefix; otherwise a snapshot of the system
+   turn (`llama_state_seq_get_data`) is restored. The snapshot is the case that
+   matters for Qwen3.5, whose recurrent layers can be restored whole but not
+   rolled back to an arbitrary position. `LlamaCppChatRepository.dispose()` now
+   frees the cached model, since killing an isolate never frees native memory.
+   The state APIs were already in the bindings, so the ABI fingerprint is
+   unchanged.
+
 Patched files: `hook/build.dart`, `lib/src/loader/loader_flutter.dart`,
 `lib/src/inference_isolate_handler.dart`, `lib/src/inference_isolate.dart`,
-`lib/src/embedding_isolate.dart`. None of them is
+`lib/src/embedding_isolate.dart`, `lib/src/inference_token_generator.dart`,
+`lib/src/inference_isolate_messages.dart`, `lib/src/persistent_inference_isolate.dart`,
+`lib/src/llamacpp_chat_repository.dart`. None of them is
 `lib/src/bindings/llama_bindings.dart`, so the ABI fingerprint — and with it the
 prebuilt the build hook downloads — is unchanged.
 

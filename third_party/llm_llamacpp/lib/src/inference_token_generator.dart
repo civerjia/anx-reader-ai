@@ -13,6 +13,9 @@ int _generateTokens(
   List<String> stopTokens,
   int requestId,
   SendPort mainSendPort,
+  // Every token evaluated into the context, so the next request knows what
+  // memory holds and can extend it instead of starting over.
+  List<int> decoded,
 ) {
   const bufferSize = 256;
   var pieceBuffer = calloc<ffi.Char>(bufferSize);
@@ -129,6 +132,7 @@ int _generateTokens(
     if (bindings.llama_decode(ctx, batch) != 0) {
       break;
     }
+    decoded.add(newToken);
 
     generatedTokens++;
   }

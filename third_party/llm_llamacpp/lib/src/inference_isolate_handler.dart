@@ -6,122 +6,15 @@ void _handleInferenceRequest(
   ffi.DynamicLibrary lib,
   LlamaBindings bindings,
 ) {
-  ffi.Pointer<llama_adapter_lora>? loraAdapter;
-
   try {
-    final modelParams = bindings.llama_model_default_params();
-    modelParams.n_gpu_layers = request.nGpuLayers;
-
-    final modelPathPtr = request.modelPath.toNativeUtf8();
-    final model = bindings.llama_model_load_from_file(
-      modelPathPtr.cast(),
-      modelParams,
-    );
-    calloc.free(modelPathPtr);
-
-    if (model.address == 0) {
-      mainSendPort.send(
-        _IsolateResponse(
-          requestId: request.requestId,
-          payload: InferenceError(
-            'Failed to load model from ${request.modelPath}',
-          ),
-          isComplete: true,
-        ),
-      );
-      return;
-    }
-
-    if (request.loraPath != null) {
-      final loraPathPtr = request.loraPath!.toNativeUtf8();
-      loraAdapter = bindings.llama_adapter_lora_init(model, loraPathPtr.cast());
-      calloc.free(loraPathPtr);
-
-      if (loraAdapter.address == 0) {
-        bindings.llama_model_free(model);
-        mainSendPort.send(
-          _IsolateResponse(
-            requestId: request.requestId,
-            payload: InferenceError('Failed to load LoRA adapter'),
-            isComplete: true,
-          ),
-        );
-        return;
-      }
-    }
-
+    // The model and its context outlive the request: reloading 1.4 GB of
+    // weights, rebuilding Metal pipelines and prefilling the same system turn
+    // on every question was most of what a phone spent before the first token.
+    final session = _acquireSession(request, bindings, mainSendPort);
+    if (session == null) return;
+    final model = session.model;
+    final ctx = session.ctx;
     final vocab = bindings.llama_model_get_vocab(model);
-
-    // Log vocab/special-token diagnostics so we can quickly see whether the
-    // tokenizer is auto-prepending BOS, what BOS/EOS ids are, etc. These
-    // numbers are essential when the formatted chat prompt does not produce
-    // coherent output (a sign the chat template / special-token plumbing is
-    // mismatched against this particular model).
-    try {
-      final bosId = bindings.llama_vocab_bos(vocab);
-      final eosId = bindings.llama_vocab_eos(vocab);
-      final eotId = bindings.llama_vocab_eot(vocab);
-      final addBos = bindings.llama_vocab_get_add_bos(vocab);
-      final addEos = bindings.llama_vocab_get_add_eos(vocab);
-      final nTokensInVocab = bindings.llama_vocab_n_tokens(vocab);
-      // ignore: avoid_print
-      print(
-        '[inference_isolate_handler] Vocab: nTokens=$nTokensInVocab '
-        'bos=$bosId eos=$eosId eot=$eotId '
-        'add_bos_token=$addBos add_eos_token=$addEos',
-      );
-    } catch (e) {
-      // ignore: avoid_print
-      print(
-        '[inference_isolate_handler] Could not query vocab diagnostics: $e',
-      );
-    }
-
-    final ctxParams = bindings.llama_context_default_params();
-    ctxParams.n_ctx = request.contextSize;
-    ctxParams.n_batch = request.batchSize;
-    if (request.threads != null) {
-      ctxParams.n_threads = request.threads!;
-      ctxParams.n_threads_batch = request.threads!;
-    }
-
-    final ctx = bindings.llama_init_from_model(model, ctxParams);
-    if (ctx.address == 0) {
-      if (loraAdapter != null) {
-        bindings.llama_adapter_lora_free(loraAdapter);
-      }
-      bindings.llama_model_free(model);
-      mainSendPort.send(
-        _IsolateResponse(
-          requestId: request.requestId,
-          payload: InferenceError('Failed to create context'),
-          isComplete: true,
-        ),
-      );
-      return;
-    }
-
-    if (loraAdapter != null) {
-      final result = setSingleContextLoraAdapter(
-        bindings,
-        ctx,
-        loraAdapter,
-        request.loraScale,
-      );
-      if (result != 0) {
-        bindings.llama_free(ctx);
-        bindings.llama_adapter_lora_free(loraAdapter);
-        bindings.llama_model_free(model);
-        mainSendPort.send(
-          _IsolateResponse(
-            requestId: request.requestId,
-            payload: InferenceError('Failed to apply LoRA adapter'),
-            isComplete: true,
-          ),
-        );
-        return;
-      }
-    }
 
     try {
       String prompt;
@@ -291,24 +184,23 @@ void _handleInferenceRequest(
         print('[inference_isolate_handler] Could not preview tokens: $e');
       }
 
-      // llama_decode asserts that a single batch never exceeds n_batch, and on
-      // failure it aborts the whole process rather than returning an error. A
-      // prompt carrying tool schemas or a chapter of text is well past the default
-      // 512, so feed it in n_batch-sized pieces. llama_batch_get_one carries no
-      // positions: llama.cpp continues each piece from the KV cache, and only the
-      // final piece's last token produces the logits sampling needs.
-      final nBatch = request.batchSize > 0 ? request.batchSize : nTokens;
-      var batch = bindings.llama_batch_get_one(
+      final promptTokens = List<int>.of(tokensPtr.asTypedList(nTokens));
+      final evaluated = _evaluatePrompt(
+        bindings,
+        session,
         tokensPtr,
-        nTokens < nBatch ? nTokens : nBatch,
+        promptTokens,
+        _systemTurnTokens(
+          bindings,
+          model,
+          vocab,
+          request,
+          addSpecial: tokenizerAddSpecial,
+          prependBos: shouldManuallyPrependBos,
+        ),
+        request.batchSize,
       );
-      var decodeOk = bindings.llama_decode(ctx, batch) == 0;
-      for (var offset = nBatch; decodeOk && offset < nTokens; offset += nBatch) {
-        final count = nTokens - offset < nBatch ? nTokens - offset : nBatch;
-        batch = bindings.llama_batch_get_one(tokensPtr + offset, count);
-        decodeOk = bindings.llama_decode(ctx, batch) == 0;
-      }
-      if (!decodeOk) {
+      if (!evaluated) {
         calloc.free(tokensPtr);
         mainSendPort.send(
           _IsolateResponse(
@@ -347,6 +239,7 @@ void _handleInferenceRequest(
         effectiveStopTokens,
         request.requestId,
         mainSendPort,
+        session.tokens,
       );
 
       bindings.llama_sampler_free(sampler);
@@ -362,13 +255,11 @@ void _handleInferenceRequest(
           isComplete: true,
         ),
       );
-    } finally {
-      if (loraAdapter != null) {
-        clearContextLoraAdapters(bindings, ctx);
-        bindings.llama_adapter_lora_free(loraAdapter);
-      }
-      bindings.llama_free(ctx);
-      bindings.llama_model_free(model);
+    } catch (_) {
+      // What the context's memory holds after a failure is unknown, so the
+      // next request must not trust it.
+      session.tokens = [];
+      rethrow;
     }
   } catch (e) {
     mainSendPort.send(
@@ -379,4 +270,291 @@ void _handleInferenceRequest(
       ),
     );
   }
+}
+
+/// Shortest prefix worth a state snapshot. Restoring costs a copy of the KV
+/// cache and recurrent state; below this, prefilling again is as quick.
+const int _minReusableTokens = 128;
+
+/// A loaded model and context kept between requests, and what it holds.
+class _CachedSession {
+  _CachedSession(this.key, this.model, this.ctx, this.lora);
+
+  final String key;
+  final ffi.Pointer<llama_model> model;
+  final ffi.Pointer<llama_context> ctx;
+  final ffi.Pointer<llama_adapter_lora>? lora;
+
+  /// Tokens currently in sequence 0 of the context's memory, in order.
+  List<int> tokens = [];
+
+  /// A snapshot of sequence 0 taken after [checkpointTokens] were evaluated.
+  List<int>? checkpointTokens;
+  Uint8List? checkpointState;
+}
+
+_CachedSession? _session;
+
+String _sessionKey(_InferenceRequestMessage r) => [
+      r.modelPath,
+      r.nGpuLayers,
+      r.contextSize,
+      r.batchSize,
+      r.threads,
+      r.loraPath,
+      r.loraScale,
+    ].join('|');
+
+_CachedSession? _acquireSession(
+  _InferenceRequestMessage request,
+  LlamaBindings bindings,
+  SendPort mainSendPort,
+) {
+  final key = _sessionKey(request);
+  final existing = _session;
+  if (existing != null && existing.key == key) return existing;
+  _releaseSession(bindings);
+
+  void fail(String message) => mainSendPort.send(
+        _IsolateResponse(
+          requestId: request.requestId,
+          payload: InferenceError(message),
+          isComplete: true,
+        ),
+      );
+
+  final modelParams = bindings.llama_model_default_params();
+  modelParams.n_gpu_layers = request.nGpuLayers;
+  final modelPathPtr = request.modelPath.toNativeUtf8();
+  final model = bindings.llama_model_load_from_file(
+    modelPathPtr.cast(),
+    modelParams,
+  );
+  calloc.free(modelPathPtr);
+  if (model.address == 0) {
+    fail('Failed to load model from ${request.modelPath}');
+    return null;
+  }
+
+  ffi.Pointer<llama_adapter_lora>? lora;
+  if (request.loraPath != null) {
+    final loraPathPtr = request.loraPath!.toNativeUtf8();
+    lora = bindings.llama_adapter_lora_init(model, loraPathPtr.cast());
+    calloc.free(loraPathPtr);
+    if (lora.address == 0) {
+      bindings.llama_model_free(model);
+      fail('Failed to load LoRA adapter');
+      return null;
+    }
+  }
+
+  final ctxParams = bindings.llama_context_default_params();
+  ctxParams.n_ctx = request.contextSize;
+  ctxParams.n_batch = request.batchSize;
+  if (request.threads != null) {
+    ctxParams.n_threads = request.threads!;
+    ctxParams.n_threads_batch = request.threads!;
+  }
+  final ctx = bindings.llama_init_from_model(model, ctxParams);
+  if (ctx.address == 0) {
+    if (lora != null) bindings.llama_adapter_lora_free(lora);
+    bindings.llama_model_free(model);
+    fail('Failed to create context');
+    return null;
+  }
+
+  if (lora != null &&
+      setSingleContextLoraAdapter(bindings, ctx, lora, request.loraScale) != 0) {
+    bindings.llama_free(ctx);
+    bindings.llama_adapter_lora_free(lora);
+    bindings.llama_model_free(model);
+    fail('Failed to apply LoRA adapter');
+    return null;
+  }
+
+  // ignore: avoid_print
+  print('[prefix-cache] loaded ${request.modelPath} '
+      '(context ${request.contextSize}, batch ${request.batchSize})');
+  return _session = _CachedSession(key, model, ctx, lora);
+}
+
+/// Frees the cached model. Nothing else reclaims its memory: the isolate lives
+/// as long as the app, and killing an isolate never frees native allocations.
+void _releaseSession(LlamaBindings bindings) {
+  final s = _session;
+  if (s == null) return;
+  _session = null;
+  if (s.lora != null) {
+    clearContextLoraAdapters(bindings, s.ctx);
+    bindings.llama_adapter_lora_free(s.lora!);
+  }
+  bindings.llama_free(s.ctx);
+  bindings.llama_model_free(s.model);
+  // ignore: avoid_print
+  print('[prefix-cache] released ${s.key.split('|').first}');
+}
+
+int _commonPrefix(List<int> a, List<int> b) {
+  final n = a.length < b.length ? a.length : b.length;
+  var i = 0;
+  while (i < n && a[i] == b[i]) {
+    i++;
+  }
+  return i;
+}
+
+/// Evaluates tokens [from, to) in n_batch-sized pieces. llama_decode aborts
+/// the process — it does not fail — when one batch is larger than n_batch.
+bool _decodeRange(
+  LlamaBindings bindings,
+  ffi.Pointer<llama_context> ctx,
+  ffi.Pointer<ffi.Int32> tokens,
+  int from,
+  int to,
+  int batchSize,
+) {
+  final nBatch = batchSize > 0 ? batchSize : to - from;
+  for (var offset = from; offset < to; offset += nBatch) {
+    final count = to - offset < nBatch ? to - offset : nBatch;
+    final batch = bindings.llama_batch_get_one(tokens + offset, count);
+    if (bindings.llama_decode(ctx, batch) != 0) return false;
+  }
+  return true;
+}
+
+/// The tokens of the rendered system turn — system prompt plus any injected
+/// tool definitions — or null when the conversation has none.
+///
+/// This is what stays the same from one question to the next, so it is where
+/// a snapshot is taken. Rendering it alone and comparing tokens, rather than
+/// searching the text for a template marker, keeps this independent of the
+/// model family's chat format.
+List<int>? _systemTurnTokens(
+  LlamaBindings bindings,
+  ffi.Pointer<llama_model> model,
+  ffi.Pointer<llama_vocab> vocab,
+  _InferenceRequestMessage request, {
+  required bool addSpecial,
+  required bool prependBos,
+}) {
+  final messages = request.messages;
+  if (messages == null || messages.isEmpty || messages.first.role != 'system') {
+    return null;
+  }
+  final rendered = _applyNativeChatTemplate(
+    bindings,
+    model,
+    [messages.first],
+    toolSchemasJson: request.toolSchemasJson,
+  );
+  final ptr = rendered.toNativeUtf8();
+  final byteLen = ptr.length;
+  final capacity = byteLen + 256;
+  final buf = calloc<ffi.Int32>(capacity);
+  try {
+    final n = bindings.llama_tokenize(
+        vocab, ptr.cast(), byteLen, buf, capacity, addSpecial, true);
+    if (n <= 0) return null;
+    final tokens = List<int>.of(buf.asTypedList(n));
+    if (prependBos) {
+      final bos = bindings.llama_vocab_bos(vocab);
+      if (bos >= 0) tokens.insert(0, bos);
+    }
+    return tokens;
+  } finally {
+    calloc.free(ptr);
+    calloc.free(buf);
+  }
+}
+
+/// Puts [prompt] into the context's memory, reusing as much as possible.
+///
+/// In order: a prompt that only extends what memory holds evaluates just the
+/// new tokens; a model whose memory can drop a suffix keeps the shared prefix;
+/// otherwise the snapshot of the system turn is restored. Qwen3.5 lands on the
+/// last case — its recurrent layers cannot be rolled back to an arbitrary
+/// position, only restored whole — which is why a snapshot, not a truncation,
+/// is what makes a second question cheap.
+bool _evaluatePrompt(
+  LlamaBindings bindings,
+  _CachedSession s,
+  ffi.Pointer<ffi.Int32> tokensPtr,
+  List<int> prompt,
+  List<int>? systemTurn,
+  int batchSize,
+) {
+  final mem = bindings.llama_get_memory(s.ctx);
+  void log(String how, int reused) {
+    // ignore: avoid_print
+    print('[prefix-cache] $how: reused $reused of ${prompt.length} tokens, '
+        'evaluated ${prompt.length - reused}');
+  }
+
+  bool finish(int from, String how) {
+    log(how, from);
+    final ok = _decodeRange(
+        bindings, s.ctx, tokensPtr, from, prompt.length, batchSize);
+    s.tokens = ok ? List<int>.of(prompt) : [];
+    return ok;
+  }
+
+  final held = s.tokens;
+  if (held.isNotEmpty && prompt.length > held.length) {
+    if (_commonPrefix(prompt, held) == held.length) {
+      return finish(held.length, 'extension');
+    }
+  }
+
+  final shared = _commonPrefix(prompt, held);
+  if (shared >= _minReusableTokens &&
+      shared < prompt.length &&
+      bindings.llama_memory_seq_rm(mem, 0, shared, -1)) {
+    return finish(shared, 'trimmed');
+  }
+
+  var start = 0;
+  final cp = s.checkpointTokens;
+  final cpState = s.checkpointState;
+  final cpMatches = cp != null &&
+      cpState != null &&
+      prompt.length > cp.length &&
+      _commonPrefix(prompt, cp) == cp.length;
+  bindings.llama_memory_clear(mem, true);
+  if (cpMatches) {
+    final src = calloc<ffi.Uint8>(cpState.length);
+    src.asTypedList(cpState.length).setAll(0, cpState);
+    final read = bindings.llama_state_seq_set_data(
+        s.ctx, src, cpState.length, 0);
+    calloc.free(src);
+    if (read > 0) {
+      start = cp.length;
+    } else {
+      bindings.llama_memory_clear(mem, true);
+    }
+  }
+
+  final boundary = systemTurn == null
+      ? 0
+      : [_commonPrefix(prompt, systemTurn), prompt.length - 1]
+          .reduce((a, b) => a < b ? a : b);
+  if (start == 0 && boundary >= _minReusableTokens) {
+    if (!_decodeRange(bindings, s.ctx, tokensPtr, 0, boundary, batchSize)) {
+      s.tokens = [];
+      return false;
+    }
+    final size = bindings.llama_state_seq_get_size(s.ctx, 0);
+    final dst = calloc<ffi.Uint8>(size);
+    final written = bindings.llama_state_seq_get_data(s.ctx, dst, size, 0);
+    if (written > 0) {
+      s.checkpointState = Uint8List.fromList(dst.asTypedList(written));
+      s.checkpointTokens = prompt.sublist(0, boundary);
+      // ignore: avoid_print
+      print('[prefix-cache] snapshot of the system turn: $boundary tokens, '
+          '${(written / 1048576).toStringAsFixed(1)} MiB');
+    }
+    calloc.free(dst);
+    start = boundary;
+    return finish(start, 'snapshot taken');
+  }
+  return finish(start, cpMatches && start > 0 ? 'snapshot restored' : 'full');
 }

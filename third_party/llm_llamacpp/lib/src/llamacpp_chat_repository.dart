@@ -252,6 +252,11 @@ class LlamaCppChatRepository extends LLMChatRepository {
         _backendInitialized = false;
       }
     }
+    // A repository that names a model path runs in the persistent isolate,
+    // which now keeps that model loaded between requests; free it.
+    if (_modelPath != null) {
+      PersistentInferenceIsolate.instance.releaseCachedModel();
+    }
     // Clear references but don't dispose if we don't own the model
     _model = null;
     _bindings = null;

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
 import 'package:llm_llamacpp/src/backend_initializer.dart';
@@ -153,8 +154,17 @@ class PersistentInferenceIsolate {
     }
   }
 
+  /// Frees the model the helper isolate keeps loaded between requests.
+  ///
+  /// The next request loads it again. Without this the weights stay resident
+  /// for as long as the app runs.
+  void releaseCachedModel() {
+    _helperSendPort?.send(const _ReleaseSessionMessage());
+  }
+
   /// Shutdown the persistent isolate.
   void dispose() {
+    releaseCachedModel();
     _helperIsolate?.kill();
     _helperIsolate = null;
     _mainReceivePort?.close();
@@ -203,6 +213,8 @@ void _isolateMain(SendPort mainSendPort) {
   receivePort.listen((message) {
     if (message is _InferenceRequestMessage) {
       _handleInferenceRequest(message, mainSendPort, lib, bindings);
+    } else if (message is _ReleaseSessionMessage) {
+      _releaseSession(bindings);
     }
   });
 

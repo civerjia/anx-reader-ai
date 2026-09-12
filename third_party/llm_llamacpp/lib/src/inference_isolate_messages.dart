@@ -38,6 +38,11 @@ class _InferenceRequestMessage {
   final double loraScale;
 }
 
+/// Asks the helper isolate to free the model it keeps loaded between requests.
+class _ReleaseSessionMessage {
+  const _ReleaseSessionMessage();
+}
+
 /// Internal response wrapper for sending data back from the helper isolate.
 class _IsolateResponse {
   _IsolateResponse({
