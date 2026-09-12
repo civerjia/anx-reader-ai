@@ -116,6 +116,31 @@ Two things in the folder are picked up without any setting:
 4. 选择模型类型，指定模型文件夹；ZipVoice 还需要填参考音频和参考文本。
 5. 点击"获取语音列表"，选一个说话人（`kokoro-multi-lang-v1_0` 的 45 是中文女声）。
 
+## What the audio goes through
+
+Between the model and the speaker, each sentence gets three things, all of
+which came out of listening on a phone rather than reading numbers:
+
+- **Pauses trimmed.** Kokoro leaves gaps of nearly a second at commas: five
+  of them made up 40% of one nine second sentence. sherpa-onnx can shorten
+  them itself but calls anything below 0.01 amplitude silence, which is
+  where the tail of the word before the comma still sounds, so it eats word
+  endings. Anx trims with a threshold of 0.002, keeping 60 to 100ms more of
+  each word, and leaves gaps under 0.18s alone. **Pause length** controls
+  how much is kept.
+- **Loudness matched.** Every sentence is measured with ITU-R BS.1770 and
+  brought to -23 LUFS with a single gain, capped so peaks are never
+  reshaped. Both halves of that matter: average level is not loudness, and
+  a soft knee that squashes loud syllables while leaving quiet ones alone
+  is heard as the volume wandering inside a sentence. The target is low
+  enough that no sentence has to stop short of it, because a difference is
+  audible well under a decibel.
+- **Speed split.** The model handles up to 1.25x, where it still re-times
+  speech cleanly; past that it starts slurring and dropping the syllable
+  before a pause, so the rest comes from the player, which resamples with
+  the pitch kept. The rate slider reads as a plain multiplier: 2.0 is twice
+  normal, whatever backend is speaking.
+
 ## How it works
 
 - `lib/service/tts/sherpa/sherpa_model.dart` resolves a folder into concrete
@@ -203,6 +228,21 @@ flutter test integration_test/sherpa_tts_test.dart -d macos
 
 Building the macOS app locally also needs your own signing identity; the
 Debug configuration in `macos/Runner.xcodeproj` points at the upstream team.
+
+## Keeping ahead of playback
+
+Synthesis has to produce audio faster than it is consumed, so at a playback
+rate of P the RTF must stay below 1/P. Reading at 2x therefore needs RTF
+below 0.5; when it is not, the prefetch buffer drains and every sentence
+waits on the model, which is heard as a stutter every few sentences. The
+log shows the buffer emptying: `TTS gap 13ms ... buffer 4`, then 3, 2, 1, 0.
+
+Threads are the lever that works. On an iPhone 16 Pro reading a book,
+Kokoro on two threads holds RTF 0.38 cold and 1.41 once the phone is warm;
+the default is two threads short of the machine's core count, capped at
+four. CoreML is not the lever: it took 0.54 against the CPU's 0.38 on the
+same model, because Kokoro's input length changes with every sentence and
+CoreML only takes the part of the graph it can shape.
 
 ## Limitations
 
