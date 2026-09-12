@@ -804,7 +804,7 @@
   "settingsNarrateSherpaProvider": "運算後端",
   "settingsNarrateSherpaProviderDescription": "CPU 永遠可用。CoreML / NNAPI 會把模型中支援的部分交給神經網路加速器，可能更省電，但模型不匹配時反而更慢。可對比日誌中的 RTF。",
   "settingsNarrateSherpaNumThreads": "執行緒數",
-  "settingsNarrateSherpaNumThreadsDescription": "推論使用的 CPU 執行緒數，手機上建議 2。",
+  "settingsNarrateSherpaNumThreadsDescription": "合成使用的 CPU 執行緒數。2 條在常用語速下足以追上播放；越多越快，但機身會發熱，而發熱會觸發降頻。",
   "settingsNarrateSherpaSilenceScale": "停頓長度",
   "settingsNarrateSherpaSilenceScaleDescription": "逗號處的停頓保留多少。Kokoro 生成的停頓接近一秒，0.4 聽起來更緊湊。裁剪由 Anx 自己做，判定靜音的閾值遠低於字尾餘音，所以縮短停頓不會吃字。",
   "settingsNarrateSherpaPreferInt8": "優先使用量化模型",

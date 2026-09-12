@@ -853,7 +853,7 @@
   "settingsNarrateSherpaProvider": "Compute backend",
   "settingsNarrateSherpaProviderDescription": "CPU always works. CoreML and NNAPI hand the parts of the model they support to the neural accelerator, which can run cooler, but they can also be slower when the model does not map cleanly. Compare the RTF in the log.",
   "settingsNarrateSherpaNumThreads": "Threads",
-  "settingsNarrateSherpaNumThreadsDescription": "CPU threads used for inference. 2 is a good start on a phone.",
+  "settingsNarrateSherpaNumThreadsDescription": "CPU threads for synthesis. Two keep ahead of playback at normal reading speeds; more are faster but warm the phone, and a warm phone throttles.",
   "settingsNarrateSherpaSilenceScale": "Pause length",
   "settingsNarrateSherpaSilenceScaleDescription": "How much of the pauses at commas to keep. Kokoro leaves gaps of nearly a second; 0.4 keeps them brisk. Anx trims them itself, well below the level where a word's tail still sounds, so shortening them costs no syllables.",
   "settingsNarrateSherpaPreferInt8": "Prefer quantized models",

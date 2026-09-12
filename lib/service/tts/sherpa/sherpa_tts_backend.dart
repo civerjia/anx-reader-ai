@@ -46,10 +46,15 @@ class SherpaTtsProvider extends TtsServiceProvider {
   /// four. Since synthesis has to stay ahead of playback, and a listener
   /// speeding a book up needs RTF below 1/speed, half the cores is a much
   /// better default than two.
-  /// Leave two cores for the app and the system, and stop at four: past
-  /// that the phone gets warm for a gain the listener does not need.
-  static int get _defaultNumThreads =>
-      (Platform.numberOfProcessors - 2).clamp(2, 4);
+  /// Two threads.
+  ///
+  /// Measured on an iPhone 16 Pro, Kokoro on two threads holds RTF 0.38,
+  /// which keeps ahead of playback up to about 2.5x - past what most
+  /// listening needs. More threads are faster, but they heat the phone,
+  /// and a hot phone throttles: the same two threads measured 1.41 once it
+  /// was warm, which is what made narration stutter in the first place.
+  /// The slider is there for anyone who wants to trade heat for speed.
+  static const int _defaultNumThreads = 2;
 
   final SherpaTtsEngine _engine = SherpaTtsEngine();
 
