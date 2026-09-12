@@ -691,6 +691,20 @@
   "statisticsSwipeToDeleteHint": "Swipe left to delete reading records. You can undo within this page, but changes are permanent once you leave.",
   "bookNotesOperationsHint": "Long press to multi-select for delete or export, swipe left to edit or share notes",
   "searchBooksOrNotes": "Search books or notes",
+  "searchFullText": "In the text",
+  "searchFullTextStart": "Search the text of every book",
+  "searchFullTextHint": "Opens each book in turn, most recently read first. On a large shelf this takes a while.",
+  "searchFullTextProgress": "Searched {done} of {total} books · found in {hits}",
+  "@searchFullTextProgress": {
+    "placeholders": {
+      "done": {"type": "int"},
+      "total": {"type": "int"},
+      "hits": {"type": "int"}
+    }
+  },
+  "searchFullTextStop": "Stop",
+  "searchFullTextNone": "Not found in the text of any book",
+  "searchFullTextUnavailable": "Searching the text of every book is not available on Windows",
   "startTypingToSearch": "Start typing to search",
   "nothingHere": "Nothing here",
   "books": "Books",

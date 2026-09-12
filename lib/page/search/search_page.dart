@@ -10,6 +10,7 @@ import 'package:anx_reader/utils/error_handler.dart';
 import 'package:anx_reader/widgets/book_notes/book_note_tile.dart';
 import 'package:anx_reader/widgets/bookshelf/book_item.dart';
 import 'package:anx_reader/widgets/common/container/filled_container.dart';
+import 'package:anx_reader/widgets/search/library_content_search_section.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -120,6 +121,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       title: L10n.of(context).notes,
                       empty: result.noteGroups.isEmpty,
                       child: _SearchNoteResult(group: result.noteGroups)),
+                  _SearchResult(
+                      title: L10n.of(context).searchFullText,
+                      empty: false,
+                      child: LibraryContentSearchSection(query: query)),
                 ],
               ),
             ),
