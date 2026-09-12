@@ -193,10 +193,14 @@ class SystemTts extends BaseTts {
       _currentVoiceText = content;
     }
     if (_currentVoiceText == null) {
-      // getHereFunction() is initTts() — it initialises the JS TTS position
-      // but returns void.  Fetch the actual first sentence via getNextTextFunction.
-      await getHereFunction();
-      _currentVoiceText = await getNextTextFunction();
+      // getHereFunction() positions the JS narration cursor. Starting from the
+      // page it returns nothing and the first sentence is the next one; a
+      // resumed start returns the sentence it landed on, which is the one to
+      // read — taking the next would skip it.
+      final here = await getHereFunction();
+      _currentVoiceText = here is String && here.isNotEmpty
+          ? here
+          : await getNextTextFunction();
     }
 
     // Guard: if still null or empty (e.g. WebView not ready), abort.

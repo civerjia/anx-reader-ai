@@ -1,3 +1,4 @@
+import 'package:anx_reader/service/tts/tts_resume.dart';
 import 'package:anx_reader/models/opds_catalog.dart';
 import 'dart:convert';
 import 'dart:core';
@@ -1005,6 +1006,33 @@ class Prefs extends ChangeNotifier {
   }
 
   // User prompts - simple read/write methods
+  static const String _ttsResumeKey = 'ttsResumeCfis';
+
+  Map<String, String> get _ttsResumePoints {
+    final raw = prefs.getString(_ttsResumeKey);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      return Map<String, String>.from(jsonDecode(raw) as Map);
+    } catch (_) {
+      return {};
+    }
+  }
+
+  void setTtsResumeCfi(int bookId, String cfi) {
+    prefs.setString(
+      _ttsResumeKey,
+      jsonEncode(withResumePoint(_ttsResumePoints, bookId, cfi)),
+    );
+  }
+
+  /// The sentence narration stopped on in [bookId], removed as it is read.
+  String? takeTtsResumeCfi(int bookId) {
+    final points = _ttsResumePoints;
+    final cfi = points.remove('$bookId');
+    if (cfi != null) prefs.setString(_ttsResumeKey, jsonEncode(points));
+    return cfi;
+  }
+
   static const String _opdsCatalogsKey = 'opdsCatalogs';
 
   /// OPDS catalogs the reader has added, in the order they were added.

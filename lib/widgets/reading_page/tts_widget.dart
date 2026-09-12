@@ -31,7 +31,7 @@ class _TtsWidgetState extends State<TtsWidget> {
     if (TtsHandler().ttsStateNotifier.value != TtsStateEnum.playing) {
       TtsHandler()
           .init(
-        widget.epubPlayerKey.currentState!.initTts,
+        widget.epubPlayerKey.currentState!.initTtsResuming,
         widget.epubPlayerKey.currentState!.ttsNext,
         widget.epubPlayerKey.currentState!.ttsPrev,
       )

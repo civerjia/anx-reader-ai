@@ -1938,6 +1938,34 @@ window.ttsCollectDetails = (count = 1, includeCurrent = false, offset = 1) => {
   return reader.view.tts.collectDetails(count, { includeCurrent, offset })
 }
 
+// Put the narration cursor on a saved sentence, but only while that sentence
+// is still on the visible page: a reader who has turned elsewhere since meant
+// to start from there. Returns the sentence text, or null to start from the page.
+// comparePoint is used because it states its direction plainly; the
+// compareBoundaryPoints constants are easy to read backwards.
+window.ttsResumeAt = async (cfi) => {
+  initTts()
+  if (!cfi) return null
+  try {
+    const page = reader.view.lastLocation?.range
+    const resolved = await reader.view.resolveNavigation(cfi)
+    if (!page || !resolved?.anchor) return null
+    const contents = reader.view.renderer.getContents()
+    const content = contents.find(c => c.index === resolved.index)
+    if (!content?.doc) return null
+    const sentence = resolved.anchor(content.doc)
+    if (!sentence?.startContainer) return null
+    const start = page.comparePoint(sentence.startContainer, sentence.startOffset)
+    const end = page.comparePoint(sentence.endContainer, sentence.endOffset)
+    const onPage = start === 0 || end === 0 || (start < 0 && end > 0)
+    if (!onPage) return null
+    return reader.view.tts.highlightCfi(cfi)?.text ?? null
+  } catch (e) {
+    // A different section's document makes comparePoint throw: not on this page.
+    return null
+  }
+}
+
 window.ttsHighlightByCfi = cfi => {
   initTts()
   return reader.view.tts.highlightCfi(cfi)

@@ -155,6 +155,9 @@ class TtsHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   @override
   Future<void> pause() async {
+    if (tts.ttsStateNotifier.value == TtsStateEnum.playing) {
+      await epubPlayerKey.currentState?.rememberTtsPosition();
+    }
     playbackState.add(playbackState.value.copyWith(
       controls: _pausedControls,
       queueIndex: queue.value.isNotEmpty ? 0 : null,
@@ -168,6 +171,11 @@ class TtsHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   @override
   Future<void> stop() async {
+    // Only a narration that was running has a place worth returning to; asking
+    // an idle reader for its current sentence would record the chapter start.
+    if (tts.ttsStateNotifier.value != TtsStateEnum.stopped) {
+      await epubPlayerKey.currentState?.rememberTtsPosition();
+    }
     playbackState.add(playbackState.value.copyWith(
       controls: [],
       queueIndex: null,

@@ -351,6 +351,36 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     }
   }
 
+  /// Starts narration on the sentence it last stopped on when that sentence
+  /// is still on this page, and from the page otherwise. Returns the sentence
+  /// it resumed on, so narration starts with it rather than the one after.
+  Future<String?> initTtsResuming() async {
+    final saved = Prefs().takeTtsResumeCfi(widget.book.id);
+    if (saved != null && saved.isNotEmpty) {
+      try {
+        final result = await webViewController.callAsyncJavaScript(
+          functionBody: 'return await ttsResumeAt(${jsonEncode(saved)})',
+        );
+        final text = result?.value;
+        if (text is String && text.isNotEmpty) return text;
+      } catch (_) {
+        // Fall through to starting from the page.
+      }
+    }
+    await initTts();
+    return null;
+  }
+
+  /// Saves the sentence being narrated, for [initTtsResuming] to return to.
+  Future<void> rememberTtsPosition() async {
+    try {
+      final cfi = (await ttsCurrentDetail())?.cfi;
+      if (cfi != null && cfi.isNotEmpty) {
+        Prefs().setTtsResumeCfi(widget.book.id, cfi);
+      }
+    } catch (_) {}
+  }
+
   void ttsStop() => webViewController.evaluateJavascript(source: "ttsStop()");
 
   Future<String> ttsNext() async => (await webViewController
