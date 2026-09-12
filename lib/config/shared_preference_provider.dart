@@ -507,6 +507,15 @@ class Prefs extends ChangeNotifier {
     return 'system';
   }
 
+  /// Measured speed calibration for one local TTS voice, 0 when unmeasured.
+  double getTtsPaceFactor(String voiceKey) {
+    return prefs.getDouble('ttsPaceFactor_$voiceKey') ?? 0;
+  }
+
+  void setTtsPaceFactor(String voiceKey, double factor) {
+    prefs.setDouble('ttsPaceFactor_$voiceKey', factor);
+  }
+
   Map<String, dynamic> getOnlineTtsConfig(String serviceId) {
     String? json = prefs.getString('onlineTtsConfig_$serviceId');
     if (json == null) return {};

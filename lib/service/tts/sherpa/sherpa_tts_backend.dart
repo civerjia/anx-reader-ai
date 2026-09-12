@@ -7,6 +7,8 @@ import 'package:anx_reader/service/tts/models/tts_voice.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_model.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_model_roots.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_onnx_meta.dart';
+import 'package:anx_reader/service/tts/sherpa/sherpa_pace.dart';
+import 'package:anx_reader/service/tts/sherpa/sherpa_voice_catalog.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_tts_engine.dart';
 import 'package:anx_reader/service/tts/tts_service.dart';
 import 'package:anx_reader/service/tts/tts_service_provider.dart';
@@ -121,6 +123,24 @@ class SherpaTtsProvider extends TtsServiceProvider {
         defaultValue: _defaultNumThreads,
       ),
       ConfigItem(
+        key: 'autoSpeed',
+        label: L10n.of(context).settingsNarrateSherpaAutoSpeed,
+        description: L10n.of(context).settingsNarrateSherpaAutoSpeedDescription,
+        type: ConfigItemType.toggle,
+        defaultValue: true,
+      ),
+      ConfigItem(
+        key: 'speedFactor',
+        label: L10n.of(context).settingsNarrateSherpaSpeedFactor,
+        description:
+            L10n.of(context).settingsNarrateSherpaSpeedFactorDescription,
+        type: ConfigItemType.range,
+        defaultValue: 1.0,
+        min: 0.5,
+        max: 2.0,
+        step: 0.05,
+      ),
+      ConfigItem(
         key: 'preferInt8',
         label: L10n.of(context).settingsNarrateSherpaPreferInt8,
         description:
@@ -149,6 +169,8 @@ class SherpaTtsProvider extends TtsServiceProvider {
       'referenceText': config['referenceText'] ?? '',
       'numSteps': config['numSteps'] ?? _defaultNumSteps,
       'numThreads': config['numThreads'] ?? _defaultNumThreads,
+      'autoSpeed': config['autoSpeed'] ?? true,
+      'speedFactor': config['speedFactor'] ?? 1.0,
       'preferInt8': config['preferInt8'] ?? true,
       'lexicon': config['lexicon'] ?? '',
     };
@@ -228,22 +250,77 @@ class SherpaTtsProvider extends TtsServiceProvider {
     if (trimmed.isEmpty) return Uint8List(0);
 
     final spec = await resolveSpec();
+    final sid = _speakerId(voice);
+    final speed = SherpaPace.speed(rate: rate, factor: _paceFactor(spec, sid));
+
     final audio = await _engine.generate(
       spec: spec,
       text: trimmed,
-      speed: _speedFromRate(rate),
-      sid: _speakerId(voice),
+      speed: speed,
+      sid: sid,
     );
 
     if (audio.samples.isEmpty) return Uint8List(0);
+    _measurePace(spec, sid, trimmed, audio, speed);
     return audio.toWav();
   }
 
-  /// Anx exposes rate as a 0..2 multiplier; sherpa-onnx wants a speed factor
-  /// where 1.0 is the model's natural pace.
-  double _speedFromRate(double rate) {
-    if (rate <= 0.05) return 1.0;
-    return rate.clamp(0.2, 3.0);
+  // ============ Speed calibration ============
+
+  final Map<String, double> _paceSyllables = {};
+  final Map<String, double> _paceSeconds = {};
+
+  /// Speed calibration for the voice about to speak: measured when automatic
+  /// calibration is on, otherwise the baseline from the settings.
+  double _paceFactor(SherpaModelSpec spec, int sid) {
+    final config = getConfig();
+    if (!_asBool(config['autoSpeed'], true)) {
+      final manual = _asDouble(config['speedFactor'], 1.0);
+      return manual.clamp(SherpaPace.minFactor, SherpaPace.maxFactor);
+    }
+    final learned = Prefs().getTtsPaceFactor(spec.paceKey(sid));
+    return learned > 0 ? learned : 1.0;
+  }
+
+  /// Learn how fast this voice actually talks, from the audio it produced.
+  ///
+  /// Every model has its own natural pace, so the same rate setting sounds
+  /// slow on one and rushed on another. A sentence or two is enough, after
+  /// which the factor is stored and reused.
+  void _measurePace(SherpaModelSpec spec, int sid, String text,
+      SherpaAudio audio, double speed) {
+    final config = getConfig();
+    if (!_asBool(config['autoSpeed'], true)) return;
+
+    final key = spec.paceKey(sid);
+    if (Prefs().getTtsPaceFactor(key) > 0) return;
+    if (audio.sampleRate <= 0) return;
+
+    final seconds = audio.samples.length / audio.sampleRate;
+    if (seconds <= 0) return;
+
+    _paceSyllables[key] =
+        (_paceSyllables[key] ?? 0) + SherpaPace.syllables(text);
+    // What the model would have produced at speed 1.0.
+    _paceSeconds[key] = (_paceSeconds[key] ?? 0) + seconds * speed;
+
+    final factor = SherpaPace.factorFrom(
+      syllables: _paceSyllables[key]!,
+      naturalSeconds: _paceSeconds[key]!,
+    );
+    if (factor == null) return;
+
+    Prefs().setTtsPaceFactor(key, factor);
+    _paceSyllables.remove(key);
+    _paceSeconds.remove(key);
+    AnxLog.info('SherpaTts calibrated $key to speed x'
+        '${factor.toStringAsFixed(2)}');
+  }
+
+  double _asDouble(dynamic value, double fallback) {
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? fallback;
   }
 
   int _speakerId(String? voiceOverride) {
@@ -288,12 +365,13 @@ class SherpaTtsProvider extends TtsServiceProvider {
         locale: spec.type.label,
       );
     }
+    final grade = SherpaVoiceCatalog.grade(name);
     return TtsVoice(
       shortName: '$sid',
       name: name,
       locale: _localeOf(name) ?? spec.type.label,
       gender: _genderOf(name),
-      description: '#$sid',
+      description: grade == null ? '#$sid' : '#$sid · grade $grade',
     );
   }
 
