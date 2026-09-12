@@ -173,7 +173,8 @@ class SherpaTtsEngine {
 
       await completer.future;
       AnxLog.info(
-          'SherpaTts loaded ${spec.type.label} from ${spec.dir} '
+          'SherpaTts loaded ${spec.type.label} from ${spec.dir} on '
+          '${spec.provider} with ${spec.numThreads} threads '
           '(speakers: $_numSpeakers, sampleRate: $_sampleRate)');
     } catch (e) {
       if (identical(_loading, completer)) _loading = null;

@@ -36,7 +36,13 @@ class SherpaTtsProvider extends TtsServiceProvider {
   /// only, and falls back to the CPU with a log line everywhere else.
   static String get _defaultProvider => Platform.isIOS ? 'coreml' : 'cpu';
   static const int _defaultNumSteps = 4;
-  static const int _defaultNumThreads = 2;
+  /// Threads scale the model almost linearly: measured on one machine with
+  /// the same sentence, RTF went 0.53 at one thread, 0.29 at two, 0.165 at
+  /// four. Since synthesis has to stay ahead of playback, and a listener
+  /// speeding a book up needs RTF below 1/speed, half the cores is a much
+  /// better default than two.
+  static int get _defaultNumThreads =>
+      (Platform.numberOfProcessors / 2).floor().clamp(2, 6);
 
   final SherpaTtsEngine _engine = SherpaTtsEngine();
 
