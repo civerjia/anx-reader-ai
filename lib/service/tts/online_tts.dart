@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/page/reading_page.dart';
@@ -423,11 +424,22 @@ class OnlineTts extends BaseTts {
         final source =
             BytesSource(segment.audio!, mimeType: backend.audioMimeType);
 
+        final playStart = DateTime.now();
         try {
           await audioPlayer.play(source);
           await _playbackCompleter!.future;
         } catch (e) {
           AnxLog.severe('Playback error: $e');
+        }
+
+        // A clip that stops well before its own length means the player cut
+        // the end of the sentence off, which is otherwise hard to tell from
+        // a model that simply stopped talking.
+        final playedMs = DateTime.now().difference(playStart).inMilliseconds;
+        final clipMs = _waveDurationMs(segment.audio!);
+        if (clipMs > 0 && playedMs < clipMs - 250) {
+          AnxLog.warning('TTS playback ended early: ${playedMs}ms of ${clipMs}ms'
+              ' - "${segment.sentence.text}"');
         }
 
         _playbackCompleter = null;
@@ -449,6 +461,17 @@ class OnlineTts extends BaseTts {
       _playerCompleter?.complete();
       _playerCompleter = null;
     }
+  }
+
+  /// Length of a RIFF clip in milliseconds, or 0 when it is not one.
+  int _waveDurationMs(Uint8List bytes) {
+    if (bytes.length < 44) return 0;
+    final data = bytes.buffer.asByteData(bytes.offsetInBytes, bytes.lengthInBytes);
+    if (data.getUint32(0, Endian.big) != 0x52494646) return 0; // 'RIFF'
+    final sampleRate = data.getUint32(24, Endian.little);
+    final byteRate = data.getUint32(28, Endian.little);
+    if (sampleRate == 0 || byteRate == 0) return 0;
+    return ((bytes.length - 44) * 1000 / byteRate).round();
   }
 
   Future<void> _highlightSegment(TtsSegment segment) async {

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:anx_reader/service/tts/sherpa/sherpa_model.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_onnx_meta.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_pace.dart';
+import 'package:anx_reader/service/tts/sherpa/sherpa_text.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_wav.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -396,6 +397,28 @@ void main() {
           SherpaPace.minFactor);
       expect(SherpaPace.factorFrom(syllables: 30, naturalSeconds: 100),
           SherpaPace.maxFactor);
+    });
+  });
+
+  group('SherpaText', () {
+    test('says a percentage the Chinese way round', () {
+      expect(SherpaText.normalize('增长了 1% 左右'), '增长了 百分之1 左右');
+      expect(SherpaText.normalize('about 1% higher'), 'about 1 percent higher');
+    });
+
+    test('reads symbols that are not in the lexicon', () {
+      expect(SherpaText.normalize('今天 25℃ 左右'), '今天 25摄氏度 左右');
+      expect(SherpaText.normalize('A & B 的对比'), 'A 和 B 的对比');
+    });
+
+    test('turns a dash between numbers into a range', () {
+      expect(SherpaText.normalize('大约 3~5 天'), '大约 3到5 天');
+      expect(SherpaText.normalize('takes 3~5 days'), 'takes 3 to 5 days');
+    });
+
+    test('leaves ordinary text alone', () {
+      const plain = '夜色渐深，他合上书走到窗前。';
+      expect(SherpaText.normalize(plain), plain);
     });
   });
 

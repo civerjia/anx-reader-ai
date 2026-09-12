@@ -8,6 +8,7 @@ import 'package:anx_reader/service/tts/sherpa/sherpa_model.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_model_roots.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_onnx_meta.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_pace.dart';
+import 'package:anx_reader/service/tts/sherpa/sherpa_text.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_voice_catalog.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_tts_engine.dart';
 import 'package:anx_reader/service/tts/tts_service.dart';
@@ -395,7 +396,7 @@ class SherpaTtsProvider extends TtsServiceProvider {
   @override
   Future<Uint8List> speak(
       String text, String? voice, double rate, double pitch) async {
-    final trimmed = text.trim();
+    final trimmed = SherpaText.normalize(text.trim());
     if (trimmed.isEmpty) return Uint8List(0);
 
     final spec = await resolveSpec();
@@ -411,7 +412,10 @@ class SherpaTtsProvider extends TtsServiceProvider {
     );
     watch.stop();
 
-    if (audio.samples.isEmpty) return Uint8List(0);
+    if (audio.samples.isEmpty) {
+      AnxLog.warning('SherpaTts produced no audio for: "$trimmed"');
+      return Uint8List(0);
+    }
     _measurePace(spec, sid, trimmed, audio, speed, watch.elapsedMilliseconds);
     return audio.toWav();
   }
