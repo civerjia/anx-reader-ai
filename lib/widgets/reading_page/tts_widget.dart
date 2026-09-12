@@ -99,8 +99,8 @@ class _TtsWidgetState extends State<TtsWidget> {
                   },
                   min: 0.5,
                   max: 2.0,
-                  divisions: 15,
-                  label: TtsHandler().pitch.toStringAsFixed(1),
+                  divisions: 30,
+                  label: TtsHandler().pitch.toStringAsFixed(2),
                 ),
               ),
             ],
@@ -113,16 +113,19 @@ class _TtsWidgetState extends State<TtsWidget> {
               Text(L10n.of(context).ttsRate),
               Expanded(
                 child: Slider(
-                  value: TtsHandler().rate,
+                  value: TtsHandler().rate.clamp(0.25, 2.0),
                   onChanged: (newRate) {
                     setState(() {
                       TtsHandler().rate = newRate;
                     });
                   },
-                  min: 0.0,
+                  // 0.05 steps: a fifth of the old one, because a step used
+                  // to change the pace by a fifth. Nothing below 0.25 is
+                  // listenable, and zero was silence.
+                  min: 0.25,
                   max: 2.0,
-                  divisions: 10,
-                  label: TtsHandler().rate.toStringAsFixed(1),
+                  divisions: 35,
+                  label: TtsHandler().rate.toStringAsFixed(2),
                 ),
               ),
             ],
