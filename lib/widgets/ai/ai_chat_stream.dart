@@ -714,12 +714,12 @@ class AiChatStreamState extends ConsumerState<AiChatStream> {
                           : currentProvider.title;
                     }()
                   : '',
-              style: Theme.of(context).textTheme.bodySmall,
+              style: Theme.of(context).textTheme.titleSmall,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 4),
-          const Icon(Icons.expand_more, size: 16),
+          const Icon(Icons.expand_more, size: 18),
         ],
       ),
     );
@@ -765,21 +765,14 @@ class AiChatStreamState extends ConsumerState<AiChatStream> {
               onSubmitted: (_) => _sendMessage(),
             ),
             SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Flexible(child: aiService),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(_isStreaming ? Icons.stop : Icons.send, size: 18),
-                  onPressed: _isStreaming ? _cancelStreaming : _sendMessage,
-                ),
-              ],
+            // Only send lives down here. The provider picker sat beside it and
+            // a thumb reaching for send kept opening it; it is in the app bar.
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                icon: Icon(_isStreaming ? Icons.stop : Icons.send, size: 18),
+                onPressed: _isStreaming ? _cancelStreaming : _sendMessage,
+              ),
             ),
           ],
         ),
@@ -872,7 +865,14 @@ class AiChatStreamState extends ConsumerState<AiChatStream> {
       key: _scaffoldKey,
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: Text(L10n.of(context).aiChat),
+        // The title is the provider and model in use, and tapping it switches
+        // provider — away from the input row, where it was mis-tapped.
+        title: currentProvider == null
+            ? Text(L10n.of(context).aiChat)
+            : DefaultTextStyle.merge(
+                style: Theme.of(context).textTheme.titleSmall,
+                child: aiService,
+              ),
         leading: IconButton(
           icon: const Icon(Icons.insert_drive_file),
           tooltip: L10n.of(context).history,
