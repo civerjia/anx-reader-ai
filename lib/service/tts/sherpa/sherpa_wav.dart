@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:anx_reader/service/tts/sherpa/sherpa_loudness.dart';
+
 /// Mono PCM samples decoded from a wave file.
 class WavData {
   const WavData({required this.samples, required this.sampleRate});
@@ -198,14 +200,12 @@ Float32List tightenPauses(
 Float32List normalizeLoudness(
   Float32List samples,
   int sampleRate, {
-  double targetLevel = 0.09,
-  double maxGain = 10.0,
+  double targetLufs = SherpaLoudness.targetLufs,
+  double maxGain = 12.0,
   double ceiling = 0.95,
 }) {
-  final level = gatedLevel(samples, sampleRate);
-  if (level <= 0) return samples;
-
-  final gain = (targetLevel / level).clamp(1 / maxGain, maxGain);
+  final gain = SherpaLoudness.gainFor(samples, sampleRate,
+      target: targetLufs, maxGain: maxGain);
   if ((gain - 1).abs() < 0.02) return samples;
 
   final knee = ceiling * 0.8;
