@@ -493,6 +493,47 @@ const annotationLayerBuilderCSS = `
 }
 `
 
+// The printed area of a rendered page, so its blank margins can be trimmed and
+// the text fill the screen. Opposite margins are trimmed by the smaller of the
+// two: a chapter's half-empty last page keeps the same scale as the others
+// instead of being blown up. Null when nothing sensible was found.
+const findContentBox = canvas => {
+    const { width, height } = canvas
+    const step = Math.max(1, Math.round(width / 300))
+    const small = document.createElement('canvas')
+    small.width = Math.ceil(width / step)
+    small.height = Math.ceil(height / step)
+    const context = small.getContext('2d', { willReadFrequently: true })
+    context.drawImage(canvas, 0, 0, small.width, small.height)
+    const { data } = context.getImageData(0, 0, small.width, small.height)
+    // The paper is whatever colour the corner is: white, cream or scanned grey.
+    const paper = [data[0], data[1], data[2], data[3]]
+    let left = small.width, right = -1, top = small.height, bottom = -1
+    for (let y = 0; y < small.height; y++) {
+        for (let x = 0; x < small.width; x++) {
+            const i = (y * small.width + x) * 4
+            const difference = Math.abs(data[i] - paper[0])
+                + Math.abs(data[i + 1] - paper[1])
+                + Math.abs(data[i + 2] - paper[2])
+                + Math.abs(data[i + 3] - paper[3])
+            if (difference > 60) {
+                if (x < left) left = x
+                if (x > right) right = x
+                if (y < top) top = y
+                if (y > bottom) bottom = y
+            }
+        }
+    }
+    if (right < 0) return null
+    const pad = Math.round(small.width * 0.03)
+    const x = Math.max(0, Math.min(left, small.width - 1 - right) - pad) * step
+    const y = Math.max(0, Math.min(top, small.height - 1 - bottom) - pad) * step
+    const box = { x, y, width: width - 2 * x, height: height - 2 * y }
+    if (box.width < width * 0.5 || box.height < height * 0.5) return null
+    if (x < width * 0.01 && y < height * 0.01) return null
+    return box
+}
+
 const renderPage = async (page, getImageBlob) => {
 
     const naturalPdfSize = page.getViewport({ scale: 1 })
@@ -537,10 +578,31 @@ const renderPage = async (page, getImageBlob) => {
         },
     })
 
+    const crop = findContentBox(canvas)
+    // Cropping moves the layers, not the markup, so CFIs of highlights on the
+    // page are the same with or without it.
+    const cropStyle = crop ? `
+        html, body {
+            width: ${crop.width}px;
+            height: ${crop.height}px;
+            overflow: hidden;
+        }
+        body > img, body > .textLayer, body > .annotationLayer {
+            position: absolute;
+            left: ${-crop.x}px;
+            top: ${-crop.y}px;
+            right: auto;
+            bottom: auto;
+            width: ${canvas.width}px;
+            height: ${canvas.height}px;
+        }` : ''
+    const cropViewport = crop
+        ? `<meta name="viewport" content="width=${crop.width}, height=${crop.height}">` : ''
     const src = URL.createObjectURL(blob)
     const url = URL.createObjectURL(new Blob([`
         <!DOCTYPE html>
         <meta charset="utf-8">
+        ${cropViewport}
         <style>
         :root {
             --scale-factor: ${scale};
@@ -551,6 +613,7 @@ const renderPage = async (page, getImageBlob) => {
         }
         ${textLayerBuilderCSS}
         ${annotationLayerBuilderCSS}
+        ${cropStyle}
         </style>
         <img src="${src}">
         ${container.outerHTML}

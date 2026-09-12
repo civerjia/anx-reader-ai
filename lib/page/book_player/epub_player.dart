@@ -1213,8 +1213,9 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     super.dispose();
   }
 
-  InAppWebViewSettings initialSettings = InAppWebViewSettings(
-    supportZoom: false,
+  // PDF pages are fixed; pinching in is the only way to read small print.
+  late final InAppWebViewSettings initialSettings = InAppWebViewSettings(
+    supportZoom: widget.book.filePath.toLowerCase().endsWith('.pdf'),
     transparentBackground: true,
     isInspectable: kDebugMode,
     useHybridComposition: true,

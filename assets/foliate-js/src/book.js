@@ -1141,8 +1141,8 @@ class Reader {
     this.setView(this.view)
     await this.view.init({ lastLocation: cfi })
 
-    // set html bg color to grey 
-    document.documentElement.style.backgroundColor = 'grey'
+    // Around fixed-layout pages, show the reading theme rather than grey.
+    document.documentElement.style.backgroundColor = style.backgroundColor ?? 'grey'
   }
 
   setView(view) {
@@ -1380,6 +1380,9 @@ class Reader {
     if (lastClearedAt && Date.now() - lastClearedAt < 200) {
       return
     }
+
+    // While a page is pinched in, a tap is for looking around it, not turning.
+    if ((globalThis.visualViewport?.scale ?? 1) > 1.05) return
 
     const coordinatesX = x / window.innerWidth
     const coordinatesY = y / window.innerHeight
