@@ -496,12 +496,34 @@ class SherpaTtsProvider extends TtsServiceProvider {
     );
     watch.stop();
 
+    if (spec.debug) _dumpForInspection(trimmed, audio);
     if (audio.samples.isEmpty) {
       AnxLog.warning('SherpaTts produced no audio for: "$trimmed"');
       return Uint8List(0);
     }
     _measurePace(spec, sid, trimmed, audio, speed, watch.elapsedMilliseconds);
     return audio.toWav();
+  }
+
+  /// Write the first few sentences as they will be played, so the audio
+  /// can be pulled off the device and measured with something other than
+  /// the code that produced it.
+  static int _dumped = 0;
+
+  Future<void> _dumpForInspection(String text, SherpaAudio audio) async {
+    if (_dumped >= 8) return;
+    final index = _dumped++;
+    try {
+      final roots = await SherpaModelRoots.all();
+      if (roots.isEmpty) return;
+      final dir = Directory(p.join(p.dirname(roots.first), 'tts_debug'));
+      if (!dir.existsSync()) dir.createSync(recursive: true);
+      final file = File(p.join(dir.path, 'sentence_$index.wav'));
+      await file.writeAsBytes(audio.toWav());
+      AnxLog.info('SherpaTts wrote ${file.path} for "${text.substring(0, text.length.clamp(0, 16))}"');
+    } catch (e) {
+      AnxLog.warning('Could not write the debug clip: $e');
+    }
   }
 
   // ============ Speed calibration ============
