@@ -116,14 +116,28 @@ TTS; changing any model setting reloads it on the next sentence.
 
 ## Performance notes
 
-Measured with `kokoro-multi-lang-v1_0` (float model, 2 threads) on an Apple
-silicon Mac: the model loads in about 0.5 s and synthesis runs at 0.37–0.51×
-real time, i.e. comfortably ahead of playback.
+Real time factor (seconds of compute per second of audio, so lower is
+better) on the same Chinese paragraph, 2 threads, Apple silicon Mac:
 
-- Memory is the real constraint on mobile: prefer the int8 models.
-- The first sentence pays for model loading.
+| Model | Size | RTF | Notes |
+| --- | --- | --- | --- |
+| `kokoro-multi-lang-v1_0` | 350 MB | 0.44–0.50 | 8 Chinese voices, all graded D |
+| `kokoro-int8-multi-lang-v1_0` | 132 MB | 1.07–1.21 | same voices, much slower |
+| `kokoro-int8-multi-lang-v1_1` | 147 MB | 0.99–1.04 | far better Chinese, 103 voices |
+| `vits-zh-aishell3` | 116 MB | 0.39–0.49 | native Chinese, but only 8 kHz |
+| `sherpa-onnx-zipvoice-distill-int8-zh-en-emilia` | 109 MB | 0.49–0.58 | 24 kHz voice cloning |
+
+**Quantized is not the fast one here.** onnxruntime's int8 kernels on Apple
+silicon run the Kokoro graph roughly 2.4× slower than the float model, so the
+int8 downloads buy disk space, not speed. Pick by RTF first: anything under
+about 0.6 stays comfortably ahead of playback, and the sentence prefetcher
+absorbs the rest.
+
+- The first sentence pays for model loading (about 0.5 s).
 - ZipVoice is heavier than Kokoro; raise **Threads** and keep the sampling
   steps low.
+- Anx logs one `SherpaTts <model>: …ms for …s of audio (RTF …)` line per
+  model, so the number for your own device is in the app log.
 
 ## Checking a model on a device
 

@@ -253,20 +253,23 @@ class SherpaTtsProvider extends TtsServiceProvider {
     final sid = _speakerId(voice);
     final speed = SherpaPace.speed(rate: rate, factor: _paceFactor(spec, sid));
 
+    final watch = Stopwatch()..start();
     final audio = await _engine.generate(
       spec: spec,
       text: trimmed,
       speed: speed,
       sid: sid,
     );
+    watch.stop();
 
     if (audio.samples.isEmpty) return Uint8List(0);
-    _measurePace(spec, sid, trimmed, audio, speed);
+    _measurePace(spec, sid, trimmed, audio, speed, watch.elapsedMilliseconds);
     return audio.toWav();
   }
 
   // ============ Speed calibration ============
 
+  final Set<String> _reported = {};
   final Map<String, double> _paceSyllables = {};
   final Map<String, double> _paceSeconds = {};
 
@@ -288,16 +291,23 @@ class SherpaTtsProvider extends TtsServiceProvider {
   /// slow on one and rushed on another. A sentence or two is enough, after
   /// which the factor is stored and reused.
   void _measurePace(SherpaModelSpec spec, int sid, String text,
-      SherpaAudio audio, double speed) {
-    final config = getConfig();
-    if (!_asBool(config['autoSpeed'], true)) return;
-
+      SherpaAudio audio, double speed, int elapsedMs) {
     final key = spec.paceKey(sid);
-    if (Prefs().getTtsPaceFactor(key) > 0) return;
     if (audio.sampleRate <= 0) return;
-
     final seconds = audio.samples.length / audio.sampleRate;
     if (seconds <= 0) return;
+
+    // One line per model, so the real time factor on this device is in the
+    // log without a sentence by sentence flood.
+    if (_reported.add(key)) {
+      AnxLog.info('SherpaTts $key: ${elapsedMs}ms for '
+          '${seconds.toStringAsFixed(1)}s of audio '
+          '(RTF ${(elapsedMs / 1000 / seconds).toStringAsFixed(2)})');
+    }
+
+    final config = getConfig();
+    if (!_asBool(config['autoSpeed'], true)) return;
+    if (Prefs().getTtsPaceFactor(key) > 0) return;
 
     _paceSyllables[key] =
         (_paceSyllables[key] ?? 0) + SherpaPace.syllables(text);
