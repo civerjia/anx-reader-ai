@@ -225,32 +225,39 @@ Float32List normalizeLoudness(
   return out;
 }
 
-/// Loudness over 400ms blocks, ignoring blocks more than 10dB below the
-/// average, so pauses and trailing breaths do not drag the figure down.
+/// Loudness of the speech in a clip.
+///
+/// Blocked and gated the way broadcast metering is, because the average
+/// sample level of a whole sentence says little about how loud it sounds.
+/// Blocks that are mostly pause are dropped twice over: by an absolute
+/// floor, and by a gate ten decibels below the average of what is left.
+///
+/// The block has to shrink for short sentences. A book is full of them, and
+/// measuring a half second sentence as if it were four hundred milliseconds
+/// of speech plus silence reads far too quiet, which used to make every
+/// short sentence come out louder than the rest.
 double gatedLevel(Float32List samples, int sampleRate) {
   if (samples.isEmpty || sampleRate <= 0) return 0;
 
-  final block = (sampleRate * 0.4).round();
-  final hop = (block / 4).round().clamp(1, block);
-  final powers = <double>[];
+  const floor = 0.005 * 0.005; // below this a block is silence
+  // Short blocks, so that a sentence of half a second is measured the same
+  // way as one of ten seconds: a long block spanning speech and the pause
+  // after it reads too quiet, and a book is mostly short sentences.
+  final block = math.min((sampleRate * 0.08).round(), samples.length);
+  if (block <= 0) return plainLevel(samples);
 
+  final hop = math.max(1, block ~/ 2);
+  final powers = <double>[];
   for (var start = 0; start + block <= samples.length; start += hop) {
     var sum = 0.0;
     for (var i = start; i < start + block; i++) {
       sum += samples[i] * samples[i];
     }
     final power = sum / block;
-    if (power > 1e-9) powers.add(power);
+    if (power > floor) powers.add(power);
   }
 
-  if (powers.isEmpty) {
-    // Shorter than one block: fall back to the whole thing.
-    var sum = 0.0;
-    for (final sample in samples) {
-      sum += sample * sample;
-    }
-    return math.sqrt(sum / samples.length);
-  }
+  if (powers.isEmpty) return plainLevel(samples);
 
   var mean = 0.0;
   for (final power in powers) {
@@ -258,7 +265,7 @@ double gatedLevel(Float32List samples, int sampleRate) {
   }
   mean /= powers.length;
 
-  final gate = mean * 0.1; // 10dB below the average
+  final gate = mean * 0.1; // ten decibels below the average
   var kept = 0.0;
   var count = 0;
   for (final power in powers) {
@@ -266,8 +273,21 @@ double gatedLevel(Float32List samples, int sampleRate) {
     kept += power;
     count++;
   }
-  if (count == 0) return math.sqrt(mean);
-  return math.sqrt(kept / count);
+  return math.sqrt(count == 0 ? mean : kept / count);
+}
+
+/// Level of everything that is not silence, for clips too short to block
+/// and as an independent check on the blocked measure.
+double plainLevel(Float32List samples) {
+  var sum = 0.0;
+  var count = 0;
+  for (final sample in samples) {
+    if (sample.abs() <= 0.005) continue;
+    sum += sample * sample;
+    count++;
+  }
+  if (count == 0) return 0;
+  return math.sqrt(sum / count);
 }
 
 double _tanh(double x) {

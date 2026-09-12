@@ -621,6 +621,20 @@ void main() {
       expect(peak, lessThanOrEqualTo(0.95));
     });
 
+    test('a short sentence is measured like a long one', () {
+      // Same speech, one with a pause after it. Both must come out at the
+      // same level, or every short sentence in a book plays louder.
+      final speech = tone(0.05, seconds: 0.6);
+      final withPause = Float32List(speech.length * 2)
+        ..setRange(0, speech.length, speech);
+
+      final short = normalizeLoudness(speech, sr, targetLevel: 0.09);
+      final padded = normalizeLoudness(withPause, sr, targetLevel: 0.09);
+
+      expect(levelOf(Float32List.sublistView(padded, 0, speech.length)),
+          closeTo(levelOf(short), 0.005));
+    });
+
     test('leaves near silence alone', () {
       final quiet = Float32List.fromList(List<double>.filled(sr, 0.0));
 
