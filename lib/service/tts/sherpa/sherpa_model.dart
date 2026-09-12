@@ -116,6 +116,15 @@ class SherpaModelSpec {
         provider,
       ].join('|');
 
+  /// Identifies a voice for speed calibration: the model folder, and for a
+  /// cloning model the reference clip, since that is what sets the pace.
+  String paceKey(int speakerId) => [
+        type.id,
+        p.basename(dir),
+        if (referenceAudio.isNotEmpty) p.basename(referenceAudio),
+        speakerId,
+      ].join(':');
+
   @override
   String toString() => 'SherpaModelSpec($engineKey)';
 }

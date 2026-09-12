@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:anx_reader/service/tts/sherpa/sherpa_model.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_onnx_meta.dart';
+import 'package:anx_reader/service/tts/sherpa/sherpa_pace.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_wav.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -257,6 +258,54 @@ void main() {
 
     test('returns nothing for a missing file', () {
       expect(SherpaOnnxMeta.speakerNames('/no/such/model.onnx'), isEmpty);
+    });
+  });
+
+  group('SherpaPace', () {
+    test('counts CJK characters and Latin words', () {
+      expect(SherpaPace.syllables('夜色渐深'), 4);
+      expect(SherpaPace.syllables('hello there'), closeTo(2.8, 0.001));
+      expect(SherpaPace.syllables('第三章 Chapter'), closeTo(4.4, 0.001));
+      expect(SherpaPace.syllables('2026 年'), 1);
+    });
+
+    test('the reference rate keeps the calibrated pace', () {
+      expect(
+        SherpaPace.speed(rate: SherpaPace.referenceRate, factor: 1.3),
+        closeTo(1.3, 0.001),
+      );
+    });
+
+    test('a higher rate scales the calibrated pace', () {
+      expect(SherpaPace.speed(rate: 1.0, factor: 1.0), closeTo(2.0, 0.001));
+      expect(SherpaPace.speed(rate: 0.25, factor: 1.0), closeTo(0.5, 0.001));
+    });
+
+    test('a rate of zero falls back to normal speed', () {
+      expect(SherpaPace.speed(rate: 0, factor: 1.2), closeTo(1.2, 0.001));
+    });
+
+    test('speed stays in a range a model can handle', () {
+      expect(SherpaPace.speed(rate: 2.0, factor: 1.8), lessThanOrEqualTo(3.0));
+      expect(SherpaPace.speed(rate: 0.06, factor: 0.6), greaterThanOrEqualTo(0.2));
+    });
+
+    test('a slow model gets a factor above one', () {
+      // 30 syllables in 10 seconds is 3 per second, the target is 4.
+      expect(SherpaPace.factorFrom(syllables: 30, naturalSeconds: 10),
+          closeTo(4 / 3, 0.001));
+    });
+
+    test('waits for enough speech before calibrating', () {
+      expect(SherpaPace.factorFrom(syllables: 10, naturalSeconds: 3), isNull);
+      expect(SherpaPace.factorFrom(syllables: 30, naturalSeconds: 0), isNull);
+    });
+
+    test('clamps a nonsense measurement', () {
+      expect(SherpaPace.factorFrom(syllables: 100, naturalSeconds: 1),
+          SherpaPace.minFactor);
+      expect(SherpaPace.factorFrom(syllables: 30, naturalSeconds: 100),
+          SherpaPace.maxFactor);
     });
   });
 
