@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
@@ -48,6 +49,7 @@ import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:anx_reader/widgets/reading_page/page_curl.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsx_plus/iconsx_plus.dart';
@@ -113,7 +115,72 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   bool get _isTopOfNavigationStack =>
       ModalRoute.of(context)?.isCurrent ?? false;
 
+  final _pageCurlKey = GlobalKey<PageCurlOverlayState>();
+  bool _pageCurlBusy = false;
+
+  bool get _usePageCurl => Prefs().pageTurnStyle == PageTurn.curl;
+
+  /// A page turn drawn as a curl: a snapshot of the page is animated over the
+  /// reader while the reader turns instantly underneath. If a snapshot cannot
+  /// be taken the page still turns, just without the curl.
+  Future<void> _turnWithCurl({required bool forward}) async {
+    final turn = "if (typeof clearSelection === 'function') { clearSelection(); } "
+        "await ${forward ? 'nextPage' : 'prevPage'}();";
+    final overlay = _pageCurlKey.currentState;
+    if (_pageCurlBusy || overlay == null) {
+      await webViewController.callAsyncJavaScript(functionBody: turn);
+      return;
+    }
+    _pageCurlBusy = true;
+    try {
+      final current = await _snapshotReader();
+      if (current == null) {
+        await webViewController.callAsyncJavaScript(functionBody: turn);
+        return;
+      }
+      overlay.cover(current);
+      await webViewController.callAsyncJavaScript(functionBody: turn);
+      if (forward) {
+        await overlay.turnAway();
+      } else {
+        final previous = await _snapshotReader();
+        if (previous == null) {
+          overlay.clear();
+          return;
+        }
+        await overlay.bringBack(previous);
+      }
+    } catch (e) {
+      overlay.clear();
+      AnxLog.info('Page curl: turn failed: $e');
+    } finally {
+      _pageCurlBusy = false;
+    }
+  }
+
+  Future<ui.Image?> _snapshotReader() async {
+    final watch = Stopwatch()..start();
+    final bytes = await webViewController.takeScreenshot(
+      screenshotConfiguration: ScreenshotConfiguration(
+        compressFormat: CompressFormat.JPEG,
+        quality: 90,
+      ),
+    );
+    if (bytes == null) return null;
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    codec.dispose();
+    if (watch.elapsedMilliseconds > 150) {
+      AnxLog.info('Page curl: snapshot took ${watch.elapsedMilliseconds} ms');
+    }
+    return frame.image;
+  }
+
   void prevPage() {
+    if (_usePageCurl) {
+      _turnWithCurl(forward: false);
+      return;
+    }
     webViewController.evaluateJavascript(source: '''
       if (typeof clearSelection === 'function') { clearSelection(); }
       prevPage();
@@ -121,6 +188,10 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   }
 
   void nextPage() {
+    if (_usePageCurl) {
+      _turnWithCurl(forward: true);
+      return;
+    }
     webViewController.evaluateJavascript(source: '''
       if (typeof clearSelection === 'function') { clearSelection(); }
       nextPage();
@@ -713,6 +784,12 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
           widget.updateParent();
           saveReadingProgress();
           readingPageKey.currentState?.resetAwakeTimer();
+        });
+    controller.addJavaScriptHandler(
+        handlerName: 'onCurlSwipe',
+        callback: (args) {
+          final detail = args.isNotEmpty ? args[0] : null;
+          _turnWithCurl(forward: detail is Map && detail['forward'] == true);
         });
     controller.addJavaScriptHandler(
         handlerName: 'onClick',
@@ -1316,6 +1393,9 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         body: Stack(
           children: [
             buildWebviewWithIOSWorkaround(context, url, initialCfi),
+            Positioned.fill(
+              child: IgnorePointer(child: PageCurlOverlay(key: _pageCurlKey)),
+            ),
             readingInfoWidget(),
             if (showHistory) _buildHistoryCapsule(),
             if (Prefs().openBookAnimation)

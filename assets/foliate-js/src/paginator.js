@@ -509,6 +509,11 @@ export class Paginator extends HTMLElement {
         #container::-webkit-scrollbar {
             display: none;  /* Safari and Chrome */
         }
+        /* render() sets overflow inline, which would otherwise win and let the
+           page follow the finger under the curl */
+        :host([curl]) #container {
+            overflow-x: hidden !important;
+        }
         :host([flow="scrolled"]) #container {
             grid-column: 1 / -1;
             grid-row: 2;
@@ -1005,7 +1010,7 @@ export class Paginator extends HTMLElement {
     // at this point I'm basically throwing `requestAnimationFrame` at
     // anything that doesn't work
     requestAnimationFrame(() => {
-      if (globalThis.visualViewport.scale === 1 && state)
+      if (globalThis.visualViewport.scale === 1 && state && !this.hasAttribute('curl'))
         Promise.resolve(this.snap(state.vx, state.vy, state))
           .finally(() => { this.#touchState = null })
       else this.#touchState = null

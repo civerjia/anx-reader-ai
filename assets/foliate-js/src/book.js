@@ -1521,6 +1521,16 @@ class Reader {
   }
 
   #onTouchEnd = ({ detail: e }) => {
+    // With the curl, the page does not follow the finger; a swipe asks Flutter
+    // to turn, and Flutter draws the curl.
+    if (style.pageTurnStyle === 'curl'
+      && e.touchState?.direction === 'horizontal'
+      && Math.abs(e.touchState.delta.x) > 40
+      && !window.getSelection()?.toString()) {
+      callFlutter('onCurlSwipe', { forward: e.touchState.delta.x < 0 })
+      return
+    }
+
     if (this.#ignoreTouch()) {
       if (e.touchState.direction === 'vertical') {
         const renderer = this.view.renderer;
@@ -1709,6 +1719,12 @@ const setStyle = (oldStyle) => {
       turn.scroll = false
       turn.animated = false
       break
+    case 'curl':
+      // The curl is drawn by Flutter over a snapshot; the reader itself turns
+      // instantly underneath.
+      turn.scroll = false
+      turn.animated = false
+      break
   }
 
   reader.view.renderer.setAttribute('flow', turn.scroll ? 'scrolled' : 'paginated')
@@ -1725,6 +1741,8 @@ const setStyle = (oldStyle) => {
 
   turn.animated ? reader.view.renderer.setAttribute('animated', 'true')
     : reader.view.renderer.removeAttribute('animated')
+  style.pageTurnStyle === 'curl' ? reader.view.renderer.setAttribute('curl', '')
+    : reader.view.renderer.removeAttribute('curl')
 
   const newStyle = {
     fontSize: style.fontSize,
