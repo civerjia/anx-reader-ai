@@ -821,7 +821,7 @@
   "settingsNarrateSherpaNumThreads": "线程数",
   "settingsNarrateSherpaNumThreadsDescription": "推理使用的 CPU 线程数，手机上建议 2。",
   "settingsNarrateSherpaSilenceScale": "停顿长度",
-  "settingsNarrateSherpaSilenceScaleDescription": "句中停顿保留多少。小于 1.0 时 sherpa-onnx 会压缩停顿，而它只按音量判断停顿，会连带削掉逗号前那个字的尾音。",
+  "settingsNarrateSherpaSilenceScaleDescription": "逗号处的停顿保留多少。Kokoro 生成的停顿接近一秒，0.4 听起来更紧凑。裁剪由 Anx 自己做，判定静音的阈值远低于字尾余音，所以缩短停顿不会吃字。",
   "settingsNarrateSherpaPreferInt8": "优先使用量化模型",
   "settingsNarrateSherpaPreferInt8Description": "同时存在时优先使用 int8 文件：更快、更省内存，音质略有损失。",
   "settingsNarrateSherpaLexicon": "词典文件",
