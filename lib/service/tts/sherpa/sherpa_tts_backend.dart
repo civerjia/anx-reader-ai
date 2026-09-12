@@ -29,6 +29,12 @@ class SherpaTtsProvider extends TtsServiceProvider {
   static final SherpaTtsProvider _instance = SherpaTtsProvider._internal();
 
   static const String _defaultModelType = 'kokoro';
+
+  /// Measured on an iPhone 16 Pro reading a book: CoreML holds RTF 0.65
+  /// while the CPU, once the phone is warm, drops to 1.41 and can no longer
+  /// keep ahead of playback. sherpa-onnx builds CoreML into its iOS binary
+  /// only, and falls back to the CPU with a log line everywhere else.
+  static String get _defaultProvider => Platform.isIOS ? 'coreml' : 'cpu';
   static const int _defaultNumSteps = 4;
   static const int _defaultNumThreads = 2;
 
@@ -116,7 +122,7 @@ class SherpaTtsProvider extends TtsServiceProvider {
         label: L10n.of(context).settingsNarrateSherpaProvider,
         description: L10n.of(context).settingsNarrateSherpaProviderDescription,
         type: ConfigItemType.select,
-        defaultValue: 'cpu',
+        defaultValue: _defaultProvider,
         options: [
           {'value': 'cpu', 'label': 'CPU'},
           if (Platform.isIOS || Platform.isMacOS)
@@ -317,7 +323,7 @@ class SherpaTtsProvider extends TtsServiceProvider {
       'referenceText': config['referenceText'] ?? '',
       'numSteps': config['numSteps'] ?? _defaultNumSteps,
       'numThreads': config['numThreads'] ?? _defaultNumThreads,
-      'provider': config['provider'] ?? 'cpu',
+      'provider': config['provider'] ?? _defaultProvider,
       'autoSpeed': config['autoSpeed'] ?? true,
       'speedFactor': config['speedFactor'] ?? 1.0,
       'preferInt8': config['preferInt8'] ?? true,
@@ -362,7 +368,7 @@ class SherpaTtsProvider extends TtsServiceProvider {
       type: SherpaModelType.fromId(config['modelType']?.toString()),
       preferInt8: _asBool(config['preferInt8'], true),
       numThreads: _asInt(config['numThreads'], _defaultNumThreads),
-      provider: config['provider']?.toString() ?? 'cpu',
+      provider: config['provider']?.toString() ?? _defaultProvider,
       vocoderOverride: config['vocoder']?.toString() ?? '',
       lexiconOverride: config['lexicon']?.toString() ?? '',
       referenceAudio: config['referenceAudio']?.toString() ?? '',
@@ -449,6 +455,21 @@ class SherpaTtsProvider extends TtsServiceProvider {
     if (audio.sampleRate <= 0) return;
     final seconds = audio.samples.length / audio.sampleRate;
     if (seconds <= 0) return;
+
+    // Every sentence, briefly: enough to tell a swallowed ending (audio far
+    // shorter than the text warrants) from a text that arrived truncated.
+    final syllables = SherpaPace.syllables(text);
+    final tail = text.length <= 12 ? text : '…${text.substring(text.length - 12)}';
+    final expected = syllables / SherpaPace.referencePace;
+    final ratio = expected > 0 ? seconds / expected : 1.0;
+    final suspicious = ratio < 0.6;
+    final line = 'SherpaTts said ${syllables.toStringAsFixed(0)} syllables in '
+        '${seconds.toStringAsFixed(1)}s (x${ratio.toStringAsFixed(2)}) "$tail"';
+    if (suspicious) {
+      AnxLog.warning('$line - shorter than the text warrants');
+    } else {
+      AnxLog.info(line);
+    }
 
     // One line per model and backend, so the real time factor on this
     // device is in the log without a sentence by sentence flood, and
