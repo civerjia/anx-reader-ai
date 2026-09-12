@@ -36,7 +36,24 @@ the iOS path only:
    Flutter loader now checks the variable first, which is what makes an
    end-to-end generation test runnable at all.
 
-Patched files: `hook/build.dart`, `lib/src/loader/loader_flutter.dart`.
+5. **Any prompt longer than 512 tokens aborts the process.**
+   The inference isolate hands the whole tokenized prompt to a single
+   `llama_decode` call, and llama.cpp asserts
+   `n_tokens_all <= cparams.n_batch` — an assertion, so it is `ggml_abort`
+   taking down the app, not an error the Dart side could catch. `batchSize`
+   defaults to 512, and a prompt carrying the app's tool schemas is about 1200
+   tokens before any conversation, as is a chapter sent for summary. The prompt
+   is now decoded in `n_batch`-sized pieces, which is what llama.cpp's own
+   examples do; raising `batchSize` to the context size instead would enlarge
+   the compute buffers on every device to cover a case chunking handles for
+   free. Fixed at all three call sites — the persistent inference isolate the
+   package actually uses, the legacy one-shot isolate, and embeddings.
+
+Patched files: `hook/build.dart`, `lib/src/loader/loader_flutter.dart`,
+`lib/src/inference_isolate_handler.dart`, `lib/src/inference_isolate.dart`,
+`lib/src/embedding_isolate.dart`. None of them is
+`lib/src/bindings/llama_bindings.dart`, so the ABI fingerprint — and with it the
+prebuilt the build hook downloads — is unchanged.
 
 Unrelated to the build, and worked around in our own code rather than patched
 here: `LlamaCppChatRepository.streamChat()` passes a hardcoded

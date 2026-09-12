@@ -291,8 +291,24 @@ void _handleInferenceRequest(
         print('[inference_isolate_handler] Could not preview tokens: $e');
       }
 
-      final batch = bindings.llama_batch_get_one(tokensPtr, nTokens);
-      if (bindings.llama_decode(ctx, batch) != 0) {
+      // llama_decode asserts that a single batch never exceeds n_batch, and on
+      // failure it aborts the whole process rather than returning an error. A
+      // prompt carrying tool schemas or a chapter of text is well past the default
+      // 512, so feed it in n_batch-sized pieces. llama_batch_get_one carries no
+      // positions: llama.cpp continues each piece from the KV cache, and only the
+      // final piece's last token produces the logits sampling needs.
+      final nBatch = request.batchSize > 0 ? request.batchSize : nTokens;
+      var batch = bindings.llama_batch_get_one(
+        tokensPtr,
+        nTokens < nBatch ? nTokens : nBatch,
+      );
+      var decodeOk = bindings.llama_decode(ctx, batch) == 0;
+      for (var offset = nBatch; decodeOk && offset < nTokens; offset += nBatch) {
+        final count = nTokens - offset < nBatch ? nTokens - offset : nBatch;
+        batch = bindings.llama_batch_get_one(tokensPtr + offset, count);
+        decodeOk = bindings.llama_decode(ctx, batch) == 0;
+      }
+      if (!decodeOk) {
         calloc.free(tokensPtr);
         mainSendPort.send(
           _IsolateResponse(
