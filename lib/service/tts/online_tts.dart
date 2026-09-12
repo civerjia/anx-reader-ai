@@ -10,6 +10,7 @@ import 'package:anx_reader/service/tts/models/tts_segment.dart';
 import 'package:anx_reader/service/tts/models/tts_sentence.dart';
 import 'package:anx_reader/service/tts/models/tts_voice.dart';
 import 'package:anx_reader/utils/log/common.dart';
+import 'package:anx_reader/utils/toast/common.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
@@ -58,6 +59,10 @@ class OnlineTts extends BaseTts {
   // Timing of the seam between sentences, for diagnosing stutter.
   DateTime? _lastSentenceEnd;
   int _lastAdvanceMs = 0;
+
+  /// How many sentences may fail in a row before giving up.
+  static const int _maxConsecutiveFailures = 3;
+  int _consecutiveFailures = 0;
 
   // ============ Lifecycle ============
   late Function getHereFunction;
@@ -348,6 +353,7 @@ class OnlineTts extends BaseTts {
           // Check version before marking as silent
           if (segment.fetchVersion == targetVersion) {
             segment.isSilent = true;
+            segment.error = 'timed out after ${_fetchTimeoutSeconds}s';
           }
         }
       } catch (e) {
@@ -356,6 +362,7 @@ class OnlineTts extends BaseTts {
           // Check version before marking as silent
           if (segment.fetchVersion == targetVersion) {
             segment.isSilent = true;
+            segment.error = '$e';
           }
         }
       }
@@ -413,11 +420,27 @@ class OnlineTts extends BaseTts {
 
         // Handle silent segment
         if (segment.isSilent) {
+          // A sentence that produced nothing because the backend failed is
+          // not a sentence to skip: with a misconfigured model every
+          // sentence fails, and skipping them races through the book in
+          // silence. Give up instead, and say why.
+          if (segment.error != null) {
+            _consecutiveFailures++;
+            if (_consecutiveFailures >= _maxConsecutiveFailures) {
+              final reason = segment.error!;
+              AnxLog.severe('TTS stopped after $_consecutiveFailures '
+                  'sentences failed: $reason');
+              unawaited(stop());
+              AnxToast.show(reason, duration: 5000);
+              break;
+            }
+          }
           await Future.delayed(const Duration(milliseconds: 100));
           await getNextTextFunction();
           _currentSegment = null;
           continue;
         }
+        _consecutiveFailures = 0;
 
         // Play audio
         _playbackCompleter = Completer<void>();
@@ -519,6 +542,7 @@ class OnlineTts extends BaseTts {
     _settingsDebounce?.cancel();
     _settingsDebounce = null;
     _shouldStop = true;
+    _consecutiveFailures = 0;
     _lastSentenceEnd = null;
     _lastAdvanceMs = 0;
     updateTtsState(TtsStateEnum.stopped);

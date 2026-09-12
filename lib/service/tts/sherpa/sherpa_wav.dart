@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 /// Mono PCM samples decoded from a wave file.
@@ -179,4 +180,49 @@ Float32List tightenPauses(
   if (runStart >= 0) flushRun(samples.length);
 
   return Float32List.sublistView(out, 0, written);
+}
+
+/// Even out how loud each sentence is.
+///
+/// Models differ in level and wander between sentences: measured on the
+/// same paragraph, Kokoro comes back at 0.09 RMS and vits-melo-tts at
+/// 0.04, and melo's own sentences drift enough to be heard as the volume
+/// going up and down. Each sentence is synthesized on its own, so the only
+/// place to fix that is here.
+///
+/// Gain is measured over the speech, not the pauses, and is limited so a
+/// near-silent clip is not amplified into noise; the result is kept under
+/// [ceiling] so nothing clips.
+Float32List normalizeLoudness(
+  Float32List samples, {
+  double targetRms = 0.09,
+  double maxGain = 8.0,
+  double ceiling = 0.95,
+}) {
+  if (samples.isEmpty) return samples;
+
+  var sum = 0.0;
+  var counted = 0;
+  var peak = 0.0;
+  for (final sample in samples) {
+    final level = sample.abs();
+    if (level > peak) peak = level;
+    if (level <= 0.01) continue; // pauses say nothing about loudness
+    sum += sample * sample;
+    counted++;
+  }
+  if (counted == 0 || peak <= 0) return samples;
+
+  final rms = math.sqrt(sum / counted);
+  if (rms <= 0) return samples;
+
+  var gain = (targetRms / rms).clamp(1 / maxGain, maxGain);
+  if (peak * gain > ceiling) gain = ceiling / peak;
+  if ((gain - 1).abs() < 0.02) return samples;
+
+  final out = Float32List(samples.length);
+  for (var i = 0; i < samples.length; i++) {
+    out[i] = samples[i] * gain;
+  }
+  return out;
 }

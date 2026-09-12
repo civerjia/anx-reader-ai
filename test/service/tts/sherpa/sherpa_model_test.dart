@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -553,6 +554,48 @@ void main() {
       final input = clip(sr, [0.3, 0.9, 0.3]);
 
       expect(tightenPauses(input, sr, scale: 1.0).length, input.length);
+    });
+  });
+
+  group('normalizeLoudness', () {
+    Float32List tone(double amplitude, {int samples = 24000}) =>
+        Float32List.fromList(List<double>.generate(
+            samples, (i) => amplitude * math.sin(i * 0.1)));
+
+    double rms(Float32List samples) {
+      var sum = 0.0;
+      var counted = 0;
+      for (final sample in samples) {
+        if (sample.abs() <= 0.01) continue;
+        sum += sample * sample;
+        counted++;
+      }
+      return counted == 0 ? 0 : math.sqrt(sum / counted);
+    }
+
+    test('brings a quiet clip up to the target', () {
+      final out = normalizeLoudness(tone(0.05), targetRms: 0.09);
+
+      expect(rms(out), closeTo(0.09, 0.005));
+    });
+
+    test('brings a loud clip down', () {
+      final out = normalizeLoudness(tone(0.5), targetRms: 0.09);
+
+      expect(rms(out), closeTo(0.09, 0.005));
+    });
+
+    test('never clips', () {
+      final out = normalizeLoudness(tone(0.9), targetRms: 0.5, ceiling: 0.95);
+
+      expect(out.reduce((a, b) => a.abs() > b.abs() ? a : b).abs(),
+          lessThanOrEqualTo(0.95));
+    });
+
+    test('leaves near silence alone', () {
+      final quiet = Float32List.fromList(List<double>.filled(1000, 0.0005));
+
+      expect(normalizeLoudness(quiet), same(quiet));
     });
   });
 
