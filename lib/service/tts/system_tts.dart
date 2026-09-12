@@ -196,9 +196,12 @@ class SystemTts extends BaseTts {
     await flutterTts.setSpeechRate(rate);
     await flutterTts.setPitch(pitch);
 
-    // Apply the saved voice model
-    final selectedVoice = SystemTtsProvider().resolveVoice(null);
-    await _applyVoice(selectedVoice);
+    // Apply the saved voice model. Without one, keep whatever voice the
+    // platform defaults to instead of throwing.
+    final selectedVoice = SystemTtsProvider().getSelectedVoice();
+    if (selectedVoice.isNotEmpty) {
+      await _applyVoice(selectedVoice);
+    }
 
     await flutterTts.speak(_currentVoiceText!);
 
