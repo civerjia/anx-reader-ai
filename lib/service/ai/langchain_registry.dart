@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/models/ai_provider.dart';
 import 'package:anx_reader/providers/current_reading.dart';
@@ -71,15 +73,14 @@ class LangchainAiRegistry {
       case AiProtocol.local:
         return _buildPipeline(
           config,
+          compactGuidance: true,
           LocalLlmChatModel(
             modelName: config.model,
             defaultOptions: LocalLlmChatModelOptions(
               maxTokens: localAnswerTokens ?? 2048,
             ),
           ),
-          // A phone-sized model cannot drive a tool loop, and the agent path
-          // would spend its whole token budget on the scaffolding.
-          useAgent: false,
+          useAgent: useAgent,
         );
       case AiProtocol.openai:
         return _buildPipeline(
@@ -121,6 +122,7 @@ class LangchainAiRegistry {
     LangchainAiConfig config,
     BaseChatModel model, {
     required bool useAgent,
+    bool compactGuidance = false,
   }) {
     if (useAgent) {
       assert(ref != null, 'ref must be provided when useAgent is true');
@@ -139,10 +141,15 @@ class LangchainAiRegistry {
       final enabledDefs = AiToolRegistry.definitions
           .where((def) => enabledIds.contains(def.id))
           .toList(growable: false);
-      systemMessage = _buildAgentSystemMessage(
-        isReading: isReading,
-        enabledTools: enabledDefs,
-      );
+      systemMessage = compactGuidance
+          ? ChatMessage.system(localAgentGuidance(
+              today: DateTime.now(),
+              languageName: _replyLanguageName(),
+            ))
+          : _buildAgentSystemMessage(
+              isReading: isReading,
+              enabledTools: enabledDefs,
+            );
     }
 
     return LangchainPipeline(
@@ -152,10 +159,8 @@ class LangchainAiRegistry {
     );
   }
 
-  ChatMessage _buildAgentSystemMessage({
-    required bool isReading,
-    required List<AiToolDefinition> enabledTools,
-  }) {
+  /// The language replies should be written in, named the way a model reads it.
+  String _replyLanguageName() {
     final currentLanguageCode =
         Prefs().locale?.languageCode ?? Platform.localeName;
 
@@ -180,6 +185,14 @@ class LangchainAiRegistry {
     final languageName = languageMap[currentLanguageCode] ??
         languageMap[currentLanguageCode.split('_').first] ??
         currentLanguageCode;
+    return languageName;
+  }
+
+  ChatMessage _buildAgentSystemMessage({
+    required bool isReading,
+    required List<AiToolDefinition> enabledTools,
+  }) {
+    final languageName = _replyLanguageName();
 
     final readingStateContext = isReading
         ? '📖 User is currently reading - You are a focused reading companion, providing instant comprehension help, translation, and note-taking assistance.'
@@ -287,4 +300,35 @@ class LangchainPipeline {
   final BaseChatModel model;
   final List<Tool> tools;
   final ChatMessage? systemMessage;
+}
+
+/// The agent prompt a small on-device model gets instead of the full one.
+///
+/// Measured on Qwen3.5-2B with the app's tools offered, three runs of six
+/// representative questions each: the full agent guidance — about 2,900
+/// characters, much of it formatting advice — led to the right first move on
+/// 10 of 18 turns and set the model reasoning aloud on several. This one led to
+/// it on 14 of 18 with no visible reasoning at all, and on 16 of 18 with the
+/// library digest alongside, 11 of those answered without a tool round trip.
+/// Asking for "/no_think" on top made it worse, not better.
+@visibleForTesting
+String localAgentGuidance({
+  required DateTime today,
+  required String languageName,
+}) {
+  String two(int n) => n.toString().padLeft(2, '0');
+  final date = '${today.year}-${two(today.month)}-${two(today.day)}';
+  // The date is there because without it the model filled a "last seven days"
+  // query with dates from 2024. The reply language is named outright because
+  // an English prompt and an English digest pulled replies into English.
+  return "You are the reading assistant in Anx Reader, running on the reader's "
+      'own phone. Today is $date.\n'
+      'Reply in $languageName, briefly.\n'
+      "For questions about the reader's own books, progress, reading history "
+      'or notes, answer from the library sections below when they have the '
+      'answer. Call a tool only when they do not, or when the reader asks you '
+      'to change something — organizing the shelf needs real book ids from '
+      'those sections.\n'
+      'For general questions, answer directly without any tool.\n'
+      'Never invent a title, a date, an id or a note.';
 }

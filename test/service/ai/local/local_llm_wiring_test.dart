@@ -129,16 +129,10 @@ void main() {
   });
 
   group('agent mode', () {
-    test('a local provider cannot run the tool loop', () {
-      // Without this the chat page, which always asks for agent mode, gets
-      // "Agent mode not supported for this provider." instead of an answer.
-      expect(supportsAgentMode(AiProtocol.local), isFalse);
-    });
-
-    test('remote providers still can', () {
-      expect(supportsAgentMode(AiProtocol.openai), isTrue);
-      expect(supportsAgentMode(AiProtocol.claude), isTrue);
-      expect(supportsAgentMode(AiProtocol.gemini), isTrue);
+    test('every protocol, local included, can run the tool loop', () {
+      for (final protocol in AiProtocol.values) {
+        expect(supportsAgentMode(protocol), isTrue, reason: protocol.name);
+      }
     });
   });
 

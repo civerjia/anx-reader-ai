@@ -130,11 +130,13 @@ Stream<String> _generateStream({
 
           final agentCapable = useAgent && supportsAgentMode(provider.protocol);
 
-          // A provider that cannot call tools has no way to look anything up,
-          // so hand it the reader's own data rather than let it invent some.
+          // A small local model given the reader's basics up front answers
+          // the common questions without a tool round trip at all — each of
+          // which costs a full generation on a phone — and still has the tools
+          // for anything the digest does not cover.
           var messagesForModel = sanitizedMessages;
           if (attachLibraryDigest &&
-              !supportsAgentMode(provider.protocol) &&
+              provider.protocol == AiProtocol.local &&
               registry.ref != null) {
             final digest = await buildLibraryDigest(registry.ref!);
             if (digest != null) {
@@ -287,11 +289,12 @@ Stream<String> _generateStream({
 
 /// Whether a provider can run the tool-calling agent loop.
 ///
-/// Agent mode needs tools, and a model running on this device has none wired to
-/// it. This has to be answered before the pipeline is built: asking for agent
-/// mode without tools does not degrade to a plain answer, it refuses, so the
-/// chat page — which always asks for it — would never get a reply.
-bool supportsAgentMode(AiProtocol protocol) => protocol != AiProtocol.local;
+/// Every protocol can now: a local model is offered the app's tools through
+/// llama.cpp's own tool-call support and the calls come back to the same agent
+/// loop remote providers use. Kept as a named rule because the answer has to be
+/// known before the pipeline is built — agent mode without tools refuses
+/// rather than degrading to a plain answer.
+bool supportsAgentMode(AiProtocol protocol) => true;
 
 /// Execute the AI stream with the given model and pipeline
 Stream<String> _executeStream({

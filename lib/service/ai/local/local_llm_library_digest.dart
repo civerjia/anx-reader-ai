@@ -51,13 +51,21 @@ Future<String?> buildLibraryDigest(WidgetRef ref) async {
       final started =
           sorted.where((book) => book.readingPercentage > 0).toList();
 
-      final lines = <String>['[Shelf] ${books.length} books'];
+      // Ids are included because the only way to act on the shelf — the
+      // bookshelf_organize tool — takes book ids, and a model that has never
+      // seen one will make them up.
+      final lines = <String>[
+        '[Shelf] ${books.length} books (#id title — author · progress)',
+      ];
       for (final book in started.take(_shelfLimit)) {
-        lines.add('  ${book.title} — ${book.author} · '
+        lines.add('  #${book.id} ${book.title} — ${book.author} · '
             '${(book.readingPercentage * 100).toStringAsFixed(0)}%');
       }
       if (unread.isNotEmpty) {
-        final names = unread.take(_shelfLimit).map((b) => b.title).join('; ');
+        final names = unread
+            .take(_shelfLimit)
+            .map((b) => '#${b.id} ${b.title}')
+            .join('; ');
         lines.add('  Not started (${unread.length}): $names');
       }
       sections.add(lines.join('\n'));
@@ -101,9 +109,13 @@ Future<String?> buildLibraryDigest(WidgetRef ref) async {
 
   if (sections.length <= 1) return null;
 
-  return 'The sections below are everything you can see of this reader\'s own '
-      'library. Answer from them. If what was asked is not there, say so '
-      'instead of guessing, and never invent a title, a date or a note.\n\n'
+  // Tools are still offered alongside this. Each tool round trip costs a full
+  // generation on a phone, so the model is steered to answer from what it
+  // already has and reach for a tool only when that falls short.
+  return 'The sections below are what you already know of this reader\'s own '
+      'library. Answer from them when they contain the answer. Call a tool '
+      'only when they do not, or when the reader asks you to change something. '
+      'Never invent a title, a date, an id or a note.\n\n'
       '${sections.join('\n\n')}';
 }
 

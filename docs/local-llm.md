@@ -105,6 +105,62 @@ tap, and a frontier model is worth having when there is signal.
 - **Tools and agent mode are not used.** A phone-sized model cannot drive a tool
   loop, and the scaffolding would eat the token budget.
 
+## Tools: the local model uses the same ones as a remote provider
+
+The chat screen runs an agent loop: the model is shown the app's tools — Dart
+code in `lib/service/ai/tools/` that reads the library, notes and reading
+history, or drafts a shelf reorganization for the reader to apply — decides which
+to call, the app runs it, and the result goes back to the model. The capability
+is the app's; the model only chooses.
+
+A local model takes part in the same loop. llama.cpp is given the tool schemas in
+the Hermes format Qwen was trained on, its `<tool_call>` output is parsed back
+into langchain tool calls, and execution stays with the app. Nothing is
+executed inside llama.cpp.
+
+### What was measured
+
+Qwen3.5-2B Q4_K_M, the app's real tool schemas, six representative questions
+(five about the reader's own data, one general-knowledge control that must not
+call a tool), three runs each, temperature 0.7, on an M4 Pro. Model behaviour
+does not depend on the hardware; only the timings do.
+
+| Configuration | Right first move | Answered without a tool | Visible reasoning |
+| --- | --- | --- | --- |
+| App's full agent prompt, 5 tools | 10/18 | — | several |
+| Compact prompt, 5 tools | 14/18 | 5 | 0/18 |
+| Compact prompt + library digest, 5 tools | 16/18 | 11 | 0/18 |
+| Same, plus `/no_think` | 15/18 | 13 | 2/18 |
+| Compact prompt + digest, 8-tool subset | 16/18 | 11 | 2/18 |
+| **Compact prompt + digest, all 15 tools** | **18/18** | 10 | 1/18 |
+
+Tool-call arguments were valid JSON in every one of the 50 calls observed. After
+a tool result was fed back, the next turn answered from it 3 times out of 3
+without calling another tool.
+
+What that settled:
+
+- **The full agent prompt is the wrong prompt for a 2B model.** Its 2,900
+  characters are mostly formatting advice; with it the model reached for
+  `current_reading_metadata` as a reflex and reasoned aloud. A local provider
+  gets a compact prompt instead.
+- **The date and the reply language must be stated.** Without the date a "last
+  seven days" query came back with dates from 2024; with an English prompt and
+  digest, some replies came back in English.
+- **The library digest halves the round trips** and removes the one invention
+  seen without it ("I'm reading *The Three-Body Problem*").
+- **`/no_think` makes it worse.** `think: false` does nothing in `llm_llamacpp`
+  (see its `PATCH.md`), but the compact prompt alone brought visible reasoning to
+  zero.
+- **Offering every tool did not hurt selection**, so there is no local subset.
+
+### What is still weak
+
+Reorganizing the shelf. With the digest the model uses real book ids, but it
+invents group ids rather than reusing one of the member book ids as the tool
+asks. The tool only drafts a plan that the reader has to apply, so a bad plan is
+shown, never carried out.
+
 ## Why Qwen3.5 is faster than its size suggests
 
 Qwen3.5 is a hybrid: most layers are state-space (the GGUF carries

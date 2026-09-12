@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/service/ai/local/local_llm_models.dart';
-import 'package:flutter/foundation.dart';
 import 'package:anx_reader/utils/log/common.dart';
+import 'package:flutter/foundation.dart';
 import 'package:llm_llamacpp/llm_llamacpp.dart';
 
 /// Thrown when the configured weights are not on disk.
@@ -13,6 +13,24 @@ class LocalLlmModelMissing implements Exception {
 
   @override
   String toString() => 'Local model "$name" was not found';
+}
+
+/// Something the model produced: visible text, or a request to call tools.
+sealed class LocalLlmEvent {
+  const LocalLlmEvent();
+}
+
+class LocalLlmText extends LocalLlmEvent {
+  const LocalLlmText(this.text);
+  final String text;
+}
+
+/// The model asked for tools. The engine never runs them: the app's agent loop
+/// owns execution, so the same tools, confirmation UI and step tiles apply
+/// whichever provider is answering.
+class LocalLlmToolCalls extends LocalLlmEvent {
+  const LocalLlmToolCalls(this.calls);
+  final List<LLMToolCall> calls;
 }
 
 /// Holds the one loaded llama.cpp model the app keeps in memory.
@@ -78,17 +96,17 @@ class LocalLlmEngine {
     return repo;
   }
 
-  /// Streams a reply, one piece of text at a time.
-  Stream<String> stream({
+  /// Streams a reply as text pieces and, when [tools] are offered and the model
+  /// uses them, one [LocalLlmToolCalls] at the end of the turn.
+  Stream<LocalLlmEvent> stream({
     required String modelName,
     required List<LLMMessage> messages,
+    List<LLMTool> tools = const [],
     int maxTokens = 640,
     double temperature = 0.7,
   }) {
-    final out = StreamController<String>();
+    final out = StreamController<LocalLlmEvent>();
 
-    // Queue behind whatever is already generating, and keep the chain intact
-    // even when this request fails.
     // The deadline is armed outside the queued work so a helper isolate that
     // never answers still releases whoever is listening.
     final deadline = Timer(firstChunkDeadline, () {
@@ -101,9 +119,12 @@ class LocalLlmEngine {
       out.close();
     });
 
+    // Queue behind whatever is already generating, and keep the chain intact
+    // even when this request fails.
     _tail = _tail.then((_) async {
       final started = DateTime.now();
       var tokens = 0;
+      var pieces = 0;
       try {
         final repo = await _repositoryFor(modelName);
         // streamChat() discards the caller's options: it hands its
@@ -113,6 +134,11 @@ class LocalLlmEngine {
           'local',
           messages: messages,
           think: false, // Qwen3.5 would otherwise spend a few hundred tokens reasoning.
+          tools: tools,
+          // Report calls, never run them: execution belongs to the app.
+          options: tools.isEmpty
+              ? null
+              : LLMChatOptions(tools: tools, autoExecuteTools: false),
           generationOptions: GenerationOptions(
             temperature: temperature,
             topP: 0.9,
@@ -120,20 +146,34 @@ class LocalLlmEngine {
           ),
         );
         await for (final chunk in stream) {
-          final piece = chunk.message?.content;
+          final message = chunk.message;
+          if (chunk.evalCount != null) tokens = chunk.evalCount!;
+          if (message == null) continue;
+
+          final piece = message.content;
           if (piece != null && piece.isNotEmpty) {
             deadline.cancel();
-            tokens = chunk.evalCount ?? tokens;
+            pieces++;
             if (out.isClosed) break;
-            out.add(piece);
+            out.add(LocalLlmText(piece));
+          }
+
+          final calls = message.toolCalls;
+          if (calls != null && calls.isNotEmpty) {
+            deadline.cancel();
+            if (out.isClosed) break;
+            AnxLog.info('LocalLlm requested tools: '
+                '${calls.map((c) => '${c.name}(${c.arguments})').join(', ')}');
+            out.add(LocalLlmToolCalls(calls));
           }
         }
         final seconds = DateTime.now().difference(started).inMilliseconds / 1000;
-        if (tokens > 0 && seconds > 0) {
-          AnxLog.info('LocalLlm $tokens tokens in '
-              '${seconds.toStringAsFixed(1)}s '
-              '(${(tokens / seconds).toStringAsFixed(1)} tok/s)');
-        }
+        final generated = tokens > 0 ? tokens : pieces;
+        final capped = tokens >= maxTokens ? ' — hit the $maxTokens token cap' : '';
+        AnxLog.info('LocalLlm $generated tokens in '
+            '${seconds.toStringAsFixed(1)}s'
+            '${seconds > 0 ? ' (${(generated / seconds).toStringAsFixed(1)} tok/s)' : ''}'
+            ' with ${tools.length} tools offered$capped');
       } catch (e, st) {
         AnxLog.severe('LocalLlm generation failed: $e\n$st');
         if (!out.isClosed) out.addError(e, st);

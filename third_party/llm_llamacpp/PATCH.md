@@ -49,6 +49,16 @@ the iOS path only:
    free. Fixed at all three call sites — the persistent inference isolate the
    package actually uses, the legacy one-shot isolate, and embeddings.
 
+6. **`think: false` is accepted and then ignored** — not patched, worked
+   around. `streamChat` and `streamChatWithGenerationOptions` take `think`,
+   `StreamChatOptionsMerger` copies it into `MergedOptions`, and nothing in the
+   llama.cpp backend ever reads it: no chat-template flag, no `/no_think`, no
+   prefilled empty `<think>` block. Whether a Qwen3.5 reply opens with reasoning
+   is left entirely to the model. Measured on Qwen3.5-2B with the app's tools
+   offered, several replies spent seconds on visible reasoning, and one never
+   reached the tool call. Callers that need thinking off have to ask the model
+   themselves.
+
 Patched files: `hook/build.dart`, `lib/src/loader/loader_flutter.dart`,
 `lib/src/inference_isolate_handler.dart`, `lib/src/inference_isolate.dart`,
 `lib/src/embedding_isolate.dart`. None of them is
