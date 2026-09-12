@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:anx_reader/models/ai_provider.dart';
 import 'package:anx_reader/service/ai/ai_key_rotator.dart';
+import 'package:anx_reader/service/ai/index.dart';
 import 'package:anx_reader/service/ai/langchain_ai_config.dart';
 import 'package:anx_reader/service/ai/langchain_registry.dart';
 import 'package:anx_reader/service/ai/local/local_llm_chat_model.dart';
@@ -100,6 +101,20 @@ void main() {
       expect(model, isA<LocalLlmChatModel>());
       expect((model as LocalLlmChatModel).modelName, 'Qwen3.5-2B.gguf');
       expect(model.modelType, 'local-llama-cpp');
+    });
+  });
+
+  group('agent mode', () {
+    test('a local provider cannot run the tool loop', () {
+      // Without this the chat page, which always asks for agent mode, gets
+      // "Agent mode not supported for this provider." instead of an answer.
+      expect(supportsAgentMode(AiProtocol.local), isFalse);
+    });
+
+    test('remote providers still can', () {
+      expect(supportsAgentMode(AiProtocol.openai), isTrue);
+      expect(supportsAgentMode(AiProtocol.claude), isTrue);
+      expect(supportsAgentMode(AiProtocol.gemini), isTrue);
     });
   });
 

@@ -110,8 +110,9 @@ Stream<String> _generateStream({
           AnxLog.info(
               'aiGenerateStream (new): ${provider.id}, model: ${config.model}, baseUrl: ${config.baseUrl}');
 
+          final agentCapable = useAgent && supportsAgentMode(provider.protocol);
           final pipeline = registry.resolveByProtocol(provider.protocol, config,
-              useAgent: useAgent);
+              useAgent: agentCapable);
           final model = pipeline.model;
 
           await _throttleIfNeeded();
@@ -119,7 +120,7 @@ Stream<String> _generateStream({
             model: model,
             pipeline: pipeline,
             sanitizedMessages: sanitizedMessages,
-            useAgent: useAgent,
+            useAgent: agentCapable,
           );
 
           // Advance key index for round-robin rotation after successful call
@@ -180,9 +181,11 @@ Stream<String> _generateStream({
             AnxLog.info(
                 'aiGenerateStream (no-ref new): ${provider.id}, model: ${config.model}, baseUrl: ${config.baseUrl}');
 
+            final agentCapable =
+                useAgent && supportsAgentMode(provider.protocol);
             final pipeline = registry.resolveByProtocol(
                 provider.protocol, config,
-                useAgent: useAgent);
+                useAgent: agentCapable);
             final model = pipeline.model;
 
             await _throttleIfNeeded();
@@ -190,7 +193,7 @@ Stream<String> _generateStream({
               model: model,
               pipeline: pipeline,
               sanitizedMessages: sanitizedMessages,
-              useAgent: useAgent,
+              useAgent: agentCapable,
             );
 
             // Advance key index in persistent storage for round-robin rotation
@@ -247,6 +250,14 @@ Stream<String> _generateStream({
     useAgent: useAgent,
   );
 }
+
+/// Whether a provider can run the tool-calling agent loop.
+///
+/// Agent mode needs tools, and a model running on this device has none wired to
+/// it. This has to be answered before the pipeline is built: asking for agent
+/// mode without tools does not degrade to a plain answer, it refuses, so the
+/// chat page — which always asks for it — would never get a reply.
+bool supportsAgentMode(AiProtocol protocol) => protocol != AiProtocol.local;
 
 /// Execute the AI stream with the given model and pipeline
 Stream<String> _executeStream({

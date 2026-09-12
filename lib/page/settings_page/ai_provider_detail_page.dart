@@ -2,6 +2,7 @@ import 'package:anx_reader/enums/ai_reasoning_effort.dart';
 import 'package:anx_reader/l10n/generated/L10n.dart';
 import 'package:anx_reader/models/ai_provider.dart';
 import 'package:anx_reader/service/ai/local/local_llm_models.dart';
+import 'package:anx_reader/utils/log/common.dart';
 import 'package:anx_reader/providers/ai_providers.dart';
 import 'package:anx_reader/service/ai/ai_model_service.dart';
 import 'package:anx_reader/service/ai/index.dart';
@@ -349,8 +350,14 @@ class _AiProviderDetailPageState extends ConsumerState<AiProviderDetailPage> {
   Future<void> _scanLocalModels() async {
     final models = await LocalLlmModels.listInstalled();
     final dir = await LocalLlmModels.defaultDir();
+    AnxLog.info('LocalLlm settings scan: ${models.length} model(s) under '
+        '${LocalLlmModels.cachedRoots.join(", ")} '
+        '-> ${models.map((m) => m.name).join(", ")}');
     if (!mounted) return;
     setState(() {
+      if (_nameController.text.trim().isEmpty) {
+        _nameController.text = L10n.of(context).settingsAiProviderLocalDefaultName;
+      }
       _localModels = models;
       _localModelsDir = dir;
       // Nothing chosen yet and exactly one model present: choose it. Leaving it
@@ -713,12 +720,21 @@ class _AiProviderDetailPageState extends ConsumerState<AiProviderDetailPage> {
   void _saveProvider() {
     final l10n = L10n.of(context);
 
-    final missingTarget = _isLocal
-        ? _modelController.text.trim().isEmpty
-        : _urlController.text.isEmpty;
-    if (_nameController.text.isEmpty || missingTarget) {
+    // A bare "failed" leaves the user guessing which field is at fault, and a
+    // local provider has a different required set than a remote one.
+    final String? problem;
+    if (_nameController.text.trim().isEmpty) {
+      problem = l10n.settingsAiProviderNameRequired;
+    } else if (_isLocal && _modelController.text.trim().isEmpty) {
+      problem = l10n.settingsAiProviderLocalModelRequired;
+    } else if (!_isLocal && _urlController.text.trim().isEmpty) {
+      problem = l10n.settingsAiProviderUrl;
+    } else {
+      problem = null;
+    }
+    if (problem != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.commonFailed)),
+        SnackBar(content: Text(problem)),
       );
       return;
     }

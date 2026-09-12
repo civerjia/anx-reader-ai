@@ -41,7 +41,11 @@ class AiProviderListPage extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  provider.url,
+                  // A local provider has no endpoint; what identifies it is
+                  // the weights file, and an empty line says nothing.
+                  provider.protocol == AiProtocol.local
+                      ? provider.model
+                      : provider.url,
                   style: Theme.of(context).textTheme.bodySmall,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

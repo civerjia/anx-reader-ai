@@ -1,6 +1,9 @@
 {
   "ar": [
     "bookDetailFileFormat",
+    "settingsAiProviderNameRequired",
+    "settingsAiProviderLocalModelRequired",
+    "settingsAiProviderLocalDefaultName",
     "settingsAiProviderProtocolLocal",
     "settingsAiProviderLocalModelFile",
     "settingsAiProviderLocalModelHint",
@@ -74,6 +77,9 @@
 
   "de": [
     "bookDetailFileFormat",
+    "settingsAiProviderNameRequired",
+    "settingsAiProviderLocalModelRequired",
+    "settingsAiProviderLocalDefaultName",
     "settingsAiProviderProtocolLocal",
     "settingsAiProviderLocalModelFile",
     "settingsAiProviderLocalModelHint",
@@ -147,6 +153,9 @@
 
   "es": [
     "bookDetailFileFormat",
+    "settingsAiProviderNameRequired",
+    "settingsAiProviderLocalModelRequired",
+    "settingsAiProviderLocalDefaultName",
     "settingsAiProviderProtocolLocal",
     "settingsAiProviderLocalModelFile",
     "settingsAiProviderLocalModelHint",
@@ -220,6 +229,9 @@
 
   "fr": [
     "bookDetailFileFormat",
+    "settingsAiProviderNameRequired",
+    "settingsAiProviderLocalModelRequired",
+    "settingsAiProviderLocalDefaultName",
     "settingsAiProviderProtocolLocal",
     "settingsAiProviderLocalModelFile",
     "settingsAiProviderLocalModelHint",
@@ -293,6 +305,9 @@
 
   "it": [
     "bookDetailFileFormat",
+    "settingsAiProviderNameRequired",
+    "settingsAiProviderLocalModelRequired",
+    "settingsAiProviderLocalDefaultName",
     "settingsAiProviderProtocolLocal",
     "settingsAiProviderLocalModelFile",
     "settingsAiProviderLocalModelHint",
@@ -366,6 +381,9 @@
 
   "ja": [
     "bookDetailFileFormat",
+    "settingsAiProviderNameRequired",
+    "settingsAiProviderLocalModelRequired",
+    "settingsAiProviderLocalDefaultName",
     "settingsAiProviderProtocolLocal",
     "settingsAiProviderLocalModelFile",
     "settingsAiProviderLocalModelHint",
@@ -439,6 +457,9 @@
 
   "ko": [
     "bookDetailFileFormat",
+    "settingsAiProviderNameRequired",
+    "settingsAiProviderLocalModelRequired",
+    "settingsAiProviderLocalDefaultName",
     "settingsAiProviderProtocolLocal",
     "settingsAiProviderLocalModelFile",
     "settingsAiProviderLocalModelHint",
@@ -512,6 +533,9 @@
 
   "pt": [
     "bookDetailFileFormat",
+    "settingsAiProviderNameRequired",
+    "settingsAiProviderLocalModelRequired",
+    "settingsAiProviderLocalDefaultName",
     "settingsAiProviderProtocolLocal",
     "settingsAiProviderLocalModelFile",
     "settingsAiProviderLocalModelHint",
@@ -585,6 +609,9 @@
 
   "ro": [
     "bookDetailFileFormat",
+    "settingsAiProviderNameRequired",
+    "settingsAiProviderLocalModelRequired",
+    "settingsAiProviderLocalDefaultName",
     "settingsAiProviderProtocolLocal",
     "settingsAiProviderLocalModelFile",
     "settingsAiProviderLocalModelHint",
@@ -658,6 +685,9 @@
 
   "ru": [
     "bookDetailFileFormat",
+    "settingsAiProviderNameRequired",
+    "settingsAiProviderLocalModelRequired",
+    "settingsAiProviderLocalDefaultName",
     "settingsAiProviderProtocolLocal",
     "settingsAiProviderLocalModelFile",
     "settingsAiProviderLocalModelHint",
@@ -731,6 +761,9 @@
 
   "tr": [
     "bookDetailFileFormat",
+    "settingsAiProviderNameRequired",
+    "settingsAiProviderLocalModelRequired",
+    "settingsAiProviderLocalDefaultName",
     "settingsAiProviderProtocolLocal",
     "settingsAiProviderLocalModelFile",
     "settingsAiProviderLocalModelHint",
