@@ -82,6 +82,23 @@ The **rate** slider in the reading view is used as a speed multiplier, where
 `1.0` is the model's natural pace. **Pitch** is ignored: these models do not
 expose it.
 
+Two settings are worth knowing about:
+
+- **Pause length** keeps the pauses inside a sentence as the model produced
+  them. sherpa-onnx otherwise shrinks them to a fifth, and since it decides
+  what counts as a pause by loudness alone, the quiet tail of the syllable
+  before a comma is compressed away with it: one Chinese sentence with three
+  commas loses a third of its audio, and every comma sounds like a swallowed
+  word. Lower it only if you want a brisker read and can live with that.
+- **Compute backend** picks between the CPU and the platform's neural
+  accelerator. See the performance notes below.
+
+Symbols the model's lexicon does not know are rewritten before synthesis:
+Kokoro turns an unknown character into `❓`, which is not in its token table,
+so `1%` would otherwise be read as `1` or, in a short sentence, not at all.
+Percentages, degrees, currency and a few operators become words, with the
+number moving behind the word for Chinese (`1%` to `百分之1`).
+
 Two things in the folder are picked up without any setting:
 
 - `*.fst` text normalisation rules (`date-zh.fst`, `phone-zh.fst`,
@@ -126,6 +143,21 @@ better) on the same Chinese paragraph, 2 threads, Apple silicon Mac:
 | `kokoro-int8-multi-lang-v1_1` | 147 MB | 0.99–1.04 | far better Chinese, 103 voices |
 | `vits-zh-aishell3` | 116 MB | 0.39–0.49 | native Chinese, but only 8 kHz |
 | `sherpa-onnx-zipvoice-distill-int8-zh-en-emilia` | 109 MB | 0.49–0.58 | 24 kHz voice cloning |
+
+On the device itself, reading a book on an iPhone 16 Pro with
+`kokoro-multi-lang-v1_1`:
+
+| Backend | RTF | Note |
+| --- | --- | --- |
+| CoreML | 0.65 | the default on iOS |
+| CPU | 0.58 | cold phone |
+| CPU | 1.41 | warm phone, after ten minutes of reading |
+
+The CPU throttles as the phone heats up, and once the RTF passes 1.0 the
+prefetch buffer drains and every sentence waits on the model, which is heard
+as a stutter every few sentences. CoreML holds its pace and runs cooler.
+sherpa-onnx compiles the CoreML provider into its iOS binary only; on macOS
+it logs `CoreML is for Apple only ... Fallback to cpu!` and runs on the CPU.
 
 **Quantized is not the fast one here.** onnxruntime's int8 kernels on Apple
 silicon run the Kokoro graph roughly 2.4× slower than the float model, so the
