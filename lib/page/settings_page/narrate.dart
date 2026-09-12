@@ -152,6 +152,25 @@ class _NarrateSettingsState extends ConsumerState<NarrateSettings>
     super.dispose();
   }
 
+  /// Forget everything that describes the previous service's voices.
+  ///
+  /// The voice list, the "current model" card and the highlight all cache
+  /// data from whichever service was selected before, so switching services
+  /// used to keep showing, say, a Kokoro speaker while system TTS was
+  /// speaking.
+  void _resetVoiceState(String serviceId) {
+    final selected =
+        tts_svc.getTtsService(serviceId).provider.getSelectedVoice();
+    selectedVoiceModel = selected.isEmpty ? null : selected;
+    _showVoiceList = false;
+    groupedVoices = {};
+    expandedGroups = {};
+    _languageKeys.clear();
+    _highlightedModel = null;
+    _currentModelDetails = null;
+    _currentModelLanguageGroup = null;
+  }
+
   void _updateCurrentModelDetails(List<TtsVoice> voices) {
     if (selectedVoiceModel != null) {
       for (var voice in voices) {
@@ -329,15 +348,12 @@ class _NarrateSettingsState extends ConsumerState<NarrateSettings>
   @override
   Widget build(BuildContext context) {
     final ttsServiceId = ref.watch(ttsServiceProvider);
-    final currentProvider = tts_svc.getTtsService(ttsServiceId).provider;
 
     // Listen to config changes to hide voice list
     ref.listen(onlineTtsConfigProvider(ttsServiceId), (prev, next) {
       if (prev != next) {
-        setState(() {
-          _showVoiceList = false;
-          selectedVoiceModel = currentProvider.getSelectedVoice();
-        });
+        // A different model or endpoint means different voices.
+        setState(() => _resetVoiceState(ttsServiceId));
       }
     });
 
@@ -443,14 +459,9 @@ class _NarrateSettingsState extends ConsumerState<NarrateSettings>
             await TtsHandler().switchTtsType(value);
             ref.read(ttsServiceProvider.notifier).setService(value);
 
-            // Hide voice list when switching services, require manual fetch
-            _showVoiceList = false;
-
-            // Sync selected voice model for the new service
-            selectedVoiceModel =
-                tts_svc.getTtsService(value).provider.getSelectedVoice();
-
-            setState(() {});
+            // Drop the previous service's voice list and selection; the new
+            // one is fetched on demand.
+            setState(() => _resetVoiceState(value));
           }
         },
       ),
