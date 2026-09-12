@@ -1,5 +1,6 @@
 import 'package:anx_reader/providers/current_reading.dart';
 import 'package:anx_reader/service/ai/tools/repository/books_repository.dart';
+import 'package:anx_reader/service/ai/tools/repository/groups_repository.dart';
 import 'package:anx_reader/service/ai/tools/repository/notes_repository.dart';
 import 'package:anx_reader/service/ai/tools/repository/reading_history_repository.dart';
 import 'package:anx_reader/utils/log/common.dart';
@@ -60,6 +61,22 @@ Future<String?> buildLibraryDigest(WidgetRef ref) async {
       for (final book in started.take(_shelfLimit)) {
         lines.add('  #${book.id} ${book.title} — ${book.author} · '
             '${(book.readingPercentage * 100).toStringAsFixed(0)}%');
+      }
+      // Real group ids, so a reorganization can move books into folders that
+      // exist instead of inventing ids for them.
+      try {
+        final groups = await const GroupsRepository().fetchAll();
+        if (groups.isNotEmpty) {
+          final counts = <int, int>{};
+          for (final book in books.map((r) => r.book)) {
+            if (book.groupId > 0) {
+              counts[book.groupId] = (counts[book.groupId] ?? 0) + 1;
+            }
+          }
+          lines.add('  Groups (#id name · books): ${groups.take(_shelfLimit).map((g) => '#${g.id} ${g.name} · ${counts[g.id] ?? 0}').join('; ')}');
+        }
+      } catch (e) {
+        AnxLog.info('LocalLlm digest: groups unavailable ($e)');
       }
       if (unread.isNotEmpty) {
         final names = unread

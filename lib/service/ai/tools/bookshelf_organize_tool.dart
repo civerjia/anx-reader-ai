@@ -1,8 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:anx_reader/l10n/generated/L10n.dart';
 import 'package:anx_reader/models/book.dart';
 import 'package:anx_reader/service/ai/tools/ai_tool_registry.dart';
+import 'package:anx_reader/service/ai/tools/input/bookshelf_organize_group_spec.dart';
 import 'package:anx_reader/service/ai/tools/input/bookshelf_organize_input.dart';
 import 'package:anx_reader/service/ai/tools/repository/books_repository.dart';
 import 'package:anx_reader/service/ai/tools/repository/groups_repository.dart';
@@ -121,16 +124,23 @@ class BookshelfOrganizeTool
       throw ArgumentError('Cannot organize deleted books (ids: $ids).');
     }
 
+    // Member book ids are looked up too: a replacement id must not collide with
+    // a group that already exists.
     final allGroupIds = {
       ...input.groups.map((group) => group.groupId),
       ...input.cleanupGroupIds,
+      ...uniqueBookIds,
     }..removeWhere((id) => id <= 0);
     final existingGroups = await _groupsRepository.fetchByIds(allGroupIds);
+    final normalized = normalizeOrganizeGroups(
+      input.groups,
+      existingGroups.keys.toSet(),
+    );
 
     final groupsPlan = <Map<String, dynamic>>[];
     final newGroupIds = <int>{};
 
-    for (final group in input.groups) {
+    for (final group in normalized.groups) {
       final books = group.bookIds.map((id) => bookMap[id]!).toList();
       final existing = existingGroups[group.groupId];
       final createNew = group.createNew ?? existing == null;
@@ -177,7 +187,10 @@ class BookshelfOrganizeTool
 
     final cleanupGroupIds = input.cleanupGroupIds
         .where((id) => id > 0)
-        .where((id) => !input.groups.any((group) => group.groupId == id))
+        // A group that does not exist cannot be cleaned up; a made-up id here
+        // is noise, not an instruction.
+        .where(existingGroups.containsKey)
+        .where((id) => !normalized.groups.any((group) => group.groupId == id))
         .toSet()
         .toList()
       ..sort();
@@ -195,6 +208,11 @@ class BookshelfOrganizeTool
         'groups': groupsPlan,
         'ungroupedBooks': ungrouped,
         'cleanupGroupIds': cleanupGroupIds,
+        if (normalized.remapped.isNotEmpty)
+          'correctedGroupIds': {
+            for (final entry in normalized.remapped.entries)
+              '${entry.key}': entry.value,
+          },
         'stats': {
           'groups': groupsPlan.length,
           'movedBooks': groupsPlan.fold<int>(
@@ -243,6 +261,62 @@ class BookshelfOrganizeTool
     }
     return parts.join(' ');
   }
+}
+
+/// Groups after repairing the ids a model gets wrong, plus what was changed.
+///
+/// The tool's contract is exact — an existing group keeps its id, and a new
+/// group takes the id of one of its own books, because that is how the app
+/// names folders — and a small model does not keep to it: measured on
+/// Qwen3.5-2B, it used the right book ids but made up group ids (8, 9, 10) for
+/// new groups, and every such plan was rejected outright. The intent in those
+/// plans is unambiguous, so rather than fail, an unknown or invalid group id is
+/// replaced by one of the group's own book ids that is not already a group, and
+/// the replacement is reported back.
+@visibleForTesting
+({List<BookshelfOrganizeGroupSpec> groups, Map<int, int> remapped})
+    normalizeOrganizeGroups(
+  List<BookshelfOrganizeGroupSpec> groups,
+  Set<int> existingGroupIds,
+) {
+  final taken = <int>{};
+  final remapped = <int, int>{};
+  final out = <BookshelfOrganizeGroupSpec>[];
+
+  for (final group in groups) {
+    final exists = group.groupId > 0 && existingGroupIds.contains(group.groupId);
+    if (exists && group.createNew != true) {
+      out.add(group.copyWith(createNew: false));
+      continue;
+    }
+
+    final usable = group.bookIds.contains(group.groupId) &&
+        !existingGroupIds.contains(group.groupId) &&
+        !taken.contains(group.groupId);
+    if (usable) {
+      taken.add(group.groupId);
+      out.add(group.copyWith(createNew: true));
+      continue;
+    }
+
+    int? replacement;
+    for (final id in group.bookIds) {
+      if (!existingGroupIds.contains(id) && !taken.contains(id)) {
+        replacement = id;
+        break;
+      }
+    }
+    if (replacement == null) {
+      // Nothing sound to substitute; validation below explains the problem.
+      out.add(group);
+      continue;
+    }
+    taken.add(replacement);
+    remapped[group.groupId] = replacement;
+    out.add(group.copyWith(groupId: replacement, createNew: true));
+  }
+
+  return (groups: out, remapped: remapped);
 }
 
 final AiToolDefinition bookshelfOrganizeToolDefinition = AiToolDefinition(
