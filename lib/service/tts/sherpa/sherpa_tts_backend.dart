@@ -41,8 +41,9 @@ class SherpaTtsProvider extends TtsServiceProvider {
   /// four. Since synthesis has to stay ahead of playback, and a listener
   /// speeding a book up needs RTF below 1/speed, half the cores is a much
   /// better default than two.
+  /// Leave two cores for the app and the system, take the rest.
   static int get _defaultNumThreads =>
-      (Platform.numberOfProcessors / 2).floor().clamp(2, 6);
+      (Platform.numberOfProcessors - 2).clamp(2, 6);
 
   final SherpaTtsEngine _engine = SherpaTtsEngine();
 
