@@ -1,5 +1,8 @@
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/enums/lang_list.dart';
+import 'package:anx_reader/l10n/generated/L10n.dart';
+import 'package:anx_reader/service/dictionary/dictionary_service.dart';
+import 'package:anx_reader/service/dictionary/stardict.dart';
 import 'package:anx_reader/service/translate/index.dart';
 import 'package:anx_reader/widgets/common/axis_flex.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +28,8 @@ class TranslationMenu extends StatefulWidget {
 
 class _TranslationMenuState extends State<TranslationMenu> {
   Widget? _translationWidget;
+  // Local dictionary entries for a word or short term; null until looked up.
+  List<DictionaryEntry>? _entries;
   Timer? _debounceTimer;
   bool _translationInitialized = false;
 
@@ -44,19 +49,70 @@ class _TranslationMenuState extends State<TranslationMenu> {
       _debounceTimer = Timer(const Duration(milliseconds: 300), () {
         if (!mounted || _translationInitialized) return;
 
-        setState(() {
-          final effectiveContextText =
-              (widget.contextText?.trim().isEmpty ?? true)
-                  ? null
-                  : widget.contextText;
-          _translationWidget = translateText(
-            widget.content,
-            contextText: effectiveContextText,
-          );
-          _translationInitialized = true;
-        });
+        _translationInitialized = true;
+        _lookUpThenTranslate();
       });
     });
+  }
+
+  /// A word or short term is looked up in the local dictionaries first, which
+  /// works offline; online translation runs only when they have nothing, or
+  /// when asked for. Passages go straight to translation.
+  Future<void> _lookUpThenTranslate() async {
+    var entries = const <DictionaryEntry>[];
+    if (isDictionaryTerm(widget.content)) {
+      try {
+        entries = await dictionaryLibrary.lookup(widget.content);
+      } catch (_) {
+        entries = const [];
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _entries = entries;
+      if (entries.isEmpty) _translateOnline();
+    });
+  }
+
+  void _translateOnline() {
+    final effectiveContextText =
+        (widget.contextText?.trim().isEmpty ?? true) ? null : widget.contextText;
+    _translationWidget = translateText(
+      widget.content,
+      contextText: effectiveContextText,
+    );
+  }
+
+  Widget _dictionaryEntries(List<DictionaryEntry> entries) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final entry in entries) ...[
+          Text(
+            '${entry.headword} · ${entry.dictionary}',
+            style: theme.textTheme.labelSmall
+                ?.copyWith(color: theme.colorScheme.primary),
+          ),
+          const SizedBox(height: 2),
+          Text(entry.definition, style: const TextStyle(fontSize: 14)),
+          const SizedBox(height: 8),
+        ],
+        if (_translationWidget == null)
+          PointerInterceptor(
+            child: TextButton.icon(
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+              ),
+              onPressed: () => setState(_translateOnline),
+              icon: const Icon(Icons.translate, size: 16),
+              label: Text(L10n.of(context).dictionaryOnlineTranslate),
+            ),
+          ),
+      ],
+    );
   }
 
   @override
@@ -142,11 +198,15 @@ class _TranslationMenuState extends State<TranslationMenu> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Show translation widget if initialized, otherwise show loading placeholder
-                    _translationWidget ??
-                        const SizedBox(
-                          height: 20,
-                          child: Center(child: Text('...')),
-                        ),
+                    if (_entries?.isNotEmpty ?? false)
+                      _dictionaryEntries(_entries!),
+                    if (_translationWidget != null)
+                      _translationWidget!
+                    else if (_entries == null)
+                      const SizedBox(
+                        height: 20,
+                        child: Center(child: Text('...')),
+                      ),
                     const Divider(),
                     AxisFlex(
                       mainAxisSize: MainAxisSize.min,

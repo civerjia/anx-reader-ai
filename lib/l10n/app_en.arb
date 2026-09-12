@@ -676,6 +676,30 @@
   "pageTurnActionMenu": "Menu",
   "underlineTranslation": "Underline Translation",
   "underlineTranslationTip": "Translation feature for text selected by underlining, such as dictionary translation, etc.",
+  "dictionaryLocal": "Local dictionaries",
+  "dictionaryImport": "Import dictionary",
+  "dictionaryImportHint": "StarDict dictionaries work offline. Import a .zip, .tar.bz2 or .tar.gz package, or select its .ifo, .idx and .dict (.dict.dz) files together. Words you select are looked up here first.",
+  "dictionaryEmpty": "No dictionaries yet",
+  "dictionaryWordCount": "{count} words",
+  "@dictionaryWordCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "dictionaryDeleteConfirm": "Delete {name}?",
+  "@dictionaryDeleteConfirm": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "dictionaryImported": "Imported: {names}",
+  "@dictionaryImported": {
+    "placeholders": {
+      "names": {"type": "String"}
+    }
+  },
+  "dictionaryImportNothing": "No StarDict dictionary found in the selected files",
+  "dictionaryOnlineTranslate": "Translate online",
   "fullTextTranslation": "Full-text Translation",
   "fullTextTranslationTip": "Bilingual parallel translation feature for reading pages, translating entire content.",
   "settingsAiRpm": "Rate Limit (RPM)",

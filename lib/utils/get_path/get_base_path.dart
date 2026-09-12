@@ -68,6 +68,7 @@ void initBasePath() async {
   final coverDir = getCoverDir();
   final fontDir = getFontDir();
   final bgimgDir = getBgimgDir();
+  final dictionaryDir = getDictionaryDir();
   if (!fileDir.existsSync()) {
     fileDir.createSync(recursive: true);
   }
@@ -80,6 +81,9 @@ void initBasePath() async {
   if (!bgimgDir.existsSync()) {
     bgimgDir.createSync(recursive: true);
   }
+  if (!dictionaryDir.existsSync()) {
+    dictionaryDir.createSync(recursive: true);
+  }
 }
 
 String getBasePath(String path) {
@@ -91,6 +95,12 @@ String getBasePath(String path) {
 Directory getFontDir({String? path}) {
   path ??= documentPath;
   return Directory('$path${Platform.pathSeparator}font');
+}
+
+/// Imported StarDict dictionaries, one folder each.
+Directory getDictionaryDir({String? path}) {
+  path ??= documentPath;
+  return Directory('$path${Platform.pathSeparator}dictionary');
 }
 
 Directory getCoverDir({String? path}) {
