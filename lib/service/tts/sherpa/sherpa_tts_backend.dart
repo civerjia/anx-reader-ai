@@ -157,6 +157,17 @@ class SherpaTtsProvider extends TtsServiceProvider {
         step: 0.05,
       ),
       ConfigItem(
+        key: 'silenceScale',
+        label: L10n.of(context).settingsNarrateSherpaSilenceScale,
+        description:
+            L10n.of(context).settingsNarrateSherpaSilenceScaleDescription,
+        type: ConfigItemType.range,
+        defaultValue: 1.0,
+        min: 0.2,
+        max: 1.5,
+        step: 0.05,
+      ),
+      ConfigItem(
         key: 'preferInt8',
         label: L10n.of(context).settingsNarrateSherpaPreferInt8,
         description:
@@ -326,6 +337,7 @@ class SherpaTtsProvider extends TtsServiceProvider {
       'provider': config['provider'] ?? _defaultProvider,
       'autoSpeed': config['autoSpeed'] ?? true,
       'speedFactor': config['speedFactor'] ?? 1.0,
+      'silenceScale': config['silenceScale'] ?? 1.0,
       'preferInt8': config['preferInt8'] ?? true,
       'lexicon': config['lexicon'] ?? '',
     };
@@ -374,6 +386,7 @@ class SherpaTtsProvider extends TtsServiceProvider {
       referenceAudio: config['referenceAudio']?.toString() ?? '',
       referenceText: config['referenceText']?.toString() ?? '',
       numSteps: _asInt(config['numSteps'], _defaultNumSteps),
+      silenceScale: _asDouble(config['silenceScale'], 1.0).clamp(0.2, 1.5),
     );
 
     if (spec.type.needsReferenceAudio && spec.referenceAudio.isEmpty) {

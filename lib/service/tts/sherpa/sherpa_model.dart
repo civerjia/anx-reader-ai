@@ -72,6 +72,7 @@ class SherpaModelSpec {
     this.referenceAudio = '',
     this.referenceText = '',
     this.numSteps = 4,
+    this.silenceScale = 1.0,
     this.debug = false,
   });
 
@@ -95,6 +96,13 @@ class SherpaModelSpec {
   final String referenceAudio;
   final String referenceText;
   final int numSteps;
+
+  /// How much sherpa-onnx shortens pauses inside a sentence. Its own default
+  /// of 0.2 squeezes every pause longer than 0.2s down to a fifth, and since
+  /// it decides what a pause is by amplitude alone, the quiet tail of the
+  /// syllable before a comma goes with it. 1.0 leaves the audio alone.
+  final double silenceScale;
+
   final bool debug;
 
   /// Identity of everything that requires rebuilding the native TTS object.
@@ -295,6 +303,7 @@ class SherpaModelResolver {
     String referenceAudio = '',
     String referenceText = '',
     int numSteps = 4,
+    double silenceScale = 1.0,
     String lang = '',
     bool debug = false,
   }) async {
@@ -424,6 +433,7 @@ class SherpaModelResolver {
           lang: lang,
           numThreads: threads,
           provider: provider,
+          silenceScale: silenceScale,
           debug: debug,
         );
 
@@ -440,6 +450,7 @@ class SherpaModelResolver {
           ruleFars: rules('.far'),
           numThreads: threads,
           provider: provider,
+          silenceScale: silenceScale,
           debug: debug,
         );
 
@@ -473,6 +484,7 @@ class SherpaModelResolver {
           numSteps: numSteps < 1 ? 1 : numSteps,
           numThreads: threads,
           provider: provider,
+          silenceScale: silenceScale,
           debug: debug,
         );
 
@@ -498,6 +510,7 @@ class SherpaModelResolver {
           ruleFars: rules('.far'),
           numThreads: threads,
           provider: provider,
+          silenceScale: silenceScale,
           debug: debug,
         );
 
@@ -516,6 +529,7 @@ class SherpaModelResolver {
           ruleFars: rules('.far'),
           numThreads: threads,
           provider: provider,
+          silenceScale: silenceScale,
           debug: debug,
         );
     }

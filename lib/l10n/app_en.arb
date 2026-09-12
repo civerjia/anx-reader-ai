@@ -854,6 +854,8 @@
   "settingsNarrateSherpaProviderDescription": "CPU always works. CoreML and NNAPI hand the parts of the model they support to the neural accelerator, which can run cooler, but they can also be slower when the model does not map cleanly. Compare the RTF in the log.",
   "settingsNarrateSherpaNumThreads": "Threads",
   "settingsNarrateSherpaNumThreadsDescription": "CPU threads used for inference. 2 is a good start on a phone.",
+  "settingsNarrateSherpaSilenceScale": "Pause length",
+  "settingsNarrateSherpaSilenceScaleDescription": "How much of the pauses inside a sentence to keep. Below 1.0 sherpa-onnx shortens them, and because it finds pauses by loudness alone it also clips the quiet tail of the word before a comma.",
   "settingsNarrateSherpaPreferInt8": "Prefer quantized models",
   "settingsNarrateSherpaPreferInt8Description": "Use the int8 file when the folder ships both. Faster and smaller, with a small quality cost.",
   "settingsNarrateSherpaLexicon": "Lexicon files",
