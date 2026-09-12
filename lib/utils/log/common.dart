@@ -59,9 +59,18 @@ class AnxLog {
         }
       }
       String error = record.error == null ? '' : ' : ${record.error}';
-      logFile!.writeAsStringSync(
-          '${'${record.level.name}^*^ ${record.time}^*^ [${record.message}]$error,${record.stackTrace}'.replaceAll('\n', ' ')}\n',
-          mode: FileMode.append);
+      try {
+        logFile!.writeAsStringSync(
+            '${'${record.level.name}^*^ ${record.time}^*^ [${record.message}]$error,${record.stackTrace}'.replaceAll('\n', ' ')}\n',
+            mode: FileMode.append);
+      } catch (e) {
+        // The log file can disappear under us, for instance when iOS moves
+        // the data container. Writing must never throw from inside the error
+        // handler, or every failure logs a failure and the app spins.
+        if (kDebugMode) {
+          print('Failed to write to the log file: $e');
+        }
+      }
     });
     if (Prefs().clearLogWhenStart) {
       clear();
