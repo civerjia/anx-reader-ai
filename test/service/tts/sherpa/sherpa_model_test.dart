@@ -368,24 +368,23 @@ void main() {
       expect(split.playback, closeTo(1.0, 0.001));
     });
 
-    test('the model handles moderate speed on its own', () {
-      final split = SherpaPace.split(rate: 0.5, factor: 1.0);
+    test('the slider reads as a multiplier of the natural pace', () {
+      final split = SherpaPace.split(rate: 1.25, factor: 1.0);
 
-      expect(split.model, closeTo(1.0, 0.001));
+      // 1.25 on the slider is 1.25x, which the model still does cleanly.
+      expect(split.model, closeTo(1.25, 0.001));
       expect(split.playback, closeTo(1.0, 0.001));
     });
 
     test('the player takes over past what the model reads cleanly', () {
-      final split = SherpaPace.split(rate: 1.0, factor: 1.0);
+      final split = SherpaPace.split(rate: 2.5, factor: 1.0);
 
-      // Twice the reference pace: the model goes to its cap and the player
-      // covers the rest, so no syllables are dropped.
       expect(split.model, SherpaPace.maxModelSpeed);
-      expect(split.model * split.playback, closeTo(2.0, 0.001));
+      expect(split.model * split.playback, closeTo(2.5, 0.001));
     });
 
     test('slow reading stays entirely in the model', () {
-      final split = SherpaPace.split(rate: 0.25, factor: 1.0);
+      final split = SherpaPace.split(rate: 0.5, factor: 1.0);
 
       expect(split.model, closeTo(0.5, 0.001));
       expect(split.playback, closeTo(1.0, 0.001));

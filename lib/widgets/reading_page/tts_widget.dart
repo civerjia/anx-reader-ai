@@ -113,7 +113,7 @@ class _TtsWidgetState extends State<TtsWidget> {
               Text(L10n.of(context).ttsRate),
               Expanded(
                 child: Slider(
-                  value: TtsHandler().rate.clamp(0.25, 2.0),
+                  value: TtsHandler().rate.clamp(0.25, 3.0),
                   onChanged: (newRate) {
                     setState(() {
                       TtsHandler().rate = newRate;
@@ -121,10 +121,11 @@ class _TtsWidgetState extends State<TtsWidget> {
                   },
                   // 0.05 steps: a fifth of the old one, because a step used
                   // to change the pace by a fifth. Nothing below 0.25 is
-                  // listenable, and zero was silence.
+                  // listenable, and zero was silence. The top end is for
+                  // people who listen to books at three times speed.
                   min: 0.25,
-                  max: 2.0,
-                  divisions: 35,
+                  max: 3.0,
+                  divisions: 55,
                   label: TtsHandler().rate.toStringAsFixed(2),
                 ),
               ),

@@ -30,9 +30,13 @@ class SherpaPace {
   /// change how fast the book is read.
   static const double referencePace = 4.0;
 
-  /// The rate slider value that means "normal speed". Matches flutter_tts,
-  /// where 0.5 is the platform's default rate.
-  static const double referenceRate = 0.5;
+  /// The rate slider value that means "normal speed".
+  ///
+  /// The slider reads as a multiplier, so 1.0 has to be the natural pace:
+  /// anchoring at flutter_tts's 0.5 meant a slider set to 1.25 was really
+  /// asking for 2.44x, which is both a surprise and far more than the model
+  /// can synthesize in time.
+  static const double referenceRate = 1.0;
 
   /// Enough measured speech to trust the estimate.
   static const double minSyllablesToCalibrate = 25;
