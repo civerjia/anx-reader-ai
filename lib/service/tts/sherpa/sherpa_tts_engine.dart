@@ -15,7 +15,19 @@ class SherpaAudio {
   final Float32List samples;
   final int sampleRate;
 
-  Uint8List toWav() => encodeWav(samples, sampleRate);
+  /// Wave bytes, with a short silence at the end.
+  ///
+  /// Players can report a clip as finished a few dozen milliseconds early,
+  /// which eats the last syllable of a sentence. Padding means what gets
+  /// clipped is silence.
+  Uint8List toWav({Duration tail = const Duration(milliseconds: 150)}) {
+    final padding = (sampleRate * tail.inMilliseconds / 1000).round();
+    if (padding <= 0) return encodeWav(samples, sampleRate);
+
+    final padded = Float32List(samples.length + padding);
+    padded.setAll(0, samples);
+    return encodeWav(padded, sampleRate);
+  }
 }
 
 // ── Messages exchanged with the inference isolate ────────────────────────
