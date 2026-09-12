@@ -853,7 +853,7 @@
   "settingsNarrateSherpaProvider": "计算后端",
   "settingsNarrateSherpaProviderDescription": "CPU 永远可用。CoreML / NNAPI 会把模型中支持的部分交给神经网络加速器，可能更省电，但模型不匹配时反而更慢。可对比日志里的 RTF。",
   "settingsNarrateSherpaNumThreads": "线程数",
-  "settingsNarrateSherpaNumThreadsDescription": "推理使用的 CPU 线程数，手机上建议 2。",
+  "settingsNarrateSherpaNumThreadsDescription": "合成使用的 CPU 线程数。2 线程在常用语速下足以追上播放；线程越多越快，但机身会发热，而发热会触发降频。",
   "settingsNarrateSherpaSilenceScale": "停顿长度",
   "settingsNarrateSherpaSilenceScaleDescription": "逗号处的停顿保留多少。Kokoro 生成的停顿接近一秒，0.4 听起来更紧凑。裁剪由 Anx 自己做，判定静音的阈值远低于字尾余音，所以缩短停顿不会吃字。",
   "settingsNarrateSherpaPreferInt8": "优先使用量化模型",
