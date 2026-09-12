@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:anx_reader/service/tts/sherpa/sherpa_model.dart';
+import 'package:anx_reader/service/tts/sherpa/sherpa_onnx_meta.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_wav.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -201,6 +203,60 @@ void main() {
       );
 
       expect(a.engineKey, b.engineKey);
+    });
+  });
+
+  group('SherpaOnnxMeta', () {
+    /// One `StringStringEntryProto`: key, then field 2 with a varint length.
+    List<int> entry(String key, String value) {
+      final valueBytes = utf8.encode(value);
+      final length = <int>[];
+      var remaining = valueBytes.length;
+      do {
+        var byte = remaining & 0x7f;
+        remaining >>= 7;
+        if (remaining > 0) byte |= 0x80;
+        length.add(byte);
+      } while (remaining > 0);
+      return [
+        0x0a, key.length, ...ascii.encode(key),
+        0x12, ...length, ...valueBytes,
+      ];
+    }
+
+    File onnxWith(List<int> tail) {
+      final file = File(p.join(
+          Directory.systemTemp.createTempSync('sherpa-onnx-').path,
+          'model.onnx'));
+      // Something in front of the metadata, as in a real model.
+      file.writeAsBytesSync([...List.filled(4096, 0x42), ...tail]);
+      addTearDown(() => file.parent.deleteSync(recursive: true));
+      return file;
+    }
+
+    test('reads the speaker names out of the metadata', () {
+      final file = onnxWith(entry('speaker_names',
+          'af_heart,zf_xiaoxiao,zm_yunxi'));
+
+      expect(SherpaOnnxMeta.speakerNames(file.path),
+          ['af_heart', 'zf_xiaoxiao', 'zm_yunxi']);
+    });
+
+    test('handles a value longer than one varint byte', () {
+      final names = List.generate(200, (i) => 'v$i');
+      final file = onnxWith(entry('speaker_names', names.join(',')));
+
+      expect(SherpaOnnxMeta.speakerNames(file.path), names);
+    });
+
+    test('returns nothing for a model without the entry', () {
+      final file = onnxWith(entry('model_type', 'kokoro'));
+
+      expect(SherpaOnnxMeta.speakerNames(file.path), isEmpty);
+    });
+
+    test('returns nothing for a missing file', () {
+      expect(SherpaOnnxMeta.speakerNames('/no/such/model.onnx'), isEmpty);
     });
   });
 
