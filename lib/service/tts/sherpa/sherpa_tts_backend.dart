@@ -8,6 +8,7 @@ import 'package:anx_reader/service/tts/sherpa/sherpa_model.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_model_roots.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_onnx_meta.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_pace.dart';
+import 'package:anx_reader/service/tts/sherpa/sherpa_loudness.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_text.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_wav.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_voice_catalog.dart';
@@ -544,10 +545,10 @@ class SherpaTtsProvider extends TtsServiceProvider {
     // Two measures, because they agree only when the blocked one is
     // unbiased: a sentence measured through its pauses reads quiet and is
     // then amplified too much.
-    final level = gatedLevel(audio.samples, audio.sampleRate);
+    final lufs = SherpaLoudness.measure(audio.samples, audio.sampleRate);
     final plain = plainLevel(audio.samples);
-    final line = 'SherpaTts level ${level.toStringAsFixed(3)}'
-        '/${plain.toStringAsFixed(3)} '
+    final line = 'SherpaTts ${lufs?.toStringAsFixed(1) ?? '?'} LUFS '
+        '(rms ${plain.toStringAsFixed(3)}) '
         'said ${syllables.toStringAsFixed(0)} syllables in '
         '${seconds.toStringAsFixed(1)}s at model speed '
         '${speed.toStringAsFixed(2)} x player ${_playbackRate.toStringAsFixed(2)} '

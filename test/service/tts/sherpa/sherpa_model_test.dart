@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:anx_reader/service/tts/sherpa/sherpa_model.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_onnx_meta.dart';
+import 'package:anx_reader/service/tts/sherpa/sherpa_loudness.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_pace.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_text.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_wav.dart';
@@ -576,43 +577,44 @@ void main() {
 
     Float32List tone(double amplitude, {double seconds = 2.0}) =>
         Float32List.fromList(List<double>.generate(
-            (sr * seconds).round(), (i) => amplitude * math.sin(i * 0.1)));
+            (sr * seconds).round(), (i) => amplitude * math.sin(i * 0.4)));
 
-    double levelOf(Float32List samples) {
-      var sum = 0.0;
-      for (final sample in samples) {
-        sum += sample * sample;
-      }
-      return math.sqrt(sum / samples.length);
-    }
+    test('brings a quiet clip to the target loudness', () {
+      final out = normalizeLoudness(tone(0.05), sr);
 
-    test('brings a quiet clip up to the target', () {
-      final out = normalizeLoudness(tone(0.05), sr, targetLevel: 0.09);
-
-      expect(levelOf(out), closeTo(0.09, 0.01));
+      expect(SherpaLoudness.measure(out, sr),
+          closeTo(SherpaLoudness.targetLufs, 0.5));
     });
 
-    test('brings a loud clip down', () {
-      final out = normalizeLoudness(tone(0.5), sr, targetLevel: 0.09);
+    test('brings a loud clip down to it', () {
+      final out = normalizeLoudness(tone(0.5), sr);
 
-      expect(levelOf(out), closeTo(0.09, 0.01));
+      expect(SherpaLoudness.measure(out, sr),
+          closeTo(SherpaLoudness.targetLufs, 0.5));
     });
 
-    test('ignores the pauses when measuring', () {
-      // Half speech, half silence: the silence must not halve the reading.
+    test('a short sentence lands where a long one does', () {
+      final short = normalizeLoudness(tone(0.05, seconds: 0.6), sr);
+      final long = normalizeLoudness(tone(0.05, seconds: 6.0), sr);
+
+      expect(SherpaLoudness.measure(short, sr)!,
+          closeTo(SherpaLoudness.measure(long, sr)!, 1.0));
+    });
+
+    test('the pause after a sentence does not count as quiet speech', () {
       final speech = tone(0.05, seconds: 2.0);
       final withPause = Float32List(speech.length * 2)
         ..setRange(0, speech.length, speech);
 
-      final out = normalizeLoudness(withPause, sr, targetLevel: 0.09);
-      final spoken = Float32List.sublistView(out, 0, speech.length);
+      final plain = normalizeLoudness(speech, sr);
+      final padded = normalizeLoudness(withPause, sr);
 
-      expect(levelOf(spoken), closeTo(0.09, 0.015));
+      expect(SherpaLoudness.measure(padded, sr)!,
+          closeTo(SherpaLoudness.measure(plain, sr)!, 0.5));
     });
 
     test('holds peaks under the ceiling', () {
-      final out = normalizeLoudness(tone(0.02), sr,
-          targetLevel: 0.6, ceiling: 0.95, maxGain: 40);
+      final out = normalizeLoudness(tone(0.01), sr, ceiling: 0.95);
 
       var peak = 0.0;
       for (final sample in out) {
@@ -621,21 +623,7 @@ void main() {
       expect(peak, lessThanOrEqualTo(0.95));
     });
 
-    test('a short sentence is measured like a long one', () {
-      // Same speech, one with a pause after it. Both must come out at the
-      // same level, or every short sentence in a book plays louder.
-      final speech = tone(0.05, seconds: 0.6);
-      final withPause = Float32List(speech.length * 2)
-        ..setRange(0, speech.length, speech);
-
-      final short = normalizeLoudness(speech, sr, targetLevel: 0.09);
-      final padded = normalizeLoudness(withPause, sr, targetLevel: 0.09);
-
-      expect(levelOf(Float32List.sublistView(padded, 0, speech.length)),
-          closeTo(levelOf(short), 0.005));
-    });
-
-    test('leaves near silence alone', () {
+    test('leaves silence alone', () {
       final quiet = Float32List.fromList(List<double>.filled(sr, 0.0));
 
       expect(normalizeLoudness(quiet, sr), same(quiet));
