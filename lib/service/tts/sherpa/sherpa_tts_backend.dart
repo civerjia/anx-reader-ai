@@ -388,9 +388,39 @@ class SherpaTtsProvider extends TtsServiceProvider {
 
   @override
   void saveConfig(Map<String, dynamic> config) {
+    final previous = getConfig();
     Prefs().saveOnlineTtsConfig(serviceId, _withPortablePaths(config));
+    final changedModel = previous['modelDir'] != config['modelDir'] ||
+        previous['modelType'] != config['modelType'];
+    if (changedModel) {
+      // Voice ids belong to a model; carrying one across is meaningless.
+      Prefs().setTtsVoiceModel(serviceId, '0');
+    }
     // The next request rebuilds the engine if the model actually changed.
     _cachedSpec = null;
+  }
+
+  /// The folder to load, or nothing when the one on file belongs to another
+  /// family. Switching family then picks up that family's model by itself,
+  /// instead of failing until the folder is chosen by hand.
+  String _modelDirFor(SherpaModelType type, String configured) {
+    if (configured.trim().isEmpty) return '';
+    final dir = _resolveDirSync(configured);
+    if (dir == null) return configured;
+    final actual = SherpaModelResolver.detectType(dir.path);
+    return actual == null || actual == type ? configured : '';
+  }
+
+  Directory? _resolveDirSync(String configured) {
+    if (p.isAbsolute(configured)) {
+      final dir = Directory(configured);
+      if (dir.existsSync()) return dir;
+    }
+    for (final root in SherpaModelRoots.cached) {
+      final dir = Directory(p.join(root, p.basename(configured)));
+      if (dir.existsSync()) return dir;
+    }
+    return null;
   }
 
   /// Store a folder inside the app's model directory by name.
@@ -436,10 +466,11 @@ class SherpaTtsProvider extends TtsServiceProvider {
     final cached = _cachedSpec;
     if (cached != null && _cachedConfigKey == key) return cached;
 
+    final type = SherpaModelType.fromId(config['modelType']?.toString());
     final spec = await SherpaModelResolver.resolve(
-      dirInput: config['modelDir']?.toString() ?? '',
+      dirInput: _modelDirFor(type, config['modelDir']?.toString() ?? ''),
       searchRoots: await SherpaModelRoots.all(),
-      type: SherpaModelType.fromId(config['modelType']?.toString()),
+      type: type,
       preferInt8: _asBool(config['preferInt8'], true),
       numThreads: _asInt(config['numThreads'], _defaultNumThreads),
       provider: config['provider']?.toString() ?? _defaultProvider,
@@ -622,7 +653,12 @@ class SherpaTtsProvider extends TtsServiceProvider {
     final raw = (voiceOverride == null || voiceOverride.isEmpty)
         ? getSelectedVoice()
         : voiceOverride;
-    return int.tryParse(raw.trim()) ?? 0;
+    final id = int.tryParse(raw.trim()) ?? 0;
+    // The voice saved for one model may not exist in another, and a model
+    // switch should not need the voice list to be opened before it speaks.
+    final count = _engine.numSpeakers;
+    if (count > 0 && id >= count) return 0;
+    return id < 0 ? 0 : id;
   }
 
   @override
