@@ -202,7 +202,7 @@ Float32List normalizeLoudness(
   double maxGain = 10.0,
   double ceiling = 0.95,
 }) {
-  final level = _gatedLevel(samples, sampleRate);
+  final level = gatedLevel(samples, sampleRate);
   if (level <= 0) return samples;
 
   final gain = (targetLevel / level).clamp(1 / maxGain, maxGain);
@@ -227,7 +227,7 @@ Float32List normalizeLoudness(
 
 /// Loudness over 400ms blocks, ignoring blocks more than 10dB below the
 /// average, so pauses and trailing breaths do not drag the figure down.
-double _gatedLevel(Float32List samples, int sampleRate) {
+double gatedLevel(Float32List samples, int sampleRate) {
   if (samples.isEmpty || sampleRate <= 0) return 0;
 
   final block = (sampleRate * 0.4).round();

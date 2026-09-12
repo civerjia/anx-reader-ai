@@ -9,6 +9,7 @@ import 'package:anx_reader/service/tts/sherpa/sherpa_model_roots.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_onnx_meta.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_pace.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_text.dart';
+import 'package:anx_reader/service/tts/sherpa/sherpa_wav.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_voice_catalog.dart';
 import 'package:anx_reader/service/tts/sherpa/sherpa_tts_engine.dart';
 import 'package:anx_reader/service/tts/tts_service.dart';
@@ -521,7 +522,9 @@ class SherpaTtsProvider extends TtsServiceProvider {
     final expected = syllables / SherpaPace.referencePace;
     final ratio = expected > 0 ? seconds / expected : 1.0;
     final suspicious = ratio < 0.6;
-    final line = 'SherpaTts said ${syllables.toStringAsFixed(0)} syllables in '
+    final level = gatedLevel(audio.samples, audio.sampleRate);
+    final line = 'SherpaTts level ${level.toStringAsFixed(3)} '
+        'said ${syllables.toStringAsFixed(0)} syllables in '
         '${seconds.toStringAsFixed(1)}s at model speed '
         '${speed.toStringAsFixed(2)} x player ${_playbackRate.toStringAsFixed(2)} '
         '(x${ratio.toStringAsFixed(2)}) "$tail"';
