@@ -626,6 +626,7 @@
    "opdsUsername": "用户名",
    "opdsPassword": "密码",
    "opdsCredentialsOptional": "书源不需要登录就留空",
+   "opdsInsecureCredentials": "这是明文 http 地址，密码不加密传输，同一网络里的人都能看到。",
    "opdsInvalidUrl": "请输入以 http:// 或 https:// 开头的地址",
    "opdsNoCatalogs": "还没有书源",
    "opdsLoadFailed": "书源加载失败：{error}",

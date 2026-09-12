@@ -703,6 +703,7 @@
   "opdsUsername": "Username",
   "opdsPassword": "Password",
   "opdsCredentialsOptional": "Leave empty if the catalog needs no sign-in",
+  "opdsInsecureCredentials": "This address is plain http, so the password travels unencrypted and anyone on the same network can read it.",
   "opdsInvalidUrl": "Enter an address starting with http:// or https://",
   "opdsNoCatalogs": "No catalogs yet",
   "opdsLoadFailed": "Could not load the catalog: {error}",

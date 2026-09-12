@@ -182,6 +182,7 @@ class _CatalogDialogState extends State<_CatalogDialog> {
               controller: _url,
               keyboardType: TextInputType.url,
               autocorrect: false,
+              onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 labelText: l10n.opdsCatalogUrl,
                 hintText: l10n.opdsCatalogUrlHint,
@@ -195,6 +196,7 @@ class _CatalogDialogState extends State<_CatalogDialog> {
             TextField(
               controller: _user,
               autocorrect: false,
+              onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 labelText: l10n.opdsUsername,
                 helperText: l10n.opdsCredentialsOptional,
@@ -204,7 +206,22 @@ class _CatalogDialogState extends State<_CatalogDialog> {
               controller: _pass,
               obscureText: true,
               decoration: InputDecoration(labelText: l10n.opdsPassword),
+              onChanged: (_) => setState(() {}),
             ),
+            // Allowed, because a server on the home network rarely has TLS,
+            // but not silently.
+            if (_url.text.trim().toLowerCase().startsWith('http://') &&
+                _user.text.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  l10n.opdsInsecureCredentials,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
