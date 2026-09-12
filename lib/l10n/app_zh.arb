@@ -312,6 +312,8 @@
   "aiHintExpand": "展开",
   "aiQuickPromptExplain": "解释",
   "aiQuickPromptExplainText": "请解释",
+  "aiQuickPromptTranslate": "翻译",
+  "aiQuickPromptTranslateText": "请翻译成中文",
   "aiQuickPromptOpinion": "你的看法",
   "aiQuickPromptOpinionText": "你对这个有什么看法？",
   "aiQuickPromptSummary": "总结",

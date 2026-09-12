@@ -323,6 +323,8 @@
   "aiHintExpand": "Expand",
   "aiQuickPromptExplain": "Explain",
   "aiQuickPromptExplainText": "Please explain",
+  "aiQuickPromptTranslate": "Translate",
+  "aiQuickPromptTranslateText": "Please translate this",
   "aiQuickPromptOpinion": "Your opinion",
   "aiQuickPromptOpinionText": "What's your opinion on this?",
   "aiQuickPromptSummary": "Summarize",

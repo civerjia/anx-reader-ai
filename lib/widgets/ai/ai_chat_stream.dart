@@ -69,6 +69,10 @@ class AiChatStreamState extends ConsumerState<AiChatStream> {
         'prompt': L10n.of(context).aiQuickPromptExplainText,
       },
       {
+        'label': L10n.of(context).aiQuickPromptTranslate,
+        'prompt': L10n.of(context).aiQuickPromptTranslateText,
+      },
+      {
         'label': L10n.of(context).aiQuickPromptOpinion,
         'prompt': L10n.of(context).aiQuickPromptOpinionText,
       },
