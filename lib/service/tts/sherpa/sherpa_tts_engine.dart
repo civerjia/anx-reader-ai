@@ -315,11 +315,14 @@ class SherpaTtsEngine {
           );
           mainPort.send(_GenerateDone(
             message.id,
-            normalizeLoudness(tightenPauses(
-              Float32List.fromList(audio.samples),
+            normalizeLoudness(
+              tightenPauses(
+                Float32List.fromList(audio.samples),
+                audio.sampleRate,
+                scale: message.silenceScale,
+              ),
               audio.sampleRate,
-              scale: message.silenceScale,
-            )),
+            ),
             audio.sampleRate,
           ));
         } catch (e) {

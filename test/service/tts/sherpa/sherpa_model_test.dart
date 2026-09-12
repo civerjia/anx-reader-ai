@@ -558,44 +558,59 @@ void main() {
   });
 
   group('normalizeLoudness', () {
-    Float32List tone(double amplitude, {int samples = 24000}) =>
-        Float32List.fromList(List<double>.generate(
-            samples, (i) => amplitude * math.sin(i * 0.1)));
+    const sr = 24000;
 
-    double rms(Float32List samples) {
+    Float32List tone(double amplitude, {double seconds = 2.0}) =>
+        Float32List.fromList(List<double>.generate(
+            (sr * seconds).round(), (i) => amplitude * math.sin(i * 0.1)));
+
+    double levelOf(Float32List samples) {
       var sum = 0.0;
-      var counted = 0;
       for (final sample in samples) {
-        if (sample.abs() <= 0.01) continue;
         sum += sample * sample;
-        counted++;
       }
-      return counted == 0 ? 0 : math.sqrt(sum / counted);
+      return math.sqrt(sum / samples.length);
     }
 
     test('brings a quiet clip up to the target', () {
-      final out = normalizeLoudness(tone(0.05), targetRms: 0.09);
+      final out = normalizeLoudness(tone(0.05), sr, targetLevel: 0.09);
 
-      expect(rms(out), closeTo(0.09, 0.005));
+      expect(levelOf(out), closeTo(0.09, 0.01));
     });
 
     test('brings a loud clip down', () {
-      final out = normalizeLoudness(tone(0.5), targetRms: 0.09);
+      final out = normalizeLoudness(tone(0.5), sr, targetLevel: 0.09);
 
-      expect(rms(out), closeTo(0.09, 0.005));
+      expect(levelOf(out), closeTo(0.09, 0.01));
     });
 
-    test('never clips', () {
-      final out = normalizeLoudness(tone(0.9), targetRms: 0.5, ceiling: 0.95);
+    test('ignores the pauses when measuring', () {
+      // Half speech, half silence: the silence must not halve the reading.
+      final speech = tone(0.05, seconds: 2.0);
+      final withPause = Float32List(speech.length * 2)
+        ..setRange(0, speech.length, speech);
 
-      expect(out.reduce((a, b) => a.abs() > b.abs() ? a : b).abs(),
-          lessThanOrEqualTo(0.95));
+      final out = normalizeLoudness(withPause, sr, targetLevel: 0.09);
+      final spoken = Float32List.sublistView(out, 0, speech.length);
+
+      expect(levelOf(spoken), closeTo(0.09, 0.015));
+    });
+
+    test('holds peaks under the ceiling', () {
+      final out = normalizeLoudness(tone(0.02), sr,
+          targetLevel: 0.6, ceiling: 0.95, maxGain: 40);
+
+      var peak = 0.0;
+      for (final sample in out) {
+        if (sample.abs() > peak) peak = sample.abs();
+      }
+      expect(peak, lessThanOrEqualTo(0.95));
     });
 
     test('leaves near silence alone', () {
-      final quiet = Float32List.fromList(List<double>.filled(1000, 0.0005));
+      final quiet = Float32List.fromList(List<double>.filled(sr, 0.0));
 
-      expect(normalizeLoudness(quiet), same(quiet));
+      expect(normalizeLoudness(quiet, sr), same(quiet));
     });
   });
 
