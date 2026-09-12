@@ -185,10 +185,63 @@ class OnlineTts extends BaseTts {
 
   // ============ Buffer Management ============
   String _segmentKey(TtsSentence sentence) {
-    if (sentence.cfi != null && sentence.cfi!.isNotEmpty) {
-      return sentence.cfi!;
+    // A long sentence is split into several segments that share its cfi, so
+    // the text has to be part of the key.
+    final cfi = sentence.cfi;
+    if (cfi != null && cfi.isNotEmpty) {
+      return '$cfi|${sentence.text.hashCode}';
     }
     return '${sentence.text.hashCode}';
+  }
+
+  /// Longest sentence handed to the backend in one piece.
+  ///
+  /// A local model renders a sentence in one go, so a long one is silence
+  /// until the whole thing is done: 16 seconds of audio took 7 seconds to
+  /// synthesize, and when that lands at a page boundary, where nothing was
+  /// synthesized ahead, it is heard as a stall. Split at a comma and the
+  /// first piece arrives in a second.
+  static const int _maxCharactersPerSegment = 45;
+
+  List<({TtsSentence sentence, bool isSentenceEnd})> _splitForLatency(
+      List<TtsSentence> sentences) {
+    final result = <({TtsSentence sentence, bool isSentenceEnd})>[];
+    for (final sentence in sentences) {
+      final pieces = _splitSentence(sentence).toList();
+      for (var i = 0; i < pieces.length; i++) {
+        result.add((
+          sentence: pieces[i],
+          isSentenceEnd: i == pieces.length - 1,
+        ));
+      }
+    }
+    return result;
+  }
+
+  Iterable<TtsSentence> _splitSentence(TtsSentence sentence) sync* {
+    var text = sentence.text.trim();
+    if (text.length <= _maxCharactersPerSegment) {
+      yield sentence;
+      return;
+    }
+
+    // Break at punctuation, where the model would pause anyway.
+    final breaks = RegExp(r'[，,；;：:、]');
+    while (text.length > _maxCharactersPerSegment) {
+      final window = text.substring(0, _maxCharactersPerSegment);
+      final matches = breaks.allMatches(window).toList();
+      if (matches.isEmpty) {
+        // Nothing to break on: leave the rest whole rather than cutting a
+        // word in half.
+        break;
+      }
+      final cut = matches.last.end;
+      yield TtsSentence(text: text.substring(0, cut), cfi: sentence.cfi);
+      text = text.substring(cut).trim();
+    }
+    if (text.isNotEmpty) {
+      yield TtsSentence(text: text, cfi: sentence.cfi);
+    }
   }
 
   void _resetBuffer() {
@@ -253,13 +306,17 @@ class OnlineTts extends BaseTts {
 
         // Create placeholder segments in ORDER first
         final newSegments = <TtsSegment>[];
-        for (final sentence in sentences) {
+        for (final piece in sentences) {
           if (_shouldStop) break;
+          final sentence = piece.sentence;
           final key = _segmentKey(sentence);
           if (_bufferKeys.contains(key)) continue;
 
           _bufferKeys.add(key);
-          final segment = TtsSegment(sentence: sentence);
+          final segment = TtsSegment(
+            sentence: sentence,
+            advanceAfter: piece.isSentenceEnd,
+          );
           newSegments.add(segment);
           _buffer.add(segment); // Add in order!
         }
@@ -282,22 +339,24 @@ class OnlineTts extends BaseTts {
     }
   }
 
-  Future<List<TtsSentence>> _collectSentences(int count) async {
+  Future<List<({TtsSentence sentence, bool isSentenceEnd})>> _collectSentences(
+      int count) async {
     final state = epubPlayerKey.currentState;
     if (state == null) return [];
 
     try {
-      final sentences = await state.ttsCollectDetails(
+      final collected = await state.ttsCollectDetails(
         count: count,
         includeCurrent: _buffer.isEmpty && _currentSegment == null,
       );
+      final sentences = _splitForLatency(collected);
 
-      // Filter out already buffered sentences
-      final newSentences = <TtsSentence>[];
-      for (final s in sentences) {
-        final key = _segmentKey(s);
+      // Filter out already buffered pieces
+      final newSentences = <({TtsSentence sentence, bool isSentenceEnd})>[];
+      for (final piece in sentences) {
+        final key = _segmentKey(piece.sentence);
         if (!_bufferKeys.contains(key)) {
-          newSentences.add(s);
+          newSentences.add(piece);
         }
       }
 
@@ -436,7 +495,7 @@ class OnlineTts extends BaseTts {
             }
           }
           await Future.delayed(const Duration(milliseconds: 100));
-          await getNextTextFunction();
+          if (segment.advanceAfter) await getNextTextFunction();
           _currentSegment = null;
           continue;
         }
@@ -474,8 +533,9 @@ class OnlineTts extends BaseTts {
         _currentSegment = null;
         _lastSentenceEnd = DateTime.now();
 
-        // Advance reader position
-        if (!_shouldStop) {
+        // Advance reader position, unless this was one piece of a longer
+        // sentence and the rest is still to come.
+        if (!_shouldStop && segment.advanceAfter) {
           final advanceStart = DateTime.now();
           await getNextTextFunction();
           _lastAdvanceMs =
