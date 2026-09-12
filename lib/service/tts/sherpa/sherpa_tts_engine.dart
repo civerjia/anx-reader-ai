@@ -46,6 +46,7 @@ class _GenerateRequest {
     required this.sid,
     required this.numSteps,
     required this.referenceText,
+    required this.silenceScale,
   });
 
   final int id;
@@ -54,6 +55,7 @@ class _GenerateRequest {
   final int sid;
   final int numSteps;
   final String referenceText;
+  final double silenceScale;
 }
 
 class _ShutdownRequest {
@@ -221,6 +223,7 @@ class SherpaTtsEngine {
       sid: sid,
       numSteps: spec.numSteps,
       referenceText: spec.referenceText,
+      silenceScale: spec.silenceScale,
     ));
 
     return completer.future;
@@ -300,6 +303,7 @@ class SherpaTtsEngine {
           final audio = engine.generateWithConfig(
             text: message.text,
             config: sherpa_onnx.OfflineTtsGenerationConfig(
+              silenceScale: message.silenceScale,
               speed: message.speed,
               sid: message.sid,
               referenceAudio: referenceAudio,
@@ -383,6 +387,7 @@ class SherpaTtsEngine {
       model: model,
       ruleFsts: spec.ruleFsts,
       ruleFars: spec.ruleFars,
+      silenceScale: spec.silenceScale,
     );
   }
 }

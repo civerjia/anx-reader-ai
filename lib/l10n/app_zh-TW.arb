@@ -805,6 +805,8 @@
   "settingsNarrateSherpaProviderDescription": "CPU 永遠可用。CoreML / NNAPI 會把模型中支援的部分交給神經網路加速器，可能更省電，但模型不匹配時反而更慢。可對比日誌中的 RTF。",
   "settingsNarrateSherpaNumThreads": "執行緒數",
   "settingsNarrateSherpaNumThreadsDescription": "推論使用的 CPU 執行緒數，手機上建議 2。",
+  "settingsNarrateSherpaSilenceScale": "停頓長度",
+  "settingsNarrateSherpaSilenceScaleDescription": "句中停頓保留多少。小於 1.0 時 sherpa-onnx 會壓縮停頓，而它只按音量判斷停頓，會連帶削掉逗號前那個字的尾音。",
   "settingsNarrateSherpaPreferInt8": "優先使用量化模型",
   "settingsNarrateSherpaPreferInt8Description": "同時存在時優先使用 int8 檔案：更快、更省記憶體，音質略有損失。",
   "settingsNarrateSherpaLexicon": "詞典檔案",
