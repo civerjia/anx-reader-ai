@@ -77,7 +77,20 @@ export class FixedLayout extends HTMLElement {
                 iframe.removeEventListener('load', onload)
                 const doc = iframe.contentDocument
                 doc.position = position
+                iframe.__index = index
                 this.dispatchEvent(new CustomEvent('load', { detail: { doc, index } }))
+                // The overlayer lives inside the page document: annotations are
+                // drawn in the page's own coordinates, and the frame's scale
+                // transform then applies to them as it does to the text.
+                this.dispatchEvent(new CustomEvent('create-overlayer', {
+                    detail: {
+                        doc, index,
+                        attach: overlayer => {
+                            iframe.__overlayer = overlayer
+                            ;(doc.body ?? doc.documentElement).append(overlayer.element)
+                        },
+                    },
+                }))
                 const { width, height } = getViewport(doc, this.defaultViewport)
                 resolve({
                     element, iframe,
@@ -121,6 +134,9 @@ export class FixedLayout extends HTMLElement {
                 transformOrigin: 'top left',
                 display: blank ? 'none' : 'block',
             })
+            // Annotations restored while the frame was still hidden had no layout
+            // to measure; now that it is shown, measure them again.
+            if (!blank) iframe.__overlayer?.redraw()
             Object.assign(element.style, {
                 width: `${(width ?? blankWidth) * scale}px`,
                 height: `${(height ?? blankHeight) * scale}px`,
@@ -161,6 +177,7 @@ export class FixedLayout extends HTMLElement {
             this.#right.element.style.display = 'none'
             this.#left.element.style.display = 'block'
             this.#side = 'left'
+            this.#left.iframe.__overlayer?.redraw()
             return true
         }
     }
@@ -170,6 +187,7 @@ export class FixedLayout extends HTMLElement {
             this.#left.element.style.display = 'none'
             this.#right.element.style.display = 'block'
             this.#side = 'right'
+            this.#right.iframe.__overlayer?.redraw()
             return true
         }
     }
@@ -286,7 +304,8 @@ export class FixedLayout extends HTMLElement {
     getContents() {
         return Array.from(this.#root.querySelectorAll('iframe'), frame => ({
             doc: frame.contentDocument,
-            // TODO: index, overlayer
+            index: frame.__index,
+            overlayer: frame.__overlayer,
         }))
     }
     destroy() {
