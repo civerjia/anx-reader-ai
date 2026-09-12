@@ -18,6 +18,10 @@ enum SherpaModelType {
   /// Zero shot cloning families need a reference wave and its transcript.
   bool get needsReferenceAudio => this == SherpaModelType.zipvoice;
 
+  /// Families that synthesize features and need a separate vocoder.
+  bool get needsVocoder =>
+      this == SherpaModelType.zipvoice || this == SherpaModelType.matcha;
+
   /// Families whose speaker is picked by a numeric speaker id.
   bool get hasSpeakerId =>
       this == SherpaModelType.kokoro ||
@@ -137,12 +141,91 @@ class SherpaModelResolver {
   /// Directory name used for models that are stored inside the app sandbox.
   static const String modelsFolderName = 'tts_models';
 
+  /// The transcript that goes with a reference clip.
+  ///
+  /// sherpa-onnx ships its sample clips with the text next to them, either as
+  /// `<clip>.txt` or as a line in `prompt.txt` starting with the file name,
+  /// so nobody has to retype what the clip says.
+  static String transcriptFor(String wavPath) {
+    final file = File(wavPath);
+    if (!file.existsSync()) return '';
+    final dir = file.parent;
+    final base = p.basename(wavPath);
+    final stem = p.basenameWithoutExtension(wavPath);
+
+    for (final name in ['$base.txt', '$stem.txt', '$stem.lab']) {
+      final paired = File(p.join(dir.path, name));
+      if (paired.existsSync()) {
+        final text = paired.readAsStringSync().trim();
+        if (text.isNotEmpty) return text;
+      }
+    }
+
+    for (final name in ['prompt.txt', 'transcript.txt', 'trans.txt']) {
+      final list = File(p.join(dir.path, name));
+      if (!list.existsSync()) continue;
+      for (final line in list.readAsLinesSync()) {
+        final trimmed = line.trim();
+        if (!trimmed.startsWith(base) && !trimmed.startsWith(stem)) continue;
+        final text = trimmed
+            .substring(trimmed.startsWith(base) ? base.length : stem.length)
+            .trim();
+        if (text.isNotEmpty) return text;
+      }
+    }
+
+    return '';
+  }
+
+  /// Model folders sitting in [roots], newest looking first.
+  ///
+  /// A folder counts as a model when it holds a tokens file or any ONNX
+  /// file, which is true of every sherpa-onnx TTS release.
+  static List<String> listInstalled(List<String> roots) {
+    final found = <String, String>{};
+    for (final root in roots) {
+      final dir = Directory(root);
+      if (!dir.existsSync()) continue;
+      for (final entry in dir.listSync().whereType<Directory>()) {
+        final name = p.basename(entry.path);
+        if (found.containsKey(name)) continue;
+        final looksLikeModel = entry.listSync().whereType<File>().any((file) {
+          final base = p.basename(file.path).toLowerCase();
+          return base == 'tokens.txt' || base.endsWith('.onnx');
+        });
+        if (looksLikeModel) found[name] = entry.path;
+      }
+    }
+    final names = found.keys.toList()..sort();
+    return names;
+  }
+
   /// Resolve a user supplied path to an existing directory.
+  ///
+  /// An empty setting is not an error when exactly one model is installed:
+  /// that is almost certainly the one meant, and typing a folder name on a
+  /// phone is a poor way to spend someone's evening.
   static Future<String> resolveDir(String input,
       {List<String> roots = const []}) async {
     final raw = input.trim();
     if (raw.isEmpty) {
-      throw SherpaModelException('No sherpa-onnx model directory configured');
+      final installed = listInstalled(roots);
+      if (installed.length == 1) {
+        return p.join(
+          roots.firstWhere(
+            (root) => Directory(p.join(root, installed.first)).existsSync(),
+          ),
+          installed.first,
+        );
+      }
+      if (installed.isEmpty) {
+        throw SherpaModelException(
+            'No sherpa-onnx model found. Unpack one into:\n'
+            '${roots.isEmpty ? '(no model folder available)' : roots.first}');
+      }
+      throw SherpaModelException(
+          'Several models are installed, pick one in the settings:\n'
+          '${installed.join('\n')}');
     }
 
     final candidates = <String>[];
@@ -361,6 +444,10 @@ class SherpaModelResolver {
         );
 
       case SherpaModelType.zipvoice:
+        final resolvedReference = referenceAudio.trim().isEmpty
+            ? ''
+            : await resolveFile(referenceAudio,
+                relativeTo: dir, roots: searchRoots, what: 'Reference audio');
         final encoder = pickOnnx(['encoder']);
         final decoder = pickOnnx(['decoder'], mustNotContain: ['encoder']);
         if (encoder == null || decoder == null) {
@@ -379,13 +466,10 @@ class SherpaModelResolver {
           lexicon: lexicons(),
           ruleFsts: rules('.fst'),
           ruleFars: rules('.far'),
-          referenceAudio: referenceAudio.trim().isEmpty
-              ? ''
-              : await resolveFile(referenceAudio,
-                  relativeTo: dir,
-                  roots: searchRoots,
-                  what: 'Reference audio'),
-          referenceText: referenceText,
+          referenceAudio: resolvedReference,
+          referenceText: referenceText.trim().isNotEmpty
+              ? referenceText
+              : transcriptFor(resolvedReference),
           numSteps: numSteps < 1 ? 1 : numSteps,
           numThreads: threads,
           provider: provider,

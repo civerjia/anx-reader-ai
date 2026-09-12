@@ -27,6 +27,17 @@ class _ServiceConfigFormState extends State<ServiceConfigForm> {
   late Map<String, dynamic> _currentConfig;
   // Track password visibility for each password field
   final Map<String, bool> _passwordVisibility = {};
+  // Path fields keep their controller so typing does not reset the cursor
+  // every time the config round trips through the provider.
+  final Map<String, TextEditingController> _pathControllers = {};
+
+  @override
+  void dispose() {
+    for (final controller in _pathControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -336,10 +347,21 @@ class _ServiceConfigFormState extends State<ServiceConfigForm> {
           onPressed: () => _pickPath(item),
         ),
       ),
-      controller: TextEditingController(text: current)
-        ..selection = TextSelection.collapsed(offset: current.length),
+      controller: _pathController(item.key, current),
       onChanged: (value) => _updateConfig(item.key, value),
     );
+  }
+
+  TextEditingController _pathController(String key, String value) {
+    final controller =
+        _pathControllers.putIfAbsent(key, () => TextEditingController());
+    if (controller.text != value) {
+      controller.value = TextEditingValue(
+        text: value,
+        selection: TextSelection.collapsed(offset: value.length),
+      );
+    }
+    return controller;
   }
 
   Future<void> _pickPath(ConfigItem item) async {
