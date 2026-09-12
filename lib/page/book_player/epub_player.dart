@@ -116,45 +116,150 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       ModalRoute.of(context)?.isCurrent ?? false;
 
   final _pageCurlKey = GlobalKey<PageCurlOverlayState>();
-  bool _pageCurlBusy = false;
+  Future<void> _pageCurlQueue = Future.value();
+  int _pageCurlRunning = 0;
+  _CurlDrag? _curlDrag;
 
   bool get _usePageCurl => Prefs().pageTurnStyle == PageTurn.curl;
 
-  /// A page turn drawn as a curl: a snapshot of the page is animated over the
-  /// reader while the reader turns instantly underneath. If a snapshot cannot
-  /// be taken the page still turns, just without the curl.
-  Future<void> _turnWithCurl({required bool forward}) async {
-    final turn = "if (typeof clearSelection === 'function') { clearSelection(); } "
-        "await ${forward ? 'nextPage' : 'prevPage'}();";
+  Color get _paperColor =>
+      Color(int.tryParse(Prefs().readTheme.backgroundColor, radix: 16) ??
+          0xFFFBFBF3);
+
+  Future<void> _turnInstantly(bool forward) async {
+    await webViewController.callAsyncJavaScript(
+        functionBody:
+            "if (typeof clearSelection === 'function') { clearSelection(); } "
+            "await ${forward ? 'nextPage' : 'prevPage'}();");
+  }
+
+  /// A tap, key or volume-button turn: the page is picked up by its edge and
+  /// turned the whole way. Turns asked for while one is running follow it.
+  void _curlTurn({required bool forward}) {
+    _pageCurlQueue = _pageCurlQueue
+        .then((_) => _runCurl(() => _playCurl(forward)))
+        .catchError((Object e) => AnxLog.info('Page curl: turn failed: $e'));
+  }
+
+  Future<void> _runCurl(Future<void> Function() body) async {
+    _pageCurlRunning++;
+    try {
+      await body();
+    } finally {
+      _pageCurlRunning--;
+    }
+  }
+
+  Future<void> _playCurl(bool forward) async {
     final overlay = _pageCurlKey.currentState;
-    if (_pageCurlBusy || overlay == null) {
-      await webViewController.callAsyncJavaScript(functionBody: turn);
+    final current = overlay == null ? null : await _snapshotReader();
+    if (overlay == null || current == null) {
+      await _turnInstantly(forward);
       return;
     }
-    _pageCurlBusy = true;
+    final size = overlay.size;
+    final grab = Offset(size.width, size.height * 0.9);
     try {
-      final current = await _snapshotReader();
-      if (current == null) {
-        await webViewController.callAsyncJavaScript(functionBody: turn);
-        return;
-      }
-      overlay.cover(current);
-      await webViewController.callAsyncJavaScript(functionBody: turn);
       if (forward) {
-        await overlay.turnAway();
+        overlay.curl(page: current, grab: grab, finger: grab);
+        await _turnInstantly(true);
+        await overlay.settle(turnedAwayFinger(size, grab));
       } else {
+        overlay.cover(current);
+        await _turnInstantly(false);
+        final previous = await _snapshotReader();
+        if (previous == null) return;
+        overlay.curl(
+          page: previous,
+          under: current,
+          grab: grab,
+          finger: turnedAwayFinger(size, grab),
+        );
+        await overlay.settle(grab);
+      }
+    } finally {
+      overlay.clear();
+    }
+  }
+
+  /// A drag streamed from the reader: the page edge at the height the finger
+  /// went down follows the finger, and letting go finishes or undoes the turn.
+  void _onCurlDrag(Map<dynamic, dynamic> event) {
+    final phase = event['phase'];
+    final point = Offset(
+      (event['x'] as num?)?.toDouble() ?? 0,
+      (event['y'] as num?)?.toDouble() ?? 0,
+    );
+    final drag = _curlDrag;
+    switch (phase) {
+      case 'start':
+        final overlay = _pageCurlKey.currentState;
+        if (drag != null || _pageCurlRunning > 0 || overlay == null) return;
+        final started = _CurlDrag(
+          forward: event['forward'] == true,
+          grab: Offset(overlay.size.width, point.dy),
+          finger: point,
+        );
+        _curlDrag = started;
+        _pageCurlQueue = _pageCurlQueue
+            .then((_) => _runCurl(() => _followCurlDrag(started)))
+            .catchError((Object e) => AnxLog.info('Page curl: drag failed: $e'))
+            .whenComplete(() {
+          if (identical(_curlDrag, started)) _curlDrag = null;
+        });
+      case 'move':
+        if (drag == null) return;
+        drag.finger = point;
+        drag.show?.call(point);
+      case 'end':
+        if (drag == null) return;
+        drag.finger = point;
+        drag.show?.call(point);
+        if (!drag.released.isCompleted) {
+          drag.released.complete((event['vx'] as num?)?.toDouble() ?? 0);
+        }
+    }
+  }
+
+  Future<void> _followCurlDrag(_CurlDrag drag) async {
+    final overlay = _pageCurlKey.currentState;
+    final current = overlay == null ? null : await _snapshotReader();
+    if (overlay == null || current == null) {
+      final vx = await drag.released.future;
+      if (drag.forward ? vx < 0 : vx > 0) await _turnInstantly(drag.forward);
+      return;
+    }
+    final size = overlay.size;
+    try {
+      if (drag.forward) {
+        overlay.curl(page: current, grab: drag.grab, finger: drag.finger);
+        drag.show = overlay.moveFinger;
+        await _turnInstantly(true);
+      } else {
+        overlay.cover(current);
+        await _turnInstantly(false);
         final previous = await _snapshotReader();
         if (previous == null) {
-          overlay.clear();
+          await drag.released.future;
           return;
         }
-        await overlay.bringBack(previous);
+        overlay.curl(
+            page: previous, under: current, grab: drag.grab, finger: drag.finger);
+        drag.show = overlay.moveFinger;
       }
-    } catch (e) {
-      overlay.clear();
-      AnxLog.info('Page curl: turn failed: $e');
+
+      final vx = await drag.released.future;
+      const flick = 0.25; // px per ms
+      final pastMiddle = drag.finger.dx < size.width / 2;
+      final turnedAway = vx < -flick || (vx <= flick && pastMiddle);
+      await overlay.settle(
+          turnedAway ? turnedAwayFinger(size, drag.grab) : drag.grab);
+      // The reader already shows the page the turn was heading for; if the
+      // hand went the other way, put it back before uncovering it.
+      final completed = drag.forward ? turnedAway : !turnedAway;
+      if (!completed) await _turnInstantly(!drag.forward);
     } finally {
-      _pageCurlBusy = false;
+      overlay.clear();
     }
   }
 
@@ -178,7 +283,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
 
   void prevPage() {
     if (_usePageCurl) {
-      _turnWithCurl(forward: false);
+      _curlTurn(forward: false);
       return;
     }
     webViewController.evaluateJavascript(source: '''
@@ -189,7 +294,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
 
   void nextPage() {
     if (_usePageCurl) {
-      _turnWithCurl(forward: true);
+      _curlTurn(forward: true);
       return;
     }
     webViewController.evaluateJavascript(source: '''
@@ -786,10 +891,10 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
           readingPageKey.currentState?.resetAwakeTimer();
         });
     controller.addJavaScriptHandler(
-        handlerName: 'onCurlSwipe',
+        handlerName: 'onCurlDrag',
         callback: (args) {
           final detail = args.isNotEmpty ? args[0] : null;
-          _turnWithCurl(forward: detail is Map && detail['forward'] == true);
+          if (detail is Map) _onCurlDrag(detail);
         });
     controller.addJavaScriptHandler(
         handlerName: 'onClick',
@@ -1394,7 +1499,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
           children: [
             buildWebviewWithIOSWorkaround(context, url, initialCfi),
             Positioned.fill(
-              child: IgnorePointer(child: PageCurlOverlay(key: _pageCurlKey)),
+              child: IgnorePointer(child: PageCurlOverlay(key: _pageCurlKey, paper: _paperColor)),
             ),
             readingInfoWidget(),
             if (showHistory) _buildHistoryCapsule(),
@@ -1410,4 +1515,18 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       ),
     );
   }
+}
+
+class _CurlDrag {
+  _CurlDrag({required this.forward, required this.grab, required this.finger});
+
+  final bool forward;
+  final Offset grab;
+  Offset finger;
+
+  /// Where finger moves go once the curl is on screen.
+  void Function(Offset finger)? show;
+
+  /// Completes with the horizontal velocity, in px per ms, when the finger lifts.
+  final Completer<double> released = Completer<double>();
 }

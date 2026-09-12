@@ -1,166 +1,311 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-/// Where a turning page is folded: the fold line passes through [origin], and
-/// [normal] points from it into the part of the page that has lifted off.
-class CurlFold {
-  const CurlFold(this.origin, this.normal);
+/// The line a page rolls around. The page lies flat on the side against
+/// [normal]; past [origin] along [normal] it wraps around a cylinder of the
+/// curl radius and then lies face down on top of itself.
+class CurlAxis {
+  const CurlAxis(this.origin, this.normal);
 
   final Offset origin;
   final Offset normal;
 
-  /// Positive on the lifted side of the fold, negative on the side lying flat.
-  double side(Offset point) {
+  /// Distance of [point] past the axis, towards the lifted edge.
+  double distance(Offset point) {
     final offset = point - origin;
     return offset.dx * normal.dx + offset.dy * normal.dy;
   }
-
-  /// Where [point] lands once the lifted part is folded over.
-  Offset reflect(Offset point) => point - normal * (2 * side(point));
 }
 
-/// The fold of a page of [size] lifted by its bottom-right corner, at
-/// [progress] from 0 (flat) to 1 (turned away past the left edge); null while
+/// Where a point of the page appears once curled, and how far round the
+/// cylinder it has gone: 0 lying flat, up to pi when face down on top.
+class CurlPoint {
+  const CurlPoint(this.position, this.angle);
+
+  final Offset position;
+  final double angle;
+}
+
+CurlPoint curlPoint(Offset point, CurlAxis axis, double radius) {
+  final d = axis.distance(point);
+  if (d <= 0) return CurlPoint(point, 0);
+  final foot = point - axis.normal * d;
+  if (d < math.pi * radius) {
+    final angle = d / radius;
+    return CurlPoint(foot + axis.normal * (radius * math.sin(angle)), angle);
+  }
+  return CurlPoint(foot - axis.normal * (d - math.pi * radius), math.pi);
+}
+
+/// The axis that puts the page point [grab] under the [finger]: the edge the
+/// reader took hold of goes wherever the finger goes. Null while the page is
 /// flat.
-///
-/// The corner is pulled towards the left along a slight arc. The fold is the
-/// perpendicular bisector of the corner and the point it has been pulled to,
-/// which is exactly where a sheet creases when that corner is laid there.
-CurlFold? curlFold(Size size, double progress) {
-  if (progress <= 0) return null;
-  final t = math.min(progress, 1.0);
-  final corner = Offset(size.width, size.height);
-  final pulled = Offset(
-    size.width - 2.5 * size.width * t,
-    size.height - 0.2 * size.height * math.sin(math.pi * t),
-  );
-  final delta = corner - pulled;
-  final length = delta.distance;
-  if (length < 1e-6) return null;
-  return CurlFold((corner + pulled) / 2, delta / length);
+CurlAxis? curlAxis(Offset grab, Offset finger, double radius) {
+  final delta = grab - finger;
+  final pulled = delta.distance;
+  if (pulled < 0.5) return null;
+  final normal = delta / pulled;
+  final halfTurn = math.pi * radius;
+  double reach;
+  if (pulled >= halfTurn) {
+    // The grabbed point is face down on top: it sits as far before the axis as
+    // it originally was past the half turn.
+    reach = (pulled + halfTurn) / 2;
+  } else {
+    // Still on the cylinder: solve reach - r sin(reach / r) = pulled, which
+    // rises steadily from 0 to a half turn.
+    var low = 0.0;
+    var high = halfTurn;
+    for (var i = 0; i < 40; i++) {
+      final mid = (low + high) / 2;
+      if (mid - radius * math.sin(mid / radius) < pulled) {
+        low = mid;
+      } else {
+        high = mid;
+      }
+    }
+    reach = (low + high) / 2;
+  }
+  return CurlAxis(grab - normal * reach, normal);
+}
+
+/// Curl radius for a page [width] wide.
+double curlRadius(double width) => width * 0.1;
+
+/// A finger position that has turned the whole page, grabbed at [grab], face
+/// down past the left edge.
+Offset turnedAwayFinger(Size size, Offset grab) =>
+    Offset(-(1.25 * size.width + math.pi * curlRadius(size.width)), grab.dy);
+
+/// Triangles of a page of [size] curled around [axis], textured from an image
+/// of [imageSize]. [front] holds the triangles facing up, [back] those turned
+/// face down, which have to be drawn over the front ones.
+class CurlMesh {
+  CurlMesh._(this.positions, this.textureCoordinates, this.angles, this.front,
+      this.back);
+
+  final Float32List positions;
+  final Float32List textureCoordinates;
+  final Float32List angles;
+  final Uint16List front;
+  final Uint16List back;
+
+  factory CurlMesh.build(
+    Size size,
+    Size imageSize,
+    CurlAxis? axis,
+    double radius, {
+    int columns = 32,
+  }) {
+    final rows =
+        math.max(2, (columns * size.height / size.width).round()).toInt();
+    final count = (columns + 1) * (rows + 1);
+    final positions = Float32List(count * 2);
+    final textures = Float32List(count * 2);
+    final angles = Float32List(count);
+    final sx = imageSize.width / size.width;
+    final sy = imageSize.height / size.height;
+    var v = 0;
+    for (var row = 0; row <= rows; row++) {
+      for (var column = 0; column <= columns; column++) {
+        final point = Offset(
+            size.width * column / columns, size.height * row / rows);
+        final curled =
+            axis == null ? CurlPoint(point, 0) : curlPoint(point, axis, radius);
+        positions[v * 2] = curled.position.dx;
+        positions[v * 2 + 1] = curled.position.dy;
+        textures[v * 2] = point.dx * sx;
+        textures[v * 2 + 1] = point.dy * sy;
+        angles[v] = curled.angle;
+        v++;
+      }
+    }
+    final front = <int>[];
+    final back = <int>[];
+    void triangle(int a, int b, int c) {
+      final target =
+          (angles[a] + angles[b] + angles[c]) / 3 > math.pi / 2 ? back : front;
+      target
+        ..add(a)
+        ..add(b)
+        ..add(c);
+    }
+
+    for (var row = 0; row < rows; row++) {
+      for (var column = 0; column < columns; column++) {
+        final topLeft = row * (columns + 1) + column;
+        final bottomLeft = topLeft + columns + 1;
+        triangle(topLeft, topLeft + 1, bottomLeft);
+        triangle(topLeft + 1, bottomLeft + 1, bottomLeft);
+      }
+    }
+    return CurlMesh._(positions, textures, angles, Uint16List.fromList(front),
+        Uint16List.fromList(back));
+  }
 }
 
 class PageCurlPainter extends CustomPainter {
-  PageCurlPainter({required this.page, this.under, required this.progress});
+  PageCurlPainter({
+    required this.page,
+    required this.under,
+    required this.grab,
+    required this.finger,
+    required this.paper,
+  });
 
   final ui.Image page;
   final ui.Image? under;
-  final double progress;
+  final Offset? grab;
+  final Offset? finger;
+  final Color paper;
 
   @override
   void paint(Canvas canvas, Size size) {
     final bounds = Offset.zero & size;
-    final imagePaint = Paint()..filterQuality = FilterQuality.medium;
-    Rect sourceOf(ui.Image image) =>
-        Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble());
-
     final under = this.under;
     if (under != null) {
-      canvas.drawImageRect(under, sourceOf(under), bounds, imagePaint);
+      canvas.drawImageRect(
+          under,
+          Rect.fromLTWH(0, 0, under.width.toDouble(), under.height.toDouble()),
+          bounds,
+          Paint()..filterQuality = FilterQuality.medium);
     }
 
-    final fold = curlFold(size, progress);
-    if (fold == null) {
-      canvas.drawImageRect(page, sourceOf(page), bounds, imagePaint);
-      return;
+    final radius = curlRadius(size.width);
+    final grab = this.grab;
+    final finger = this.finger;
+    final axis =
+        grab == null || finger == null ? null : curlAxis(grab, finger, radius);
+
+    if (axis != null) {
+      // Shadow the roll casts on the page beneath, just past its outer edge.
+      final edge = axis.origin + axis.normal * radius;
+      final halfPlane = Path()
+        ..addPolygon(_halfPlane(edge, axis.normal, size), true);
+      canvas.save();
+      canvas.clipPath(halfPlane);
+      canvas.drawRect(
+        bounds,
+        Paint()
+          ..shader = ui.Gradient.linear(
+            edge,
+            edge + axis.normal * (radius * 1.2),
+            [const Color(0x66000000), const Color(0x00000000)],
+          ),
+      );
+      canvas.restore();
     }
 
+    final mesh = CurlMesh.build(
+      size,
+      Size(page.width.toDouble(), page.height.toDouble()),
+      axis,
+      radius,
+    );
+    final texture = ImageShader(page, TileMode.clamp, TileMode.clamp,
+        Matrix4.identity().storage,
+        filterQuality: FilterQuality.medium);
+
+    // Face up: the print, darkening as the paper rolls away from the light.
+    final count = mesh.angles.length;
+    final frontColors = Int32List(count);
+    final backShade = Int32List(count);
+    for (var i = 0; i < count; i++) {
+      final angle = mesh.angles[i];
+      final up = math.min(angle, math.pi / 2) / (math.pi / 2);
+      final light = (255 * (1 - 0.45 * math.pow(up, 1.6))).round();
+      frontColors[i] = 0xFF000000 | (light << 16) | (light << 8) | light;
+      final down = angle <= math.pi / 2
+          ? 1.0
+          : 1 - (angle - math.pi / 2) / (math.pi / 2);
+      final alpha = (255 * 0.35 * down).round();
+      backShade[i] = alpha << 24;
+    }
+    if (mesh.front.isNotEmpty) {
+      canvas.drawVertices(
+        ui.Vertices.raw(
+          VertexMode.triangles,
+          mesh.positions,
+          textureCoordinates: mesh.textureCoordinates,
+          colors: frontColors,
+          indices: mesh.front,
+        ),
+        BlendMode.modulate,
+        Paint()..shader = texture,
+      );
+    }
+
+    // Face down: the back of the sheet, the print faintly showing through
+    // mirrored, shaded where it bends over.
+    if (mesh.back.isNotEmpty) {
+      const through = 0.16;
+      final r = paper.r * 255 * (1 - through);
+      final g = paper.g * 255 * (1 - through);
+      final b = paper.b * 255 * (1 - through);
+      canvas.drawVertices(
+        ui.Vertices.raw(
+          VertexMode.triangles,
+          mesh.positions,
+          textureCoordinates: mesh.textureCoordinates,
+          indices: mesh.back,
+        ),
+        BlendMode.src,
+        Paint()
+          ..shader = texture
+          ..colorFilter = ColorFilter.matrix(<double>[
+            through, 0, 0, 0, r, //
+            0, through, 0, 0, g, //
+            0, 0, through, 0, b, //
+            0, 0, 0, 1, 0,
+          ]),
+      );
+      canvas.drawVertices(
+        ui.Vertices.raw(
+          VertexMode.triangles,
+          mesh.positions,
+          colors: backShade,
+          indices: mesh.back,
+        ),
+        BlendMode.dst,
+        Paint(),
+      );
+    }
+  }
+
+  static List<Offset> _halfPlane(Offset through, Offset normal, Size size) {
     final reach = 4.0 * math.max(size.width, size.height);
-    Path halfPlane(double towards) {
-      final along = Offset(-fold.normal.dy, fold.normal.dx) * reach;
-      final away = fold.normal * (reach * towards);
-      final a = fold.origin + along;
-      final b = fold.origin - along;
-      return Path()
-        ..moveTo(a.dx, a.dy)
-        ..lineTo(b.dx, b.dy)
-        ..lineTo((b + away).dx, (b + away).dy)
-        ..lineTo((a + away).dx, (a + away).dy)
-        ..close();
-    }
-
-    final pagePath = Path()..addRect(bounds);
-    final flat = Path.combine(PathOperation.intersect, pagePath, halfPlane(-1));
-    final lifted =
-        Path.combine(PathOperation.intersect, pagePath, halfPlane(1));
-    final lift = math.sin(math.pi * math.min(progress, 1.0));
-
-    // Shadow the lifted page casts just past the crease.
-    canvas.save();
-    canvas.clipPath(lifted);
-    canvas.drawRect(
-      bounds,
-      Paint()
-        ..shader = ui.Gradient.linear(
-          fold.origin,
-          fold.origin + fold.normal * (16 + 36 * lift),
-          [const Color(0x59000000), const Color(0x00000000)],
-        ),
-    );
-    canvas.restore();
-
-    // The part still lying flat, darkening into the crease.
-    canvas.save();
-    canvas.clipPath(flat);
-    canvas.drawImageRect(page, sourceOf(page), bounds, imagePaint);
-    canvas.drawRect(
-      bounds,
-      Paint()
-        ..shader = ui.Gradient.linear(
-          fold.origin,
-          fold.origin - fold.normal * 28,
-          [const Color(0x2E000000), const Color(0x00000000)],
-        ),
-    );
-    canvas.restore();
-
-    // The lifted part folded over: the back of the sheet, with the print
-    // showing through mirrored.
-    final n = fold.normal;
-    final d = fold.origin.dx * n.dx + fold.origin.dy * n.dy;
-    final reflection = Matrix4.identity()
-      ..setEntry(0, 0, 1 - 2 * n.dx * n.dx)
-      ..setEntry(0, 1, -2 * n.dx * n.dy)
-      ..setEntry(1, 0, -2 * n.dx * n.dy)
-      ..setEntry(1, 1, 1 - 2 * n.dy * n.dy)
-      ..setEntry(0, 3, 2 * d * n.dx)
-      ..setEntry(1, 3, 2 * d * n.dy);
-    canvas.save();
-    canvas.transform(reflection.storage);
-    canvas.clipPath(lifted);
-    canvas.drawImageRect(page, sourceOf(page), bounds, imagePaint);
-    canvas.drawRect(bounds, Paint()..color = const Color(0xD6F2EFE8));
-    canvas.drawRect(
-      bounds,
-      Paint()
-        ..shader = ui.Gradient.linear(
-          fold.origin,
-          fold.origin + n * 44,
-          [const Color(0x40000000), const Color(0x00000000)],
-        ),
-    );
-    canvas.restore();
+    final along = Offset(-normal.dy, normal.dx) * reach;
+    final away = normal * reach;
+    return [
+      through + along,
+      through - along,
+      through - along + away,
+      through + along + away,
+    ];
   }
 
   @override
   bool shouldRepaint(PageCurlPainter oldDelegate) =>
-      oldDelegate.progress != progress ||
       oldDelegate.page != page ||
-      oldDelegate.under != under;
+      oldDelegate.under != under ||
+      oldDelegate.grab != grab ||
+      oldDelegate.finger != finger ||
+      oldDelegate.paper != paper;
 }
 
-/// Draws page turns as a curl over the reader.
+/// Draws a page curl over the reader from snapshots, following a finger.
 ///
-/// The overlay only ever shows snapshots. To turn forward, cover the reader
-/// with a snapshot of the page, turn the reader underneath, then [turnAway]
-/// the snapshot to reveal it. To turn back, cover, turn, snapshot the page the
-/// reader now shows, and [bringBack] that page down over the covering one.
+/// The overlay holds a curling [page] image, optionally over an [under]
+/// image; where neither covers, the reader shows through. The page is held at
+/// a grab point on its edge, and that point follows the finger.
 class PageCurlOverlay extends StatefulWidget {
-  const PageCurlOverlay({super.key});
+  const PageCurlOverlay({super.key, required this.paper});
 
-  static const duration = Duration(milliseconds: 450);
+  /// Colour of the paper, for the back of a turning page.
+  final Color paper;
 
   @override
   State<PageCurlOverlay> createState() => PageCurlOverlayState();
@@ -168,95 +313,110 @@ class PageCurlOverlay extends StatefulWidget {
 
 class PageCurlOverlayState extends State<PageCurlOverlay>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _progress =
-      AnimationController(vsync: this, duration: PageCurlOverlay.duration);
+  late final AnimationController _settle =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
   ui.Image? _page;
   ui.Image? _under;
+  Offset? _grab;
+  Offset? _finger;
 
-  bool get covering => _page != null;
+  bool get active => _page != null;
 
-  /// Holds [page] flat over the reader so the reader can change underneath.
-  /// The overlay owns the image from here on.
-  void cover(ui.Image page) {
-    _release();
-    _progress.value = 0;
-    setState(() => _page = page);
-  }
+  Size get size => context.size ?? Size.zero;
 
-  /// Turns the covering page away, revealing the reader beneath.
-  Future<void> turnAway() async {
-    if (_page == null) return;
-    try {
-      await _progress
-          .animateTo(1, curve: Curves.easeInOut)
-          .orCancel;
-    } on TickerCanceled {
-      return;
+  /// Covers the reader with [image] lying flat. The overlay owns it from here.
+  void cover(ui.Image image) => curl(page: image, grab: null, finger: null);
+
+  /// Shows [page] held at [grab] with that point under [finger], over [under].
+  /// Images passed in are owned by the overlay; any it held and no longer
+  /// shows are released.
+  void curl({
+    required ui.Image page,
+    ui.Image? under,
+    required Offset? grab,
+    required Offset? finger,
+  }) {
+    _settle.stop();
+    for (final old in [_page, _under]) {
+      if (old != null && old != page && old != under) old.dispose();
     }
-    clear();
-  }
-
-  /// Lays [page] down over the covering page, the way a page comes back.
-  Future<void> bringBack(ui.Image page) async {
-    final covered = _page;
-    if (covered == null) {
-      page.dispose();
-      return;
-    }
-    _progress.value = 1;
     setState(() {
-      _under = covered;
       _page = page;
+      _under = under;
+      _grab = grab;
+      _finger = finger;
     });
-    try {
-      await _progress
-          .animateBack(0, curve: Curves.easeInOut)
-          .orCancel;
-    } on TickerCanceled {
-      return;
+  }
+
+  void moveFinger(Offset finger) {
+    if (_grab == null || _settle.isAnimating) return;
+    setState(() => _finger = finger);
+  }
+
+  Offset? get finger => _finger;
+
+  /// Carries the finger to [target] as a hand letting go would.
+  Future<void> settle(Offset target) async {
+    final from = _finger ?? _grab;
+    if (from == null || _grab == null) return;
+    final width = math.max(size.width, 1.0);
+    final ms = (380 * (target - from).distance / (1.5 * width)).clamp(140, 420);
+    _settle.duration = Duration(milliseconds: ms.round());
+    void follow() {
+      final t = Curves.easeOutCubic.transform(_settle.value);
+      setState(() => _finger = Offset.lerp(from, target, t));
     }
-    clear();
+
+    _settle.addListener(follow);
+    try {
+      await _settle.forward(from: 0).orCancel;
+    } on TickerCanceled {
+      // Interrupted by a new curl.
+    } finally {
+      _settle.removeListener(follow);
+    }
   }
 
   void clear() {
-    if (!mounted) {
-      _release();
-      return;
+    _settle.stop();
+    void release() {
+      _page?.dispose();
+      _under?.dispose();
+      _page = null;
+      _under = null;
+      _grab = null;
+      _finger = null;
     }
-    setState(_release);
-  }
 
-  void _release() {
-    _page?.dispose();
-    _under?.dispose();
-    _page = null;
-    _under = null;
+    if (mounted) {
+      setState(release);
+    } else {
+      release();
+    }
   }
 
   @override
   void dispose() {
-    _progress.dispose();
-    _release();
+    _settle.dispose();
+    _page?.dispose();
+    _under?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _progress,
-      builder: (context, _) {
-        final page = _page;
-        if (page == null) return const SizedBox.shrink();
-        return SizedBox.expand(
-          child: CustomPaint(
-            painter: PageCurlPainter(
-              page: page,
-              under: _under,
-              progress: _progress.value,
-            ),
-          ),
-        );
-      },
+    final page = _page;
+    if (page == null) return const SizedBox.expand();
+    return SizedBox.expand(
+      child: CustomPaint(
+        painter: PageCurlPainter(
+          page: page,
+          under: _under,
+          grab: _grab,
+          finger: _finger,
+          paper: widget.paper,
+        ),
+      ),
     );
   }
 }

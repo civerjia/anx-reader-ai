@@ -1479,12 +1479,72 @@ class Reader {
     return range;
   }
 
+  // With the page curl, Flutter draws the turning page and the page itself does
+  // not scroll; a horizontal drag is streamed to Flutter in page coordinates so
+  // the curl can follow the finger.
+  #curlDrag = null
+
+  #curlPosition = (touch) => {
+    const doc = touch?.target?.ownerDocument ?? document
+    const frame = doc.defaultView?.frameElement
+    const rect = frame ? frame.getBoundingClientRect() : { left: 0, top: 0 }
+    return { x: rect.left + touch.clientX, y: rect.top + touch.clientY }
+  }
+
+  #curlDragStart = (e) => {
+    this.#curlDrag = style.pageTurnStyle === 'curl' && e.touch
+      ? { start: this.#curlPosition(e.touch), last: null, started: false }
+      : null
+  }
+
+  #curlDragMove = (e) => {
+    const drag = this.#curlDrag
+    if (!drag) return false
+    const direction = e.touchState?.direction
+    if (direction === 'vertical' && !drag.started) {
+      this.#curlDrag = null
+      return false
+    }
+    if (direction !== 'horizontal') return false
+    const doc = e.touch?.target?.ownerDocument
+    if (!drag.started && doc?.getSelection?.()?.toString()) {
+      this.#curlDrag = null
+      return false
+    }
+    const position = this.#curlPosition(e.touch)
+    drag.last = position
+    if (!drag.started) {
+      drag.started = true
+      callFlutter('onCurlDrag', {
+        phase: 'start', x: drag.start.x, y: drag.start.y,
+        forward: position.x < drag.start.x,
+      })
+    }
+    // Every move is sent: touchmove already arrives at the display rate, and
+    // waiting for an animation frame would leave the curl behind the finger.
+    callFlutter('onCurlDrag', { phase: 'move', ...position })
+    return true
+  }
+
+  #curlDragEnd = (e) => {
+    const drag = this.#curlDrag
+    this.#curlDrag = null
+    if (!drag?.started) return false
+    const position = e.touch ? this.#curlPosition(e.touch) : drag.last
+    // The paginator measures velocity as screen movement backwards, in px/ms.
+    callFlutter('onCurlDrag', {
+      phase: 'end', ...position, vx: -(e.touchState?.vx ?? 0),
+    })
+    return true
+  }
+
   #ignoreTouch = () => {
     return this.view.renderer.scrollProp === 'scrollTop'
   }
 
 
   #onTouchStart = ({ detail: e }) => {
+    this.#curlDragStart(e)
     if (this.#ignoreTouch()) return;
 
     this.#bookMarkExists = !!document.getElementById('bookmark-icon');
@@ -1499,6 +1559,7 @@ class Reader {
   }
 
   #onTouchMove = ({ detail: e }) => {
+    if (this.#curlDragMove(e)) return
     if (this.#ignoreTouch()) return;
 
     const mainView = this.view.shadowRoot.children[0]
@@ -1521,16 +1582,7 @@ class Reader {
   }
 
   #onTouchEnd = ({ detail: e }) => {
-    // With the curl, the page does not follow the finger; a swipe asks Flutter
-    // to turn, and Flutter draws the curl.
-    if (style.pageTurnStyle === 'curl'
-      && e.touchState?.direction === 'horizontal'
-      && Math.abs(e.touchState.delta.x) > 40
-      && !window.getSelection()?.toString()) {
-      callFlutter('onCurlSwipe', { forward: e.touchState.delta.x < 0 })
-      return
-    }
-
+    if (this.#curlDragEnd(e)) return
     if (this.#ignoreTouch()) {
       if (e.touchState.direction === 'vertical') {
         const renderer = this.view.renderer;
