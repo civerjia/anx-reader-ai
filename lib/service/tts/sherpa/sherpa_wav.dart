@@ -204,15 +204,19 @@ Float32List normalizeLoudness(
   double maxGain = 12.0,
   double ceiling = 0.95,
 }) {
-  final gain = SherpaLoudness.gainFor(samples, sampleRate,
+  // Even out the swings inside the sentence first: matching averages alone
+  // leaves one sentence opening far below the next, which is what a
+  // listener hears after every pause.
+  final levelled = SherpaLoudness.level(samples, sampleRate);
+  final gain = SherpaLoudness.gainFor(levelled, sampleRate,
       target: targetLufs, maxGain: maxGain);
-  if ((gain - 1).abs() < 0.02) return samples;
+  if ((gain - 1).abs() < 0.02) return levelled;
 
   final knee = ceiling * 0.8;
   final range = ceiling - knee;
-  final out = Float32List(samples.length);
-  for (var i = 0; i < samples.length; i++) {
-    final value = samples[i] * gain;
+  final out = Float32List(levelled.length);
+  for (var i = 0; i < levelled.length; i++) {
+    final value = levelled[i] * gain;
     final level = value.abs();
     if (level <= knee) {
       out[i] = value;
