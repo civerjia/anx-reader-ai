@@ -446,10 +446,11 @@ class SherpaTtsProvider extends TtsServiceProvider {
     final seconds = audio.samples.length / audio.sampleRate;
     if (seconds <= 0) return;
 
-    // One line per model, so the real time factor on this device is in the
-    // log without a sentence by sentence flood.
-    if (_reported.add(key)) {
-      AnxLog.info('SherpaTts $key: ${elapsedMs}ms for '
+    // One line per model and backend, so the real time factor on this
+    // device is in the log without a sentence by sentence flood, and
+    // switching backend reports a fresh measurement.
+    if (_reported.add('$key@${spec.provider}')) {
+      AnxLog.info('SherpaTts $key on ${spec.provider}: ${elapsedMs}ms for '
           '${seconds.toStringAsFixed(1)}s of audio '
           '(RTF ${(elapsedMs / 1000 / seconds).toStringAsFixed(2)})');
     }
