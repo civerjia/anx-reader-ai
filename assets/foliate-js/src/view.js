@@ -304,6 +304,13 @@ export class View extends HTMLElement {
       
       // if the position is not null, it is fixed layout
       if (position) {
+        // Place the tap by the frame's actual box: scrolled PDF pages sit at
+        // any height down the column, and spreads sit side by side.
+        const box = doc.defaultView?.frameElement?.getBoundingClientRect()
+        if (box && scale) {
+          this.#emit('click-view', { x: box.left + clientX * scale, y: box.top + clientY * scale })
+          return
+        }
         clientX *= scale
         clientY *= scale
 

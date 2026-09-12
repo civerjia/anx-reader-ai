@@ -142,6 +142,9 @@ export class FixedLayout extends HTMLElement {
     #render(side = this.#side) {
         if (this.#scroller) return this.#relayoutScrolled()
         if (!side) return
+        // A spread is being put together (its frames load one after another): lay
+        // it out once it is all there.
+        if (!this.#center && !(this.#left && this.#right)) return
         const left = this.#left ?? {}
         const right = this.#center ?? this.#right
         const target = side === 'left' ? left : right
@@ -554,6 +557,7 @@ export class FixedLayout extends HTMLElement {
             const scale = page.width ? width / page.width : 0
             page.element.style.width = `${width}px`
             page.element.style.height = `${page.width ? page.height * scale : width * ratio}px`
+            if (page.frame) page.frame.iframe.contentDocument.scale = scale
             if (page.frame) Object.assign(page.frame.iframe.style, {
                 width: `${page.width}px`, height: `${page.height}px`,
                 transform: `scale(${scale})`, transformOrigin: 'top left',

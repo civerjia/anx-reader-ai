@@ -119,6 +119,13 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   Future<void> _pageCurlQueue = Future.value();
   int _pageCurlRunning = 0;
   _CurlDrag? _curlDrag;
+  Timer? _curlDragWatchdog;
+
+  /// The page just turned away from, kept so that turning back starts at once
+  /// rather than after turning the reader and photographing the page. Valid
+  /// only while the reader is still where that turn arrived.
+  ui.Image? _pageLeftImage;
+  String? _pageLeftAt;
 
   bool get _usePageCurl => Prefs().pageTurnStyle == PageTurn.curl;
 
@@ -126,14 +133,62 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       Color(int.tryParse(Prefs().readTheme.backgroundColor, radix: 16) ??
           0xFFFBFBF3);
 
+  /// Waits for one step of a curl, but never forever: a curl left waiting
+  /// keeps a picture of a page over the reader.
+  Future<T?> _curlStep<T>(Future<T> step, int ms, String what) async {
+    try {
+      return await step.timeout(Duration(milliseconds: ms));
+    } on TimeoutException {
+      AnxLog.info('Page curl: $what took over $ms ms; going on without it');
+      return null;
+    }
+  }
+
   Future<void> _turnInstantly(bool forward) async {
-    await webViewController.callAsyncJavaScript(
-        functionBody:
-            "if (typeof clearSelection === 'function') { clearSelection(); } "
-            "await ${forward ? 'nextPage' : 'prevPage'}(); "
-            // Resolve once the new page has been drawn: a snapshot taken right
-            // after would otherwise still show the page just left.
-            "await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));");
+    await _curlStep(
+      webViewController.callAsyncJavaScript(
+          functionBody:
+              "if (typeof clearSelection === 'function') { clearSelection(); } "
+              "await ${forward ? 'nextPage' : 'prevPage'}(); "
+              // Resolve once the new page has been drawn: a snapshot taken
+              // right after would otherwise still show the page just left.
+              "await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));"),
+      1500,
+      'turning the reader',
+    );
+  }
+
+  void _forgetPageLeft() {
+    _pageLeftImage?.dispose();
+    _pageLeftImage = null;
+    _pageLeftAt = null;
+  }
+
+  ui.Image? _takePageLeft() {
+    final image = _pageLeftImage;
+    if (image == null || _pageLeftAt != cfi) {
+      _forgetPageLeft();
+      return null;
+    }
+    _pageLeftImage = null;
+    _pageLeftAt = null;
+    return image;
+  }
+
+  /// Keeps [image], the page turned away from at [from], once the reader has
+  /// reported where the turn arrived.
+  Future<void> _rememberPageLeft(ui.Image image, String from) async {
+    final watch = Stopwatch()..start();
+    while (cfi == from && watch.elapsedMilliseconds < 800) {
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+    }
+    if (cfi == from || !mounted) {
+      image.dispose();
+      return;
+    }
+    _forgetPageLeft();
+    _pageLeftImage = image;
+    _pageLeftAt = cfi;
   }
 
   /// A tap, key or volume-button turn: the page is picked up by its edge and
@@ -155,34 +210,61 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
 
   Future<void> _playCurl(bool forward) async {
     final overlay = _pageCurlKey.currentState;
-    final current = overlay == null ? null : await _snapshotReader();
-    if (overlay == null || current == null) {
-      await _turnInstantly(forward);
-      return;
-    }
+    if (overlay == null) return _turnInstantly(forward);
     final size = overlay.size;
     final grab = Offset(size.width, size.height * 0.9);
+    final away = turnedAwayFinger(size, grab);
+
+    if (!forward) {
+      final previous = _takePageLeft();
+      if (previous != null) {
+        try {
+          overlay.curl(page: previous, grab: grab, finger: away);
+          await overlay.settle(grab);
+          await _turnInstantly(false);
+        } finally {
+          overlay.clear();
+        }
+        return;
+      }
+    }
+
+    final current = await _snapshotReader();
+    if (current == null) return _turnInstantly(forward);
+    final from = cfi;
+    ui.Image? keep;
     try {
       if (forward) {
+        keep = current.clone();
         overlay.curl(page: current, grab: grab, finger: grab);
         await _turnInstantly(true);
-        await overlay.settle(turnedAwayFinger(size, grab));
+        await overlay.settle(away);
+        unawaited(_rememberPageLeft(keep, from));
+        keep = null;
       } else {
         overlay.cover(current);
         await _turnInstantly(false);
         final previous = await _snapshotReader();
         if (previous == null) return;
-        overlay.curl(
-          page: previous,
-          under: current,
-          grab: grab,
-          finger: turnedAwayFinger(size, grab),
-        );
+        overlay.curl(page: previous, under: current, grab: grab, finger: away);
         await overlay.settle(grab);
       }
     } finally {
+      keep?.dispose();
       overlay.clear();
     }
+  }
+
+  /// A drag whose end never arrives (the system took the touch) must not leave
+  /// a page hanging over the reader.
+  void _armCurlWatchdog(_CurlDrag drag) {
+    _curlDragWatchdog?.cancel();
+    _curlDragWatchdog = Timer(const Duration(seconds: 4), () {
+      if (!drag.released.isCompleted) {
+        AnxLog.info('Page curl: no touch for 4 s; letting the page go');
+        drag.released.complete(0);
+      }
+    });
   }
 
   /// A drag streamed from the reader: the page edge at the height the finger
@@ -204,6 +286,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
           finger: point,
         );
         _curlDrag = started;
+        _armCurlWatchdog(started);
         _pageCurlQueue = _pageCurlQueue
             .then((_) => _runCurl(() => _followCurlDrag(started)))
             .catchError((Object e) => AnxLog.info('Page curl: drag failed: $e'))
@@ -214,8 +297,10 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         if (drag == null) return;
         drag.finger = point;
         drag.show?.call(point);
+        _armCurlWatchdog(drag);
       case 'end':
         if (drag == null) return;
+        _curlDragWatchdog?.cancel();
         drag.finger = point;
         drag.show?.call(point);
         if (!drag.released.isCompleted) {
@@ -224,17 +309,46 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     }
   }
 
+  bool _turnsAway(double vx, Offset finger, Size size) {
+    const flick = 0.25; // px per ms
+    return vx < -flick || (vx <= flick && finger.dx < size.width / 2);
+  }
+
   Future<void> _followCurlDrag(_CurlDrag drag) async {
     final overlay = _pageCurlKey.currentState;
-    final current = overlay == null ? null : await _snapshotReader();
-    if (overlay == null || current == null) {
-      final vx = await drag.released.future;
-      if (drag.forward ? vx < 0 : vx > 0) await _turnInstantly(drag.forward);
+    if (overlay == null) {
+      await drag.released.future;
       return;
     }
     final size = overlay.size;
+    final away = turnedAwayFinger(size, drag.grab);
+    ui.Image? keep;
     try {
+      if (!drag.forward) {
+        final previous = _takePageLeft();
+        if (previous != null) {
+          // Back to the page just left: it is already in hand, so it follows
+          // the finger at once over the live page, and the reader turns back
+          // only if the page is laid down.
+          overlay.curl(page: previous, grab: drag.grab, finger: drag.finger);
+          drag.show = overlay.moveFinger;
+          final vx = await drag.released.future;
+          final turnedAway = _turnsAway(vx, drag.finger, size);
+          await overlay.settle(turnedAway ? away : drag.grab);
+          if (!turnedAway) await _turnInstantly(false);
+          return;
+        }
+      }
+
+      final current = await _snapshotReader();
+      if (current == null) {
+        final vx = await drag.released.future;
+        if (drag.forward ? vx < 0 : vx > 0) await _turnInstantly(drag.forward);
+        return;
+      }
+      final from = cfi;
       if (drag.forward) {
+        keep = current.clone();
         overlay.curl(page: current, grab: drag.grab, finger: drag.finger);
         drag.show = overlay.moveFinger;
         await _turnInstantly(true);
@@ -252,28 +366,35 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       }
 
       final vx = await drag.released.future;
-      const flick = 0.25; // px per ms
-      final pastMiddle = drag.finger.dx < size.width / 2;
-      final turnedAway = vx < -flick || (vx <= flick && pastMiddle);
-      await overlay.settle(
-          turnedAway ? turnedAwayFinger(size, drag.grab) : drag.grab);
+      final turnedAway = _turnsAway(vx, drag.finger, size);
+      await overlay.settle(turnedAway ? away : drag.grab);
       // The reader already shows the page the turn was heading for; if the
       // hand went the other way, put it back before uncovering it.
       final completed = drag.forward ? turnedAway : !turnedAway;
-      if (!completed) await _turnInstantly(!drag.forward);
+      if (!completed) {
+        await _turnInstantly(!drag.forward);
+      } else if (keep != null) {
+        unawaited(_rememberPageLeft(keep, from));
+        keep = null;
+      }
     } finally {
+      keep?.dispose();
       overlay.clear();
     }
   }
 
   Future<ui.Image?> _snapshotReader() async {
     final watch = Stopwatch()..start();
-    final bytes = await webViewController.takeScreenshot(
-      screenshotConfiguration: ScreenshotConfiguration(
-        compressFormat: CompressFormat.JPEG,
-        quality: 90,
-        afterScreenUpdates: true,
+    final bytes = await _curlStep(
+      webViewController.takeScreenshot(
+        screenshotConfiguration: ScreenshotConfiguration(
+          compressFormat: CompressFormat.JPEG,
+          quality: 90,
+          afterScreenUpdates: true,
+        ),
       ),
+      1200,
+      'snapshot',
     );
     if (bytes == null) return null;
     final codec = await ui.instantiateImageCodec(bytes);
@@ -348,6 +469,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   }
 
   void changeTheme(ReadTheme readTheme) {
+    // The kept picture of the page just left no longer looks like it.
+    _forgetPageLeft();
     textColor = readTheme.textColor;
     backgroundColor = readTheme.backgroundColor;
 
@@ -363,6 +486,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   }
 
   void changeStyle(BookStyle? bookStyle) {
+    // The kept picture of the page just left no longer looks like it.
+    _forgetPageLeft();
     styleTimer?.cancel();
     String bgimgUrl = Prefs().bgimg.getEffectiveUrl(
           isDarkMode: isDarkMode,
@@ -402,6 +527,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   }
 
   void changeBgimgEffect() {
+    // The kept picture of the page just left no longer looks like it.
+    _forgetPageLeft();
     if (!mounted) return;
     final bgimg = Prefs().bgimg;
     final bgimgUrl = bgimg.getEffectiveUrl(
@@ -428,6 +555,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   }
 
   void changeFont(FontModel font) {
+    // The kept picture of the page just left no longer looks like it.
+    _forgetPageLeft();
     webViewController.evaluateJavascript(source: '''
       changeStyle({
         fontName: '${font.name}',
@@ -437,6 +566,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   }
 
   void changePageTurnStyle(PageTurn pageTurnStyle) {
+    // The kept picture of the page just left no longer looks like it.
+    _forgetPageLeft();
     webViewController.evaluateJavascript(source: '''
       changeStyle({
         pageTurnStyle: '${pageTurnStyle.name}',

@@ -579,10 +579,14 @@ export class Paginator extends HTMLElement {
     this.addEventListener('touchstart', this.#onTouchStart.bind(this), opts)
     this.addEventListener('touchmove', this.#onTouchMove.bind(this), opts)
     this.addEventListener('touchend', this.#onTouchEnd.bind(this), opts)
+    // A touch the system takes over ends in touchcancel; without it a drag
+    // (the page curl among them) would never learn the finger has gone.
+    this.addEventListener('touchcancel', this.#onTouchEnd.bind(this), opts)
     this.addEventListener('load', ({ detail: { doc } }) => {
       doc.addEventListener('touchstart', this.#onTouchStart.bind(this), opts)
       doc.addEventListener('touchmove', this.#onTouchMove.bind(this), opts)
       doc.addEventListener('touchend', this.#onTouchEnd.bind(this), opts)
+      doc.addEventListener('touchcancel', this.#onTouchEnd.bind(this), opts)
     })
 
     this.#mediaQueryListener = () => {
