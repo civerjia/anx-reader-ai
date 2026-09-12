@@ -623,10 +623,38 @@ void main() {
       expect(peak, lessThanOrEqualTo(0.95));
     });
 
+    test('lifts a sentence that opens quietly', () {
+      // A sentence whose first second is 8 dB below its body: after
+      // levelling the two halves must sit much closer together.
+      const sr2 = sr;
+      final quiet = List<double>.generate(
+          sr2, (i) => 0.02 * math.sin(i * 0.4));
+      final loud = List<double>.generate(
+          sr2 * 2, (i) => 0.05 * math.sin(i * 0.4));
+      final uneven = Float32List.fromList([...quiet, ...loud]);
+
+      double levelDb(Float32List s, int from, int to) {
+        var sum = 0.0;
+        for (var i = from; i < to; i++) {
+          sum += s[i] * s[i];
+        }
+        return 10 * (math.log(sum / (to - from)) / math.ln10);
+      }
+
+      final before = levelDb(uneven, sr2, sr2 * 2) - levelDb(uneven, 0, sr2);
+      final out = SherpaLoudness.level(uneven, sr2);
+      final after = levelDb(out, sr2, sr2 * 2) - levelDb(out, 0, sr2);
+
+      expect(before, greaterThan(6));
+      // Levelled, not flattened: the point is to pull the opening up
+      // without ironing the speech out.
+      expect(after, lessThan(before * 0.6));
+    });
+
     test('leaves silence alone', () {
       final quiet = Float32List.fromList(List<double>.filled(sr, 0.0));
 
-      expect(normalizeLoudness(quiet, sr), same(quiet));
+      expect(normalizeLoudness(quiet, sr), everyElement(0.0));
     });
   });
 
