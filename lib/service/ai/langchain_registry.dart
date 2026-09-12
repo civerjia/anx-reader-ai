@@ -7,6 +7,7 @@ import 'package:anx_reader/models/ai_provider.dart';
 import 'package:anx_reader/providers/current_reading.dart';
 import 'package:anx_reader/service/ai/local/local_llm_chat_model.dart';
 import 'package:anx_reader/service/ai/tools/ai_tool_registry.dart';
+import 'package:anx_reader/service/knowledge/knowledge_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:langchain_anthropic/langchain_anthropic.dart';
 import 'package:langchain_core/chat_models.dart';
@@ -143,6 +144,8 @@ class LangchainAiRegistry {
           .toList(growable: false);
       systemMessage = compactGuidance
           ? ChatMessage.system(localAgentGuidance(
+              canLookUpFacts:
+                  enabledIds.contains('knowledge_lookup') && hasKnowledgePacks(),
               today: DateTime.now(),
               languageName: _replyLanguageName(),
             ))
@@ -315,12 +318,20 @@ class LangchainPipeline {
 String localAgentGuidance({
   required DateTime today,
   required String languageName,
+  bool canLookUpFacts = false,
 }) {
   String two(int n) => n.toString().padLeft(2, '0');
   final date = '${today.year}-${two(today.month)}-${two(today.day)}';
   // The date is there because without it the model filled a "last seven days"
   // query with dates from 2024. The reply language is named outright because
   // an English prompt and an English digest pulled replies into English.
+  final factsLine = canLookUpFacts
+      // A small model answering from memory invented a plant's family, genus
+      // and origin; with an encyclopedia on the phone it checks.
+      ? 'For facts about a name, species, place, event or term, call '
+          'knowledge_lookup with its title first and answer from the '
+          'article; if nothing is found, say you are not sure.'
+      : 'For general questions, answer directly without any tool.';
   return "You are the reading assistant in Anx Reader, running on the reader's "
       'own phone. Today is $date.\n'
       'Reply in $languageName, briefly.\n'
@@ -329,6 +340,6 @@ String localAgentGuidance({
       'answer. Call a tool only when they do not, or when the reader asks you '
       'to change something — organizing the shelf needs real book ids from '
       'those sections.\n'
-      'For general questions, answer directly without any tool.\n'
+      '$factsLine\n'
       'Never invent a title, a date, an id or a note.';
 }

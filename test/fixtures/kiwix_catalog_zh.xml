@@ -1,0 +1,798 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:dc="http://purl.org/dc/terms/"
+      xmlns:opds="https://specs.opds.io/opds-1.2"
+      xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/">
+  <id>c870ac10-e046-c3cb-e3f2-abe6f4727196</id>
+
+  <link rel="self"
+        href="/catalog/v2/entries?lang=zho&amp;category=wikipedia&amp;count=60"
+        type="application/atom+xml;profile=opds-catalog;kind=acquisition"/>
+  <link rel="start"
+        href="/catalog/v2/root.xml"
+        type="application/atom+xml;profile=opds-catalog;kind=navigation"/>
+  <link rel="up"
+        href="/catalog/v2/root.xml"
+        type="application/atom+xml;profile=opds-catalog;kind=navigation"/>
+
+  <title>Filtered Entries (lang=zho&amp;category=wikipedia&amp;count=60)</title>
+  <updated>2026-09-12T22:01:20Z</updated>
+  <totalResults>31</totalResults>
+  <startIndex>0</startIndex>
+  <itemsPerPage>31</itemsPerPage>
+  <entry>
+    <id>urn:uuid:e0f96e5a-2137-49e3-1af8-f25ca3bd4054</id>
+    <title>维基百科数学</title>
+    <updated>2026-06-15T00:00:00Z</updated>
+    <summary>数学的维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_mathematics</name>
+    <flavour>maxi</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:yes;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>19219</articleCount>
+    <mediaCount>96812</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/e0f96e5a-2137-49e3-1af8-f25ca3bd4054/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_mathematics_maxi_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-15T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_mathematics_maxi_2026-06.zim.meta4" length="347867136" />
+  </entry>
+  <entry>
+    <id>urn:uuid:6faf3ec7-a987-de71-bb00-4609bc60fdaa</id>
+    <title>维基百科数学</title>
+    <updated>2026-06-15T00:00:00Z</updated>
+    <summary>数学的维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_mathematics</name>
+    <flavour>mini</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:no;_ftindex:yes</tags>
+    <articleCount>19219</articleCount>
+    <mediaCount>7669</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/6faf3ec7-a987-de71-bb00-4609bc60fdaa/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_mathematics_mini_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-15T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_mathematics_mini_2026-06.zim.meta4" length="23589888" />
+  </entry>
+  <entry>
+    <id>urn:uuid:fecca366-e91e-f806-68c0-70a32c552aa7</id>
+    <title>维基百科数学</title>
+    <updated>2026-06-15T00:00:00Z</updated>
+    <summary>数学的维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_mathematics</name>
+    <flavour>nopic</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>19219</articleCount>
+    <mediaCount>83775</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/fecca366-e91e-f806-68c0-70a32c552aa7/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_mathematics_nopic_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-15T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_mathematics_nopic_2026-06.zim.meta4" length="107931648" />
+  </entry>
+  <entry>
+    <id>urn:uuid:c6126632-1f1a-ad0f-81ec-9d8b5dfa1d08</id>
+    <title>分子和细胞生物学</title>
+    <updated>2026-06-16T00:00:00Z</updated>
+    <summary>维基百科的文章对分子和细胞生物学的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_molcell</name>
+    <flavour>maxi</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:yes;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>11641</articleCount>
+    <mediaCount>7208</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/c6126632-1f1a-ad0f-81ec-9d8b5dfa1d08/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_molcell_maxi_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-16T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_molcell_maxi_2026-06.zim.meta4" length="142120960" />
+  </entry>
+  <entry>
+    <id>urn:uuid:7bd98049-4241-c5e3-21b0-877406a760a4</id>
+    <title>分子和细胞生物学</title>
+    <updated>2026-06-16T00:00:00Z</updated>
+    <summary>维基百科的文章对分子和细胞生物学的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_molcell</name>
+    <flavour>nopic</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>11641</articleCount>
+    <mediaCount>696</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/7bd98049-4241-c5e3-21b0-877406a760a4/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_molcell_nopic_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-16T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_molcell_nopic_2026-06.zim.meta4" length="49022976" />
+  </entry>
+  <entry>
+    <id>urn:uuid:4fa95855-628f-032c-05fd-64ed7445ab27</id>
+    <title>篮球维基百科</title>
+    <updated>2025-07-16T00:00:00Z</updated>
+    <summary>篮球维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_basketball</name>
+    <flavour>maxi</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:yes;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>10026</articleCount>
+    <mediaCount>4206</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/4fa95855-628f-032c-05fd-64ed7445ab27/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_basketball_maxi_2025-07" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2025-07-16T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_basketball_maxi_2025-07.zim.meta4" length="71795712" />
+  </entry>
+  <entry>
+    <id>urn:uuid:4a46ab01-c5a9-52e8-4de7-7b804d7c4a6e</id>
+    <title>篮球维基百科</title>
+    <updated>2025-07-16T00:00:00Z</updated>
+    <summary>篮球维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_basketball</name>
+    <flavour>nopic</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>10026</articleCount>
+    <mediaCount>115</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/4a46ab01-c5a9-52e8-4de7-7b804d7c4a6e/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_basketball_nopic_2025-07" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2025-07-16T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_basketball_nopic_2025-07.zim.meta4" length="39895040" />
+  </entry>
+  <entry>
+    <id>urn:uuid:b94ab22a-766f-aedc-1ad9-b911344f0444</id>
+    <title>维基百科物理学</title>
+    <updated>2026-06-15T00:00:00Z</updated>
+    <summary>物理学的维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_physics</name>
+    <flavour>maxi</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:yes;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>20157</articleCount>
+    <mediaCount>47328</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/b94ab22a-766f-aedc-1ad9-b911344f0444/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_physics_maxi_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-15T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_physics_maxi_2026-06.zim.meta4" length="381614080" />
+  </entry>
+  <entry>
+    <id>urn:uuid:7c9e3804-4be1-1a1d-1f8c-d3f4ecf98299</id>
+    <title>维基百科物理学</title>
+    <updated>2026-06-15T00:00:00Z</updated>
+    <summary>物理学的维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_physics</name>
+    <flavour>mini</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:no;_ftindex:yes</tags>
+    <articleCount>20157</articleCount>
+    <mediaCount>3338</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/7c9e3804-4be1-1a1d-1f8c-d3f4ecf98299/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_physics_mini_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-15T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_physics_mini_2026-06.zim.meta4" length="27281408" />
+  </entry>
+  <entry>
+    <id>urn:uuid:b73747a7-709c-bb8d-de5e-1b9225f1157c</id>
+    <title>维基百科物理学</title>
+    <updated>2026-06-15T00:00:00Z</updated>
+    <summary>物理学的维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_physics</name>
+    <flavour>nopic</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>20157</articleCount>
+    <mediaCount>35655</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/b73747a7-709c-bb8d-de5e-1b9225f1157c/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_physics_nopic_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-15T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_physics_nopic_2026-06.zim.meta4" length="107111424" />
+  </entry>
+  <entry>
+    <id>urn:uuid:54306178-19b1-4e56-17aa-5e27efb4f94b</id>
+    <title>化学维基百科</title>
+    <updated>2026-06-16T00:00:00Z</updated>
+    <summary>在化学维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_chemistry</name>
+    <flavour>maxi</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:yes;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>11874</articleCount>
+    <mediaCount>14468</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/54306178-19b1-4e56-17aa-5e27efb4f94b/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_chemistry_maxi_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-16T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_chemistry_maxi_2026-06.zim.meta4" length="133458944" />
+  </entry>
+  <entry>
+    <id>urn:uuid:c1efc276-e166-d876-86b1-4619a65b161e</id>
+    <title>化学维基百科</title>
+    <updated>2026-06-16T00:00:00Z</updated>
+    <summary>在化学维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_chemistry</name>
+    <flavour>mini</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:no;_ftindex:yes</tags>
+    <articleCount>11874</articleCount>
+    <mediaCount>791</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/c1efc276-e166-d876-86b1-4619a65b161e/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_chemistry_mini_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-16T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_chemistry_mini_2026-06.zim.meta4" length="14208000" />
+  </entry>
+  <entry>
+    <id>urn:uuid:78c63d38-fd83-5d18-8d0a-44854942e611</id>
+    <title>化学维基百科</title>
+    <updated>2026-06-16T00:00:00Z</updated>
+    <summary>在化学维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_chemistry</name>
+    <flavour>nopic</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>11874</articleCount>
+    <mediaCount>5103</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/78c63d38-fd83-5d18-8d0a-44854942e611/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_chemistry_nopic_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-16T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_chemistry_nopic_2026-06.zim.meta4" length="43884544" />
+  </entry>
+  <entry>
+    <id>urn:uuid:bd5231a5-b3d7-4193-7f9b-3bf7764f195a</id>
+    <title>维基百科</title>
+    <updated>2026-08-03T00:00:00Z</updated>
+    <summary>迷你版维基百科，每个人的百科全书</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_all</name>
+    <flavour>maxi</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:yes;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>3547048</articleCount>
+    <mediaCount>1878609</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/bd5231a5-b3d7-4193-7f9b-3bf7764f195a/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_all_maxi_2026-08" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-08-03T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_all_maxi_2026-08.zim.meta4" length="26601056256" />
+  </entry>
+  <entry>
+    <id>urn:uuid:25ca278d-08a3-641b-09ab-07a4ac1735f0</id>
+    <title>维基百科</title>
+    <updated>2026-07-23T00:00:00Z</updated>
+    <summary>迷你版维基百科，每个人的百科全书</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_all</name>
+    <flavour>mini</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:no;_ftindex:yes</tags>
+    <articleCount>3505388</articleCount>
+    <mediaCount>15000</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/25ca278d-08a3-641b-09ab-07a4ac1735f0/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_all_mini_2026-07b" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-07-23T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_all_mini_2026-07b.zim.meta4" length="4828333056" />
+  </entry>
+  <entry>
+    <id>urn:uuid:85c1f378-dfc8-4f35-43b0-370ed608ae1d</id>
+    <title>维基百科</title>
+    <updated>2026-07-23T00:00:00Z</updated>
+    <summary>迷你版维基百科，每个人的百科全书</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_all</name>
+    <flavour>nopic</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>3541817</articleCount>
+    <mediaCount>155073</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/85c1f378-dfc8-4f35-43b0-370ed608ae1d/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_all_nopic_2026-07" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-07-23T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_all_nopic_2026-07.zim.meta4" length="14749857792" />
+  </entry>
+  <entry>
+    <id>urn:uuid:34449d45-1c24-b5ac-91fe-787c43a1b4c7</id>
+    <title>地理维基百科</title>
+    <updated>2026-06-16T00:00:00Z</updated>
+    <summary>地理维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_geography</name>
+    <flavour>maxi</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:yes;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>17420</articleCount>
+    <mediaCount>30512</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/34449d45-1c24-b5ac-91fe-787c43a1b4c7/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_geography_maxi_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-16T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_geography_maxi_2026-06.zim.meta4" length="328646656" />
+  </entry>
+  <entry>
+    <id>urn:uuid:410a59ee-fc5a-2789-930b-7f0e1b1c753d</id>
+    <title>地理维基百科</title>
+    <updated>2026-06-16T00:00:00Z</updated>
+    <summary>地理维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_geography</name>
+    <flavour>nopic</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>17420</articleCount>
+    <mediaCount>392</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/410a59ee-fc5a-2789-930b-7f0e1b1c753d/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_geography_nopic_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-16T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_geography_nopic_2026-06.zim.meta4" length="79996928" />
+  </entry>
+  <entry>
+    <id>urn:uuid:6d81d431-33d2-a6d0-ce0d-975f4f6a1ffc</id>
+    <title>Best of Wikipedia</title>
+    <updated>2026-06-14T00:00:00Z</updated>
+    <summary>选集维基百科最好的50000篇。</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_top</name>
+    <flavour>maxi</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:yes;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>281475</articleCount>
+    <mediaCount>307030</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/6d81d431-33d2-a6d0-ce0d-975f4f6a1ffc/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_top_maxi_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-14T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_top_maxi_2026-06.zim.meta4" length="3859935232" />
+  </entry>
+  <entry>
+    <id>urn:uuid:dd4a685d-c919-a4b0-719f-58aca3f2aa13</id>
+    <title>Best of Wikipedia</title>
+    <updated>2026-06-14T00:00:00Z</updated>
+    <summary>选集维基百科最好的50000篇。</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_top</name>
+    <flavour>mini</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:no;_ftindex:yes</tags>
+    <articleCount>281475</articleCount>
+    <mediaCount>2662</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/dd4a685d-c919-a4b0-719f-58aca3f2aa13/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_top_mini_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-14T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_top_mini_2026-06.zim.meta4" length="259415040" />
+  </entry>
+  <entry>
+    <id>urn:uuid:cef5370c-fabf-f9cb-e1ed-a7f5ef38201b</id>
+    <title>Best of Wikipedia</title>
+    <updated>2026-06-14T00:00:00Z</updated>
+    <summary>选集维基百科最好的50000篇。</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_top</name>
+    <flavour>nopic</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>281475</articleCount>
+    <mediaCount>41954</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/cef5370c-fabf-f9cb-e1ed-a7f5ef38201b/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_top_nopic_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-14T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_top_nopic_2026-06.zim.meta4" length="1467291648" />
+  </entry>
+  <entry>
+    <id>urn:uuid:b9b50440-84b5-55f8-5603-55b9e1d5a428</id>
+    <title>历史维基百科</title>
+    <updated>2026-06-16T00:00:00Z</updated>
+    <summary>历史上维基百科的文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_history</name>
+    <flavour>maxi</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:yes;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>32745</articleCount>
+    <mediaCount>29757</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/b9b50440-84b5-55f8-5603-55b9e1d5a428/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_history_maxi_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-16T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_history_maxi_2026-06.zim.meta4" length="466988032" />
+  </entry>
+  <entry>
+    <id>urn:uuid:07a48639-2c00-dad4-d35c-7d1b545965c3</id>
+    <title>历史维基百科</title>
+    <updated>2026-06-16T00:00:00Z</updated>
+    <summary>历史上维基百科的文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_history</name>
+    <flavour>nopic</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>32745</articleCount>
+    <mediaCount>228</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/07a48639-2c00-dad4-d35c-7d1b545965c3/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_history_nopic_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-16T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_history_nopic_2026-06.zim.meta4" length="185506816" />
+  </entry>
+  <entry>
+    <id>urn:uuid:69ca56cc-d996-4977-6f5a-57d8b7d4cc4f</id>
+    <title>足球维基百科</title>
+    <updated>2026-06-19T00:00:00Z</updated>
+    <summary>在足球的维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_football</name>
+    <flavour>maxi</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:yes;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>58153</articleCount>
+    <mediaCount>45997</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/69ca56cc-d996-4977-6f5a-57d8b7d4cc4f/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_football_maxi_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-19T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_football_maxi_2026-06.zim.meta4" length="456723456" />
+  </entry>
+  <entry>
+    <id>urn:uuid:d10b9a91-98c9-8d09-a66a-a0143c51d475</id>
+    <title>足球维基百科</title>
+    <updated>2026-06-19T00:00:00Z</updated>
+    <summary>在足球的维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_football</name>
+    <flavour>nopic</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>58153</articleCount>
+    <mediaCount>147</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/d10b9a91-98c9-8d09-a66a-a0143c51d475/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_football_nopic_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-19T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_football_nopic_2026-06.zim.meta4" length="232667136" />
+  </entry>
+  <entry>
+    <id>urn:uuid:928b2804-c745-e1ce-e9ff-661835a96c5e</id>
+    <title>计算机通过维基百科</title>
+    <updated>2026-06-15T00:00:00Z</updated>
+    <summary>计算机上的维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_computer</name>
+    <flavour>maxi</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:yes;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>36819</articleCount>
+    <mediaCount>20617</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/928b2804-c745-e1ce-e9ff-661835a96c5e/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_computer_maxi_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-15T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_computer_maxi_2026-06.zim.meta4" length="264004608" />
+  </entry>
+  <entry>
+    <id>urn:uuid:3c076b51-e860-faa4-d7b1-a7e6aea53522</id>
+    <title>计算机通过维基百科</title>
+    <updated>2026-06-15T00:00:00Z</updated>
+    <summary>计算机上的维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_computer</name>
+    <flavour>nopic</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>36819</articleCount>
+    <mediaCount>4929</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/3c076b51-e860-faa4-d7b1-a7e6aea53522/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_computer_nopic_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-15T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_computer_nopic_2026-06.zim.meta4" length="142285824" />
+  </entry>
+  <entry>
+    <id>urn:uuid:d76cd76e-2ddf-c6ae-e9a2-22b94886ff5b</id>
+    <title>醫學維基百科</title>
+    <updated>2026-06-15T00:00:00Z</updated>
+    <summary>五萬篇健康照護的文章目前支援離線閱讀，而且任何地方都可免費使用!!!</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_medicine</name>
+    <flavour>maxi</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:yes;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>46374</articleCount>
+    <mediaCount>23967</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/d76cd76e-2ddf-c6ae-e9a2-22b94886ff5b/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_medicine_maxi_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-15T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_medicine_maxi_2026-06.zim.meta4" length="504855552" />
+  </entry>
+  <entry>
+    <id>urn:uuid:9d47c082-27cc-da39-ce0a-4b66c6b46b24</id>
+    <title>醫學維基百科</title>
+    <updated>2026-06-15T00:00:00Z</updated>
+    <summary>五萬篇健康照護的文章目前支援離線閱讀，而且任何地方都可免費使用!!!</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_medicine</name>
+    <flavour>nopic</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>46374</articleCount>
+    <mediaCount>1015</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/9d47c082-27cc-da39-ce0a-4b66c6b46b24/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_medicine_nopic_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-15T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_medicine_nopic_2026-06.zim.meta4" length="201294848" />
+  </entry>
+  <entry>
+    <id>urn:uuid:3a66ddeb-efee-d12e-057d-335f51a6087d</id>
+    <title>维基百科电影</title>
+    <updated>2026-06-14T00:00:00Z</updated>
+    <summary>在电影的维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_movies</name>
+    <flavour>maxi</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:yes;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>78154</articleCount>
+    <mediaCount>30552</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/3a66ddeb-efee-d12e-057d-335f51a6087d/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_movies_maxi_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-14T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_movies_maxi_2026-06.zim.meta4" length="722899968" />
+  </entry>
+  <entry>
+    <id>urn:uuid:86a8f1ab-d664-d125-836b-e5f1faa5c2ad</id>
+    <title>维基百科电影</title>
+    <updated>2026-06-14T00:00:00Z</updated>
+    <summary>在电影的维基百科文章的选择</summary>
+    <language>zho</language>
+    <name>wikipedia_zh_movies</name>
+    <flavour>nopic</flavour>
+    <category>wikipedia</category>
+    <tags>wikipedia;_category:wikipedia;_pictures:no;_videos:no;_details:yes;_ftindex:yes</tags>
+    <articleCount>78154</articleCount>
+    <mediaCount>292</mediaCount>
+    <link rel="http://opds-spec.org/image/thumbnail"
+          href="/catalog/v2/illustration/86a8f1ab-d664-d125-836b-e5f1faa5c2ad/?size=48"
+          type="image/png;width=48;height=48;scale=1"/>
+    <link type="text/html" href="https://browse.library.kiwix.org/content/wikipedia_zh_movies_nopic_2026-06" />
+    <author>
+      <name>Wikipedia</name>
+    </author>
+    <publisher>
+      <name>openZIM</name>
+    </publisher>
+    <dc:issued>2026-06-14T00:00:00Z</dc:issued>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/x-zim" href="https://lb.download.kiwix.org/zim/wikipedia/wikipedia_zh_movies_nopic_2026-06.zim.meta4" length="435954688" />
+  </entry>
+</feed>

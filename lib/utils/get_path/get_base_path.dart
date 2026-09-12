@@ -69,6 +69,7 @@ void initBasePath() async {
   final fontDir = getFontDir();
   final bgimgDir = getBgimgDir();
   final dictionaryDir = getDictionaryDir();
+  final knowledgeDir = getKnowledgeDir();
   if (!fileDir.existsSync()) {
     fileDir.createSync(recursive: true);
   }
@@ -84,6 +85,9 @@ void initBasePath() async {
   if (!dictionaryDir.existsSync()) {
     dictionaryDir.createSync(recursive: true);
   }
+  if (!knowledgeDir.existsSync()) {
+    knowledgeDir.createSync(recursive: true);
+  }
 }
 
 String getBasePath(String path) {
@@ -95,6 +99,12 @@ String getBasePath(String path) {
 Directory getFontDir({String? path}) {
   path ??= documentPath;
   return Directory('$path${Platform.pathSeparator}font');
+}
+
+/// Downloaded or imported Kiwix ZIM packs for the offline encyclopedia.
+Directory getKnowledgeDir({String? path}) {
+  path ??= documentPath;
+  return Directory('$path${Platform.pathSeparator}knowledge');
 }
 
 /// Imported StarDict dictionaries, one folder each.

@@ -74,6 +74,7 @@ class Prefs extends ChangeNotifier {
   static const String _chapterSplitCustomRulesKey = 'chapterSplitCustomRules';
   static const String _statisticsDashboardTilesKey = 'statisticsDashboardTiles';
   static const String _enabledAiToolsKey = 'enabledAiTools';
+  static const String _knownAiToolsKey = 'knownAiToolIds';
   static const String _userPromptsKey = 'userPrompts';
 
   Future<void> initPrefs() async {
@@ -928,7 +929,10 @@ class Prefs extends ChangeNotifier {
     if (stored.isEmpty) {
       return const [];
     }
-    final sanitized = AiToolRegistry.sanitizeIds(stored);
+    final sanitized = AiToolRegistry.withNewTools(
+      stored,
+      prefs.getStringList(_knownAiToolsKey)?.toSet(),
+    );
     if (sanitized.isEmpty && stored.isNotEmpty) {
       return AiToolRegistry.defaultEnabledToolIds();
     }
@@ -939,6 +943,11 @@ class Prefs extends ChangeNotifier {
     prefs.setStringList(
       _enabledAiToolsKey,
       AiToolRegistry.sanitizeIds(ids),
+    );
+    // Remember which tools existed, so ones added later start enabled.
+    prefs.setStringList(
+      _knownAiToolsKey,
+      AiToolRegistry.defaultEnabledToolIds(),
     );
     notifyListeners();
   }

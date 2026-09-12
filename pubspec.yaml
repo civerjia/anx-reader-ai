@@ -136,6 +136,10 @@ dependencies:
   forui: ^0.26.0
   llm_llamacpp: ^0.5.0
 
+  # zstd for Kiwix ZIM clusters; vendored for hooks 2 (see its PATCH.md).
+  zstd_dart:
+    path: third_party/zstd_dart
+
 dependency_overrides:
   # Patched so the iOS build works at all; see third_party/llm_llamacpp/PATCH.md
   llm_llamacpp:

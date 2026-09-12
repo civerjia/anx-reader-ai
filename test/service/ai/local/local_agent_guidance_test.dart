@@ -21,6 +21,19 @@ void main() {
     expect(guidance, contains('Never invent'));
   });
 
+  test('with an encyclopedia on the phone, facts are looked up', () {
+    final withLookup = localAgentGuidance(
+      today: DateTime(2026, 9, 2),
+      languageName: '简体中文',
+      canLookUpFacts: true,
+    );
+    expect(withLookup, contains('knowledge_lookup'));
+    expect(withLookup, isNot(contains('without any tool')));
+    expect(withLookup, contains('Never invent'));
+    expect(withLookup.length, lessThan(900));
+    expect(guidance, isNot(contains('knowledge_lookup')));
+  });
+
   test('stays a fraction of the full agent guidance', () {
     // The full guidance is about 2,900 characters and measured worse.
     expect(guidance.length, lessThan(900));

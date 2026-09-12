@@ -11,6 +11,7 @@ import 'package:anx_reader/service/ai/tools/current_book_toc_tool.dart';
 import 'package:anx_reader/service/ai/tools/current_chapter_content_tool.dart';
 import 'package:anx_reader/service/ai/tools/current_reading_metadata_tool.dart';
 import 'package:anx_reader/service/ai/tools/current_time_tool.dart';
+import 'package:anx_reader/service/ai/tools/knowledge_lookup_tool.dart';
 import 'package:anx_reader/service/ai/tools/mindmap_tool.dart';
 import 'package:anx_reader/service/ai/tools/notes_search_tool.dart';
 import 'package:anx_reader/service/ai/tools/reading_history_tool.dart';
@@ -70,6 +71,7 @@ class AiToolRegistry {
   static final List<AiToolDefinition> _definitions = [
     calculatorToolDefinition,
     currentTimeToolDefinition,
+    knowledgeLookupToolDefinition,
     mindmapToolDefinition,
     bookContentSearchToolDefinition,
     bookshelfLookupToolDefinition,
@@ -93,6 +95,19 @@ class AiToolRegistry {
       List<AiToolDefinition>.unmodifiable(_definitions);
 
   static AiToolDefinition? byId(String id) => _definitionMap[id];
+
+  /// Tools added after users could first save which tools are enabled.
+  static const Set<String> addedAfterSelection = {'knowledge_lookup'};
+
+  /// A saved selection with any tools introduced since it was saved switched
+  /// on: [known] is every tool that existed when it was saved (null for a
+  /// selection saved before this was recorded, which knew everything except
+  /// [addedAfterSelection]).
+  static List<String> withNewTools(List<String> saved, Set<String>? known) {
+    final all = defaultEnabledToolIds();
+    final knew = known ?? all.toSet().difference(addedAfterSelection);
+    return sanitizeIds([...saved, ...all.where((id) => !knew.contains(id))]);
+  }
 
   static List<String> defaultEnabledToolIds() =>
       _definitions.map((def) => def.id).toList(growable: false);

@@ -700,6 +700,53 @@
   },
   "dictionaryImportNothing": "No StarDict dictionary found in the selected files",
   "dictionaryOnlineTranslate": "Translate online",
+  "knowledgeBase": "Offline encyclopedia",
+  "knowledgeBaseHint": "Wikipedia packs from Kiwix, kept on this device. The AI looks things up here before answering, so its facts come from the articles rather than from memory. Nothing is downloaded until you choose a pack.",
+  "knowledgeInstalled": "On this device",
+  "knowledgeAvailable": "Available to download",
+  "knowledgeNoneInstalled": "No packs yet",
+  "knowledgeLoadCatalog": "Show packs to download",
+  "knowledgeCatalogFailed": "Couldn't load the Kiwix catalog: {error}",
+  "@knowledgeCatalogFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "knowledgeDownload": "Download",
+  "knowledgeDownloadConfirm": "Download {title} ({size})? Keep the app open while it downloads; if it stops, it continues from where it left off.",
+  "@knowledgeDownloadConfirm": {
+    "placeholders": {
+      "title": {"type": "String"},
+      "size": {"type": "String"}
+    }
+  },
+  "knowledgeDownloadFailed": "Download stopped: {error}",
+  "@knowledgeDownloadFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "knowledgePause": "Pause",
+  "knowledgeResume": "Resume",
+  "knowledgeDeleteConfirm": "Delete {title}?",
+  "@knowledgeDeleteConfirm": {
+    "placeholders": {
+      "title": {"type": "String"}
+    }
+  },
+  "knowledgeArticles": "{count} articles",
+  "@knowledgeArticles": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "knowledgeImport": "Import .zim file",
+  "knowledgeImportFailed": "Not a readable .zim file",
+  "knowledgeFlavourMini": "lead sections",
+  "knowledgeFlavourNopic": "full text, no images",
+  "knowledgeFlavourMaxi": "full, with images",
+  "aiToolKnowledgeLookupName": "Offline encyclopedia",
+  "aiToolKnowledgeLookupDescription": "Look up articles in the downloaded Wikipedia packs, so answers about people, places, species, events and terms rest on the articles.",
   "fullTextTranslation": "Full-text Translation",
   "fullTextTranslationTip": "Bilingual parallel translation feature for reading pages, translating entire content.",
   "settingsAiRpm": "Rate Limit (RPM)",
