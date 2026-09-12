@@ -168,6 +168,20 @@ void main() {
       );
     });
 
+    test('finds a folder whose absolute path has moved', () async {
+      final root = Directory.systemTemp.createTempSync('sherpa-moved-');
+      addTearDown(() => root.deleteSync(recursive: true));
+      final model = Directory(p.join(root.path, 'kokoro'))..createSync();
+      File(p.join(model.path, 'tokens.txt')).writeAsStringSync('');
+
+      // The path the app stored before the container was recreated.
+      const stale = '/var/mobile/Containers/Data/Application/OLD/Documents'
+          '/tts_models/kokoro';
+
+      expect(await SherpaModelResolver.resolveDir(stale, roots: [root.path]),
+          model.path);
+    });
+
     test('no model at all points at where to put one', () async {
       final root = Directory.systemTemp.createTempSync('sherpa-root-');
       addTearDown(() => root.deleteSync(recursive: true));

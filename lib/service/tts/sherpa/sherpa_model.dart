@@ -279,6 +279,13 @@ class SherpaModelResolver {
     final candidates = <String>[];
     if (p.isAbsolute(raw)) {
       candidates.add(raw);
+      // iOS hands the app a new data container on every install, so an
+      // absolute path picked yesterday points into a directory that no
+      // longer exists. The folder itself is still there under the current
+      // container, so look for it by name too.
+      for (final root in roots) {
+        candidates.add(p.join(root, p.basename(raw)));
+      }
     } else {
       for (final root in roots) {
         candidates.add(p.join(root, raw));
@@ -287,6 +294,16 @@ class SherpaModelResolver {
 
     for (final candidate in candidates) {
       if (Directory(candidate).existsSync()) return candidate;
+    }
+
+    // Rather than leave narration broken because a folder was renamed or
+    // deleted, fall back to the only model installed, if there is one.
+    final installed = listInstalled(roots);
+    if (installed.length == 1) {
+      for (final root in roots) {
+        final only = p.join(root, installed.first);
+        if (Directory(only).existsSync()) return only;
+      }
     }
 
     throw SherpaModelException(

@@ -387,9 +387,28 @@ class SherpaTtsProvider extends TtsServiceProvider {
 
   @override
   void saveConfig(Map<String, dynamic> config) {
-    Prefs().saveOnlineTtsConfig(serviceId, config);
+    Prefs().saveOnlineTtsConfig(serviceId, _withPortablePaths(config));
     // The next request rebuilds the engine if the model actually changed.
     _cachedSpec = null;
+  }
+
+  /// Store a folder inside the app's model directory by name.
+  ///
+  /// iOS gives the app a new data container on every install, so an
+  /// absolute path from the file picker stops resolving the next time the
+  /// app is built, and narration fails until the model is picked again.
+  Map<String, dynamic> _withPortablePaths(Map<String, dynamic> config) {
+    final stored = Map<String, dynamic>.from(config);
+    for (final key in ['modelDir', 'vocoder', 'referenceAudio']) {
+      final value = stored[key]?.toString() ?? '';
+      if (value.isEmpty || !p.isAbsolute(value)) continue;
+      final name = p.basename(value);
+      final inRoot = SherpaModelRoots.cached.any((root) =>
+          p.equals(p.dirname(value), root) ||
+          p.isWithin(root, p.dirname(value)));
+      if (inRoot) stored[key] = name;
+    }
+    return stored;
   }
 
   SherpaModelSpec? _cachedSpec;
