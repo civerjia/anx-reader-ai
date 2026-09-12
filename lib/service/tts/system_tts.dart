@@ -65,6 +65,17 @@ class SystemTts extends BaseTts {
   @override
   double get rate => Prefs().ttsRate;
 
+  /// The rate slider is a multiplier of normal speech, but flutter_tts hands
+  /// the platform its own scale: on Apple platforms 0.5 is the default rate
+  /// and 1.0 is already double, while Android takes the multiplier as is.
+  /// Without this the same slider read normally on a local model and
+  /// absurdly fast on a system voice.
+  double get _platformRate {
+    final multiplier = rate <= 0 ? 1.0 : rate;
+    if (isAndroid) return multiplier.clamp(0.1, 3.0);
+    return (multiplier * 0.5).clamp(0.05, 1.0);
+  }
+
   @override
   set rate(double rate) {
     Prefs().ttsRate = rate;
@@ -168,7 +179,7 @@ class SystemTts extends BaseTts {
   Future<void> speakWithVoice(String content, String voiceShortName) async {
     await stop();
     await flutterTts.setVolume(volume);
-    await flutterTts.setSpeechRate(rate);
+    await flutterTts.setSpeechRate(_platformRate);
     await flutterTts.setPitch(pitch);
     await _applyVoice(voiceShortName);
     await flutterTts.speak(content);
@@ -193,7 +204,7 @@ class SystemTts extends BaseTts {
     }
 
     await flutterTts.setVolume(volume);
-    await flutterTts.setSpeechRate(rate);
+    await flutterTts.setSpeechRate(_platformRate);
     await flutterTts.setPitch(pitch);
 
     // Apply the saved voice model. Without one, keep whatever voice the
