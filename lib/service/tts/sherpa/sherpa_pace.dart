@@ -1,3 +1,18 @@
+/// How the model and the player share the job of reaching a pace.
+class SherpaSpeed {
+  const SherpaSpeed({required this.model, required this.playback});
+
+  /// Passed to sherpa-onnx as the generation speed.
+  final double model;
+
+  /// Applied to the player on top of it.
+  final double playback;
+
+  @override
+  String toString() => 'model ${model.toStringAsFixed(2)}, '
+      'playback ${playback.toStringAsFixed(2)}';
+}
+
 /// Turns Anx's rate slider into a speed factor that sounds the same whatever
 /// local model is loaded.
 ///
@@ -42,12 +57,29 @@ class SherpaPace {
     return cjk + words * 1.4;
   }
 
-  /// Speed to ask the model for, given the user's rate and the model's
-  /// calibration factor (1.0 when nothing has been measured yet).
-  static double speed({required double rate, required double factor}) {
+  /// Fastest the model itself is asked to talk.
+  ///
+  /// Kokoro starts slurring and dropping syllables before pauses when it is
+  /// pushed much beyond this, which is exactly where audiobook listeners
+  /// live, so speed past this point comes from the player instead.
+  static const double maxModelSpeed = 1.25;
+
+  /// Slowest, below which the model drawls.
+  static const double minModelSpeed = 0.5;
+
+  /// How to reach the pace the user asked for: part from the model, the
+  /// rest from the player.
+  ///
+  /// The model handles moderate changes best, since it re-times the speech
+  /// rather than stretching a waveform. Past [maxModelSpeed] it starts
+  /// losing syllables, so the remainder is handed to the player, which
+  /// resamples with the pitch kept and never drops a sound.
+  static SherpaSpeed split({required double rate, required double factor}) {
     final effectiveRate = rate <= 0.05 ? referenceRate : rate;
-    final speed = factor * effectiveRate / referenceRate;
-    return speed.clamp(0.2, 3.0);
+    final desired = (factor * effectiveRate / referenceRate).clamp(0.2, 4.0);
+    final model = desired.clamp(minModelSpeed, maxModelSpeed);
+    final playback = (desired / model).clamp(0.4, 3.0);
+    return SherpaSpeed(model: model, playback: playback);
   }
 
   /// Calibration factor from measured speech, or null when there is not

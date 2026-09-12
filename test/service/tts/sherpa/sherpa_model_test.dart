@@ -361,24 +361,40 @@ void main() {
     });
 
     test('the reference rate keeps the calibrated pace', () {
-      expect(
-        SherpaPace.speed(rate: SherpaPace.referenceRate, factor: 1.3),
-        closeTo(1.3, 0.001),
-      );
+      final split =
+          SherpaPace.split(rate: SherpaPace.referenceRate, factor: 1.2);
+
+      expect(split.model, closeTo(1.2, 0.001));
+      expect(split.playback, closeTo(1.0, 0.001));
     });
 
-    test('a higher rate scales the calibrated pace', () {
-      expect(SherpaPace.speed(rate: 1.0, factor: 1.0), closeTo(2.0, 0.001));
-      expect(SherpaPace.speed(rate: 0.25, factor: 1.0), closeTo(0.5, 0.001));
+    test('the model handles moderate speed on its own', () {
+      final split = SherpaPace.split(rate: 0.5, factor: 1.0);
+
+      expect(split.model, closeTo(1.0, 0.001));
+      expect(split.playback, closeTo(1.0, 0.001));
+    });
+
+    test('the player takes over past what the model reads cleanly', () {
+      final split = SherpaPace.split(rate: 1.0, factor: 1.0);
+
+      // Twice the reference pace: the model goes to its cap and the player
+      // covers the rest, so no syllables are dropped.
+      expect(split.model, SherpaPace.maxModelSpeed);
+      expect(split.model * split.playback, closeTo(2.0, 0.001));
+    });
+
+    test('slow reading stays entirely in the model', () {
+      final split = SherpaPace.split(rate: 0.25, factor: 1.0);
+
+      expect(split.model, closeTo(0.5, 0.001));
+      expect(split.playback, closeTo(1.0, 0.001));
     });
 
     test('a rate of zero falls back to normal speed', () {
-      expect(SherpaPace.speed(rate: 0, factor: 1.2), closeTo(1.2, 0.001));
-    });
+      final split = SherpaPace.split(rate: 0, factor: 1.2);
 
-    test('speed stays in a range a model can handle', () {
-      expect(SherpaPace.speed(rate: 2.0, factor: 1.8), lessThanOrEqualTo(3.0));
-      expect(SherpaPace.speed(rate: 0.06, factor: 0.6), greaterThanOrEqualTo(0.2));
+      expect(split.model, closeTo(1.2, 0.001));
     });
 
     test('a slow model gets a factor above one', () {

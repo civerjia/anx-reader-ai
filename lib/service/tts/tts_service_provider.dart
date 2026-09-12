@@ -38,6 +38,12 @@ abstract class TtsServiceProvider extends ServiceProvider<dynamic> {
     throw UnimplementedError('speak() not implemented for $service');
   }
 
+  /// Rate the player should apply on top of the audio [speak] returned.
+  ///
+  /// A local model can only be pushed so fast before it slurs, so the rest
+  /// of a high reading speed is done by the player.
+  double get playbackRate => 1.0;
+
   /// Mime type of the audio [speak] returns.
   /// Online services answer with mp3; local inference returns wave.
   String get audioMimeType => 'audio/mp3';
