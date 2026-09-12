@@ -850,6 +850,8 @@
   "settingsNarrateSherpaReferenceTextDescription": "Exactly what is spoken in the reference audio.",
   "settingsNarrateSherpaNumSteps": "Sampling steps (ZipVoice)",
   "settingsNarrateSherpaNumStepsDescription": "More steps sound slightly better and take longer. 4 works well for the distilled models.",
+  "settingsNarrateSherpaProvider": "Compute backend",
+  "settingsNarrateSherpaProviderDescription": "CPU always works. CoreML and NNAPI hand the parts of the model they support to the neural accelerator, which can run cooler, but they can also be slower when the model does not map cleanly. Compare the RTF in the log.",
   "settingsNarrateSherpaNumThreads": "Threads",
   "settingsNarrateSherpaNumThreadsDescription": "CPU threads used for inference. 2 is a good start on a phone.",
   "settingsNarrateSherpaPreferInt8": "Prefer quantized models",

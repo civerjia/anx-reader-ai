@@ -111,6 +111,19 @@ class SherpaTtsProvider extends TtsServiceProvider {
         ),
       ],
       ConfigItem(
+        key: 'provider',
+        label: L10n.of(context).settingsNarrateSherpaProvider,
+        description: L10n.of(context).settingsNarrateSherpaProviderDescription,
+        type: ConfigItemType.select,
+        defaultValue: 'cpu',
+        options: [
+          {'value': 'cpu', 'label': 'CPU'},
+          if (Platform.isIOS || Platform.isMacOS)
+            {'value': 'coreml', 'label': 'CoreML'},
+          if (Platform.isAndroid) {'value': 'nnapi', 'label': 'NNAPI'},
+        ],
+      ),
+      ConfigItem(
         key: 'numThreads',
         label: L10n.of(context).settingsNarrateSherpaNumThreads,
         description:
@@ -303,6 +316,7 @@ class SherpaTtsProvider extends TtsServiceProvider {
       'referenceText': config['referenceText'] ?? '',
       'numSteps': config['numSteps'] ?? _defaultNumSteps,
       'numThreads': config['numThreads'] ?? _defaultNumThreads,
+      'provider': config['provider'] ?? 'cpu',
       'autoSpeed': config['autoSpeed'] ?? true,
       'speedFactor': config['speedFactor'] ?? 1.0,
       'preferInt8': config['preferInt8'] ?? true,
@@ -347,6 +361,7 @@ class SherpaTtsProvider extends TtsServiceProvider {
       type: SherpaModelType.fromId(config['modelType']?.toString()),
       preferInt8: _asBool(config['preferInt8'], true),
       numThreads: _asInt(config['numThreads'], _defaultNumThreads),
+      provider: config['provider']?.toString() ?? 'cpu',
       vocoderOverride: config['vocoder']?.toString() ?? '',
       lexiconOverride: config['lexicon']?.toString() ?? '',
       referenceAudio: config['referenceAudio']?.toString() ?? '',

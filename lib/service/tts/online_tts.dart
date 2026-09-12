@@ -54,6 +54,10 @@ class OnlineTts extends BaseTts {
 
   Timer? _settingsDebounce;
 
+  // Timing of the seam between sentences, for diagnosing stutter.
+  DateTime? _lastSentenceEnd;
+  int _lastAdvanceMs = 0;
+
   // ============ Lifecycle ============
   late Function getHereFunction;
   late Function getNextTextFunction;
@@ -377,10 +381,12 @@ class OnlineTts extends BaseTts {
         final segment = _buffer.first;
 
         // Wait for this segment's audio to be ready
+        final waitStart = DateTime.now();
         while (!segment.isReady && !_shouldStop) {
           await Future.delayed(const Duration(milliseconds: 30));
         }
         if (_shouldStop) break;
+        final waitedMs = DateTime.now().difference(waitStart).inMilliseconds;
 
         // Now remove it from buffer
         _buffer.removeAt(0);
@@ -388,7 +394,21 @@ class OnlineTts extends BaseTts {
         _currentVoiceText = segment.sentence.text;
 
         // Highlight current sentence
+        final highlightStart = DateTime.now();
         await _highlightSegment(segment);
+        final highlightMs =
+            DateTime.now().difference(highlightStart).inMilliseconds;
+
+        // Everything between the end of the last sentence and the start of
+        // this one is silence the listener hears as a stutter, so account
+        // for it: waiting on synthesis, the highlight round trip to the
+        // webview, and the reader advancing at the end of the last sentence.
+        final gapMs = _lastSentenceEnd == null
+            ? 0
+            : DateTime.now().difference(_lastSentenceEnd!).inMilliseconds;
+        AnxLog.info('TTS gap ${gapMs}ms '
+            '(synthesis $waitedMs, highlight $highlightMs, '
+            'advance ${_lastAdvanceMs}ms) buffer ${_buffer.length}');
 
         // Handle silent segment
         if (segment.isSilent) {
@@ -412,10 +432,14 @@ class OnlineTts extends BaseTts {
 
         _playbackCompleter = null;
         _currentSegment = null;
+        _lastSentenceEnd = DateTime.now();
 
         // Advance reader position
         if (!_shouldStop) {
+          final advanceStart = DateTime.now();
           await getNextTextFunction();
+          _lastAdvanceMs =
+              DateTime.now().difference(advanceStart).inMilliseconds;
         }
       }
     } catch (e) {
@@ -467,6 +491,8 @@ class OnlineTts extends BaseTts {
     _settingsDebounce?.cancel();
     _settingsDebounce = null;
     _shouldStop = true;
+    _lastSentenceEnd = null;
+    _lastAdvanceMs = 0;
     updateTtsState(TtsStateEnum.stopped);
 
     // Complete any pending playback

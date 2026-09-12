@@ -850,6 +850,8 @@
   "settingsNarrateSherpaReferenceTextDescription": "参考音频中所说内容的原文。",
   "settingsNarrateSherpaNumSteps": "采样步数（ZipVoice）",
   "settingsNarrateSherpaNumStepsDescription": "步数越多音质略好、耗时越长。蒸馏模型用 4 即可。",
+  "settingsNarrateSherpaProvider": "计算后端",
+  "settingsNarrateSherpaProviderDescription": "CPU 永远可用。CoreML / NNAPI 会把模型中支持的部分交给神经网络加速器，可能更省电，但模型不匹配时反而更慢。可对比日志里的 RTF。",
   "settingsNarrateSherpaNumThreads": "线程数",
   "settingsNarrateSherpaNumThreadsDescription": "推理使用的 CPU 线程数，手机上建议 2。",
   "settingsNarrateSherpaPreferInt8": "优先使用量化模型",
