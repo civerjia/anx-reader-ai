@@ -124,6 +124,96 @@ void main() {
     });
   });
 
+  group('SherpaModelResolver installed models', () {
+    test('lists folders that look like models', () {
+      final root = Directory.systemTemp.createTempSync('sherpa-root-');
+      addTearDown(() => root.deleteSync(recursive: true));
+      Directory(p.join(root.path, 'kokoro-multi-lang-v1_1')).createSync();
+      File(p.join(root.path, 'kokoro-multi-lang-v1_1', 'model.onnx'))
+          .writeAsStringSync('');
+      Directory(p.join(root.path, 'vits-zh')).createSync();
+      File(p.join(root.path, 'vits-zh', 'tokens.txt')).writeAsStringSync('');
+      Directory(p.join(root.path, 'not-a-model')).createSync();
+      File(p.join(root.path, 'not-a-model', 'readme.txt'))
+          .writeAsStringSync('');
+
+      expect(SherpaModelResolver.listInstalled([root.path]),
+          ['kokoro-multi-lang-v1_1', 'vits-zh']);
+    });
+
+    test('an unset folder falls back to the only model installed', () async {
+      final root = Directory.systemTemp.createTempSync('sherpa-root-');
+      addTearDown(() => root.deleteSync(recursive: true));
+      final only = Directory(p.join(root.path, 'kokoro'))..createSync();
+      File(p.join(only.path, 'tokens.txt')).writeAsStringSync('');
+
+      expect(await SherpaModelResolver.resolveDir('', roots: [root.path]),
+          only.path);
+    });
+
+    test('an unset folder with several models says which ones', () async {
+      final root = Directory.systemTemp.createTempSync('sherpa-root-');
+      addTearDown(() => root.deleteSync(recursive: true));
+      for (final name in ['kokoro-a', 'kokoro-b']) {
+        final dir = Directory(p.join(root.path, name))..createSync();
+        File(p.join(dir.path, 'tokens.txt')).writeAsStringSync('');
+      }
+
+      await expectLater(
+        SherpaModelResolver.resolveDir('', roots: [root.path]),
+        throwsA(isA<SherpaModelException>().having(
+            (e) => e.message, 'message', allOf(contains('kokoro-a'), contains('kokoro-b')))),
+      );
+    });
+
+    test('no model at all points at where to put one', () async {
+      final root = Directory.systemTemp.createTempSync('sherpa-root-');
+      addTearDown(() => root.deleteSync(recursive: true));
+
+      await expectLater(
+        SherpaModelResolver.resolveDir('', roots: [root.path]),
+        throwsA(isA<SherpaModelException>()
+            .having((e) => e.message, 'message', contains(root.path))),
+      );
+    });
+  });
+
+  group('SherpaModelResolver transcripts', () {
+    late Directory dir;
+
+    setUp(() {
+      dir = Directory.systemTemp.createTempSync('sherpa-clips-');
+      File(p.join(dir.path, 'leijun-1.wav')).writeAsBytesSync([0]);
+      File(p.join(dir.path, 'news-female.wav')).writeAsBytesSync([0]);
+    });
+
+    tearDown(() => dir.deleteSync(recursive: true));
+
+    test('reads the line naming the clip in prompt.txt', () {
+      File(p.join(dir.path, 'prompt.txt')).writeAsStringSync(
+        'news-female.wav 各位村民, 大家新年好!\n'
+        'leijun-1.wav 那还是36年前, 1987年.\n',
+      );
+
+      expect(SherpaModelResolver.transcriptFor(p.join(dir.path, 'leijun-1.wav')),
+          '那还是36年前, 1987年.');
+    });
+
+    test('prefers a text file next to the clip', () {
+      File(p.join(dir.path, 'leijun-1.txt')).writeAsStringSync('  同一段话  ');
+
+      expect(SherpaModelResolver.transcriptFor(p.join(dir.path, 'leijun-1.wav')),
+          '同一段话');
+    });
+
+    test('returns nothing when there is no transcript', () {
+      expect(
+          SherpaModelResolver.transcriptFor(p.join(dir.path, 'leijun-1.wav')),
+          '');
+      expect(SherpaModelResolver.transcriptFor('/no/such/clip.wav'), '');
+    });
+  });
+
   group('SherpaModelResolver zipvoice', () {
     test('separates encoder, decoder and vocoder', () async {
       final dir = _modelDir('zipvoice', [

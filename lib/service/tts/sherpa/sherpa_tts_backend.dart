@@ -56,6 +56,7 @@ class SherpaTtsProvider extends TtsServiceProvider {
 
   @override
   List<ConfigItem> getConfigItems(BuildContext context) {
+    final type = SherpaModelType.fromId(getConfig()['modelType']?.toString());
     return [
       ConfigItem(
         key: 'tip',
@@ -70,50 +71,45 @@ class SherpaTtsProvider extends TtsServiceProvider {
         type: ConfigItemType.select,
         defaultValue: _defaultModelType,
         options: [
-          for (final type in SherpaModelType.values)
-            {'value': type.id, 'label': type.label},
+          for (final family in SherpaModelType.values)
+            {'value': family.id, 'label': family.label},
         ],
       ),
-      ConfigItem(
-        key: 'modelDir',
-        label: L10n.of(context).settingsNarrateSherpaModelDir,
-        description:
-            L10n.of(context).settingsNarrateSherpaModelDirDescription,
-        type: ConfigItemType.directory,
-        defaultValue: '',
-      ),
-      ConfigItem(
-        key: 'vocoder',
-        label: L10n.of(context).settingsNarrateSherpaVocoder,
-        description: L10n.of(context).settingsNarrateSherpaVocoderDescription,
-        type: ConfigItemType.file,
-        defaultValue: '',
-        allowedExtensions: const ['onnx'],
-      ),
-      ConfigItem(
-        key: 'referenceAudio',
-        label: L10n.of(context).settingsNarrateSherpaReferenceAudio,
-        description:
-            L10n.of(context).settingsNarrateSherpaReferenceAudioDescription,
-        type: ConfigItemType.file,
-        defaultValue: '',
-        allowedExtensions: const ['wav'],
-      ),
-      ConfigItem(
-        key: 'referenceText',
-        label: L10n.of(context).settingsNarrateSherpaReferenceText,
-        description:
-            L10n.of(context).settingsNarrateSherpaReferenceTextDescription,
-        type: ConfigItemType.text,
-        defaultValue: '',
-      ),
-      ConfigItem(
-        key: 'numSteps',
-        label: L10n.of(context).settingsNarrateSherpaNumSteps,
-        description: L10n.of(context).settingsNarrateSherpaNumStepsDescription,
-        type: ConfigItemType.number,
-        defaultValue: _defaultNumSteps,
-      ),
+      _modelDirItem(context),
+      // A vocoder is only a separate file for the families that need one,
+      // and only worth asking about when it is not next to the model.
+      if (type.needsVocoder)
+        ConfigItem(
+          key: 'vocoder',
+          label: L10n.of(context).settingsNarrateSherpaVocoder,
+          description: L10n.of(context).settingsNarrateSherpaVocoderDescription,
+          type: ConfigItemType.file,
+          defaultValue: '',
+          allowedExtensions: const ['onnx'],
+        ),
+      if (type.needsReferenceAudio) ...[
+        _referenceAudioItem(context),
+        // The clips that ship with a model carry their transcript, so only
+        // ask for one when it cannot be found.
+        if (_transcriptOf(getConfig()['referenceAudio']?.toString() ?? '')
+            .isEmpty)
+          ConfigItem(
+            key: 'referenceText',
+            label: L10n.of(context).settingsNarrateSherpaReferenceText,
+            description:
+                L10n.of(context).settingsNarrateSherpaReferenceTextDescription,
+            type: ConfigItemType.text,
+            defaultValue: '',
+          ),
+        ConfigItem(
+          key: 'numSteps',
+          label: L10n.of(context).settingsNarrateSherpaNumSteps,
+          description:
+              L10n.of(context).settingsNarrateSherpaNumStepsDescription,
+          type: ConfigItemType.number,
+          defaultValue: _defaultNumSteps,
+        ),
+      ],
       ConfigItem(
         key: 'numThreads',
         label: L10n.of(context).settingsNarrateSherpaNumThreads,
@@ -156,6 +152,144 @@ class SherpaTtsProvider extends TtsServiceProvider {
         defaultValue: '',
       ),
     ];
+  }
+
+  /// Reference clips found next to the model, so a cloning voice can be
+  /// picked from a list instead of typed as a path.
+  ConfigItem _referenceAudioItem(BuildContext context) {
+    final clips = _referenceClips();
+    if (clips.isEmpty) {
+      return ConfigItem(
+        key: 'referenceAudio',
+        label: L10n.of(context).settingsNarrateSherpaReferenceAudio,
+        description:
+            L10n.of(context).settingsNarrateSherpaReferenceAudioDescription,
+        type: ConfigItemType.file,
+        defaultValue: '',
+        allowedExtensions: const ['wav'],
+      );
+    }
+
+    final current = getConfig()['referenceAudio']?.toString() ?? '';
+    return ConfigItem(
+      key: 'referenceAudio',
+      label: L10n.of(context).settingsNarrateSherpaReferenceAudio,
+      description:
+          L10n.of(context).settingsNarrateSherpaReferenceAudioDescription,
+      type: ConfigItemType.select,
+      defaultValue: clips.contains(current) ? current : clips.first,
+      options: [
+        for (final clip in clips) {'value': clip, 'label': p.basename(clip)},
+      ],
+    );
+  }
+
+  /// Wave files in the model folder, `test_wavs` included.
+  List<String> _referenceClips() {
+    final dir = _modelDirSync();
+    if (dir == null) return const [];
+    final clips = <String>[];
+    for (final candidate in [dir, Directory(p.join(dir.path, 'test_wavs'))]) {
+      if (!candidate.existsSync()) continue;
+      clips.addAll(candidate
+          .listSync()
+          .whereType<File>()
+          .map((file) => file.path)
+          .where((path) => path.toLowerCase().endsWith('.wav')));
+    }
+    clips.sort();
+    return clips;
+  }
+
+  String _transcriptOf(String clip) {
+    if (clip.trim().isEmpty) return '';
+    final resolved = p.isAbsolute(clip) ? clip : _resolveClip(clip);
+    if (resolved == null) return '';
+    return SherpaModelResolver.transcriptFor(resolved);
+  }
+
+  String? _resolveClip(String clip) {
+    final dir = _modelDirSync();
+    if (dir == null) return null;
+    for (final candidate in [
+      p.join(dir.path, clip),
+      p.join(dir.path, 'test_wavs', clip),
+    ]) {
+      if (File(candidate).existsSync()) return candidate;
+    }
+    return null;
+  }
+
+  /// The configured model folder, resolved without waiting on a future, for
+  /// the settings page. Returns null while the roots are still unknown.
+  Directory? _modelDirSync() {
+    final configured = getConfig()['modelDir']?.toString().trim() ?? '';
+    if (p.isAbsolute(configured)) {
+      final dir = Directory(configured);
+      return dir.existsSync() ? dir : null;
+    }
+    final roots = SherpaModelRoots.cached;
+    final names = configured.isNotEmpty
+        ? [configured]
+        : SherpaModelResolver.listInstalled(roots);
+    if (names.length != 1) return null;
+    for (final root in roots) {
+      final dir = Directory(p.join(root, names.first));
+      if (dir.existsSync()) return dir;
+    }
+    return null;
+  }
+
+  /// Model folders found in the standard locations.
+  static List<String> _installed = const [];
+  static bool _scanning = false;
+
+  /// Offer the installed models as a list instead of asking for a path:
+  /// typing a folder name on a phone is a poor way to start an audiobook.
+  /// Falls back to a path field for a model kept somewhere else.
+  ConfigItem _modelDirItem(BuildContext context) {
+    _refreshInstalled();
+    final current = getConfig()['modelDir']?.toString() ?? '';
+    final canPickFromList =
+        _installed.isNotEmpty && (current.isEmpty || _installed.contains(current));
+
+    if (!canPickFromList) {
+      return ConfigItem(
+        key: 'modelDir',
+        label: L10n.of(context).settingsNarrateSherpaModelDir,
+        description: L10n.of(context).settingsNarrateSherpaModelDirDescription,
+        type: ConfigItemType.directory,
+        defaultValue: '',
+      );
+    }
+
+    return ConfigItem(
+      key: 'modelDir',
+      label: L10n.of(context).settingsNarrateSherpaModelDir,
+      description: L10n.of(context).settingsNarrateSherpaModelDirDescription,
+      type: ConfigItemType.select,
+      defaultValue: current.isEmpty ? _installed.first : current,
+      options: [
+        for (final name in _installed) {'value': name, 'label': name},
+      ],
+    );
+  }
+
+  /// Rescan in the background; the settings page rebuilds often enough to
+  /// pick the result up.
+  void _refreshInstalled() {
+    if (_scanning) return;
+    _scanning = true;
+    Future(() async {
+      try {
+        _installed =
+            SherpaModelResolver.listInstalled(await SherpaModelRoots.all());
+      } catch (e) {
+        AnxLog.warning('Failed to look for installed sherpa models: $e');
+      } finally {
+        _scanning = false;
+      }
+    });
   }
 
   @override

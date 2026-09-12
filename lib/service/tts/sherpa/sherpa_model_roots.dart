@@ -32,6 +32,10 @@ class SherpaModelRoots {
     return roots;
   }
 
+  /// What the last scan found, for the places a settings page cannot wait
+  /// for a future.
+  static List<String> get cached => _cache;
+
   /// The default place to put models, shown in the settings hint.
   static Future<String> defaultDir() async {
     final roots = await all();
