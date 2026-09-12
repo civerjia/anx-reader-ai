@@ -221,6 +221,20 @@ class SherpaTtsProvider extends TtsServiceProvider {
     ];
   }
 
+  /// The reference clip to clone, falling back to the one the model ships.
+  ///
+  /// ZipVoice has no voice of its own: it speaks in whatever voice it is
+  /// given. The models come with sample clips, so an unset setting means
+  /// "the first one that came with the model" rather than an error.
+  String _referenceAudioFor(SherpaModelType type, Map<String, dynamic> config) {
+    final configured = config['referenceAudio']?.toString() ?? '';
+    if (configured.trim().isNotEmpty || !type.needsReferenceAudio) {
+      return configured;
+    }
+    final clips = _referenceClips();
+    return clips.isEmpty ? '' : clips.first;
+  }
+
   /// Reference clips found next to the model, so a cloning voice can be
   /// picked from a list instead of typed as a path.
   ConfigItem _referenceAudioItem(BuildContext context) {
@@ -488,7 +502,7 @@ class SherpaTtsProvider extends TtsServiceProvider {
       provider: config['provider']?.toString() ?? _defaultProvider,
       vocoderOverride: config['vocoder']?.toString() ?? '',
       lexiconOverride: config['lexicon']?.toString() ?? '',
-      referenceAudio: config['referenceAudio']?.toString() ?? '',
+      referenceAudio: _referenceAudioFor(type, config),
       referenceText: config['referenceText']?.toString() ?? '',
       numSteps: _asInt(config['numSteps'], _defaultNumSteps),
       silenceScale: _asDouble(config['silenceScale'], 0.4).clamp(0.1, 1.0),
