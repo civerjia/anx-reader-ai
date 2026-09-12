@@ -16,12 +16,16 @@ class OpdsClient {
 
   Uri get root => Uri.parse(catalog.url.trim());
 
+  /// The Basic credential for this catalog, or null when it needs none.
+  /// Covers are fetched with it too; a protected server protects its images.
+  String? get authorizationHeader => catalog.hasCredentials
+      ? 'Basic ${base64Encode(utf8.encode('${catalog.username}:${catalog.password}'))}'
+      : null;
+
   Map<String, String> get _headers => {
         'Accept':
             'application/atom+xml;profile=opds-catalog, application/atom+xml, application/xml;q=0.9, */*;q=0.8',
-        if (catalog.hasCredentials)
-          'Authorization':
-              'Basic ${base64Encode(utf8.encode('${catalog.username}:${catalog.password}'))}',
+        if (authorizationHeader != null) 'Authorization': authorizationHeader!,
       };
 
   Future<OpdsFeed> fetch(Uri url) async {

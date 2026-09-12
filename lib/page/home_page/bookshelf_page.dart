@@ -1,3 +1,4 @@
+import 'package:anx_reader/page/opds/opds_catalogs_page.dart';
 import 'dart:io';
 import 'dart:math';
 
@@ -71,6 +72,41 @@ class BookshelfPageState extends ConsumerState<BookshelfPage>
       await targetFile.delete();
     }
     return File(sourcePath).copy(targetPath);
+  }
+
+  /// Books come from files on the device or from an OPDS catalog.
+  Future<void> _showImportOptions() async {
+    final l10n = L10n.of(context);
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.folder_open_outlined),
+              title: Text(l10n.importFromFiles),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _importBook();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.public),
+              title: Text(l10n.importFromOpds),
+              subtitle: Text(l10n.importFromOpdsHint),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const OpdsCatalogsPage()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _importBook() async {
@@ -563,7 +599,7 @@ class BookshelfPageState extends ConsumerState<BookshelfPage>
         const SyncButton(),
         IconButton(
           icon: const Icon(Icons.add),
-          onPressed: _importBook,
+          onPressed: _showImportOptions,
         ),
         IconButton(
             icon: const Icon(Icons.sort),
