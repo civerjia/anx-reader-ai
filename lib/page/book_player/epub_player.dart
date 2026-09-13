@@ -219,7 +219,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       final previous = _takePageLeft();
       if (previous != null) {
         try {
-          overlay.curl(page: previous, grab: grab, finger: away);
+          overlay.curl(
+              page: previous, grab: grab, finger: rolledAtLeftFinger(size, grab));
           await overlay.settle(grab);
           await _turnInstantly(false);
         } finally {
@@ -246,7 +247,11 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         await _turnInstantly(false);
         final previous = await _snapshotReader();
         if (previous == null) return;
-        overlay.curl(page: previous, under: current, grab: grab, finger: away);
+        overlay.curl(
+            page: previous,
+            under: current,
+            grab: grab,
+            finger: rolledAtLeftFinger(size, grab));
         await overlay.settle(grab);
       }
     } finally {
@@ -280,10 +285,14 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       case 'start':
         final overlay = _pageCurlKey.currentState;
         if (drag != null || _pageCurlRunning > 0 || overlay == null) return;
+        final forward = event['forward'] == true;
+        final grab = Offset(overlay.size.width, point.dy);
         final started = _CurlDrag(
-          forward: event['forward'] == true,
-          grab: Offset(overlay.size.width, point.dy),
-          finger: point,
+          forward: forward,
+          grab: grab,
+          start: point,
+          size: overlay.size,
+          finger: forward ? point : rolledAtLeftFinger(overlay.size, grab),
         );
         _curlDrag = started;
         _armCurlWatchdog(started);
@@ -295,18 +304,25 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         });
       case 'move':
         if (drag == null) return;
-        drag.finger = point;
-        drag.show?.call(point);
+        final shown = drag.follow(point);
+        drag.show?.call(shown);
         _armCurlWatchdog(drag);
       case 'end':
         if (drag == null) return;
         _curlDragWatchdog?.cancel();
-        drag.finger = point;
-        drag.show?.call(point);
+        final shown = drag.follow(point);
+        drag.show?.call(shown);
         if (!drag.released.isCompleted) {
           drag.released.complete((event['vx'] as num?)?.toDouble() ?? 0);
         }
     }
+  }
+
+  /// Turning back: a flick to the right, or a page more than half unrolled,
+  /// lays it down.
+  bool _laysDown(double vx, _CurlDrag drag) {
+    const flick = 0.25; // px per ms
+    return vx > flick || (vx >= -flick && drag.progress >= 0.5);
   }
 
   bool _turnsAway(double vx, Offset finger, Size size) {
@@ -333,9 +349,10 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
           overlay.curl(page: previous, grab: drag.grab, finger: drag.finger);
           drag.show = overlay.moveFinger;
           final vx = await drag.released.future;
-          final turnedAway = _turnsAway(vx, drag.finger, size);
-          await overlay.settle(turnedAway ? away : drag.grab);
-          if (!turnedAway) await _turnInstantly(false);
+          final laidDown = _laysDown(vx, drag);
+          await overlay.settle(
+              laidDown ? drag.grab : rolledAtLeftFinger(size, drag.grab));
+          if (laidDown) await _turnInstantly(false);
           return;
         }
       }
@@ -366,11 +383,17 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       }
 
       final vx = await drag.released.future;
-      final turnedAway = _turnsAway(vx, drag.finger, size);
-      await overlay.settle(turnedAway ? away : drag.grab);
+      final bool completed;
+      if (drag.forward) {
+        completed = _turnsAway(vx, drag.finger, size);
+        await overlay.settle(completed ? away : drag.grab);
+      } else {
+        completed = _laysDown(vx, drag);
+        await overlay.settle(
+            completed ? drag.grab : rolledAtLeftFinger(size, drag.grab));
+      }
       // The reader already shows the page the turn was heading for; if the
       // hand went the other way, put it back before uncovering it.
-      final completed = drag.forward ? turnedAway : !turnedAway;
       if (!completed) {
         await _turnInstantly(!drag.forward);
       } else if (keep != null) {
@@ -1654,11 +1677,34 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
 }
 
 class _CurlDrag {
-  _CurlDrag({required this.forward, required this.grab, required this.finger});
+  _CurlDrag({
+    required this.forward,
+    required this.grab,
+    required this.start,
+    required this.size,
+    required this.finger,
+  });
 
   final bool forward;
   final Offset grab;
+
+  /// Where the finger went down.
+  final Offset start;
+  final Size size;
+
+  /// Where the grabbed page edge is drawn: under the finger when turning
+  /// forward; when turning back, unrolled in proportion to the drag.
   Offset finger;
+
+  /// Turning back: how far the previous page has been laid down, 0 to 1.
+  double progress = 0;
+
+  Offset follow(Offset point) {
+    if (forward) return finger = point;
+    final mapped = backTurnFinger(size: size, grab: grab, start: start, point: point);
+    progress = mapped.progress;
+    return finger = mapped.finger;
+  }
 
   /// Where finger moves go once the curl is on screen.
   void Function(Offset finger)? show;

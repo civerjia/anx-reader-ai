@@ -63,6 +63,44 @@ void main() {
     });
   });
 
+  group('turning back', () {
+    test('the previous page starts rolled up at the left edge', () {
+      const grab = Offset(390, 500);
+      final axis = curlAxis(grab, rolledAtLeftFinger(size, grab), radius)!;
+      // Nothing of it lies flat; only the roll reaches into the page.
+      expect(axis.origin.dx, inInclusiveRange(-1, 0));
+      expect(axis.origin.dx + radius, greaterThan(0));
+      for (final corner in corners) {
+        // Every point of the page is on the roll or face down under it, all
+        // within one radius of the left edge.
+        final curled = curlPoint(corner, axis, radius);
+        expect(curled.angle, greaterThan(0));
+        expect(curled.position.dx, lessThanOrEqualTo(radius));
+      }
+      // The grabbed edge has gone all the way round.
+      expect(curlPoint(grab, axis, radius).angle, math.pi);
+    });
+
+    test('the drag unrolls it from where the finger went down', () {
+      const grab = Offset(390, 500);
+      const start = Offset(150, 500);
+      final atStart = backTurnFinger(size: size, grab: grab, start: start, point: start);
+      expect(atStart.progress, 0);
+      expect(atStart.finger, rolledAtLeftFinger(size, grab));
+
+      final halfway = backTurnFinger(size: size, grab: grab, start: start, point: const Offset(270, 520));
+      expect(halfway.progress, closeTo(0.5, 1e-9));
+      expect(halfway.finger.dy, 520);
+
+      final atEdge = backTurnFinger(size: size, grab: grab, start: start, point: const Offset(400, 500));
+      expect(atEdge.progress, 1);
+      expect(atEdge.finger.dx, closeTo(grab.dx, 1e-9));
+
+      final backwards = backTurnFinger(size: size, grab: grab, start: start, point: const Offset(90, 500));
+      expect(backwards.progress, 0);
+    });
+  });
+
   group('mesh', () {
     test('a flat page is all face up and textured edge to edge', () {
       final mesh = CurlMesh.build(size, const Size(1170, 2532), null, radius);

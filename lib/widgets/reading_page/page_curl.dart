@@ -80,6 +80,31 @@ double curlRadius(double width) => width * 0.1;
 Offset turnedAwayFinger(Size size, Offset grab) =>
     Offset(-(1.25 * size.width + math.pi * curlRadius(size.width)), grab.dy);
 
+/// The finger position of a page turned back over, with only its roll showing
+/// at the left edge: where a previous page waits before it is laid down.
+Offset rolledAtLeftFinger(Size size, Offset grab) =>
+    Offset(math.pi * curlRadius(size.width) - size.width - 1, grab.dy);
+
+/// Turning back to the previous page: the page starts rolled up at the left
+/// edge and unrolls as the finger moves right, wherever the finger went down
+/// (a drag from the very edge is the system's back gesture, not a page turn).
+/// [progress] runs from 0 at [start] to 1 at the right edge, where the page
+/// lies flat; the finger's height still tilts the roll.
+({double progress, Offset finger}) backTurnFinger({
+  required Size size,
+  required Offset grab,
+  required Offset start,
+  required Offset point,
+}) {
+  final span = math.max(1.0, size.width - start.dx);
+  final progress = ((point.dx - start.dx) / span).clamp(0.0, 1.0).toDouble();
+  final from = rolledAtLeftFinger(size, grab);
+  return (
+    progress: progress,
+    finger: Offset(from.dx + (grab.dx - from.dx) * progress, point.dy),
+  );
+}
+
 /// Triangles of a page of [size] curled around [axis], textured from an image
 /// of [imageSize]. [front] holds the triangles facing up, [back] those turned
 /// face down, which have to be drawn over the front ones.

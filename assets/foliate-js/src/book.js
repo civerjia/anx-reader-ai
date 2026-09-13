@@ -1519,10 +1519,17 @@ class Reader {
     const position = this.#curlPosition(e.touch)
     drag.last = position
     if (!drag.started) {
+      const forward = position.x < drag.start.x
+      // A rightward swipe from the very left edge leaves the book; only one
+      // starting inside the page turns back.
+      if (!forward && drag.start.x < 24) {
+        this.#curlDrag = null
+        return false
+      }
       drag.started = true
       callFlutter('onCurlDrag', {
         phase: 'start', x: drag.start.x, y: drag.start.y,
-        forward: position.x < drag.start.x,
+        forward,
       })
     }
     // Every move is sent: touchmove already arrives at the display rate, and
