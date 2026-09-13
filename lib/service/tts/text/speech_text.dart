@@ -1,5 +1,6 @@
 import 'package:anx_reader/service/tts/text/chemistry.dart';
 import 'package:anx_reader/service/tts/text/chinese_number.dart';
+import 'package:anx_reader/service/tts/text/polyphones.dart';
 
 /// Rewrites Chinese text before a system voice reads it, for what the voice
 /// was heard to get wrong: powers of ten, per-units, "No.", and chemical
@@ -33,6 +34,13 @@ class SpeechText {
     'm/s': '米每秒',
   };
 
+  /// A four-digit count before a measure word, which the voice reads digit
+  /// by digit like a year: 2024箱 → 两千零二十四箱. Years (2024年) and
+  /// four-digit numbers elsewhere are left to the voice, which reads them
+  /// right.
+  static final _count = RegExp(
+      r'(?<![\d.,:/\-A-Za-z])([1-9]\d{3})(?=多?(?:个|箱|人|名|位|只|件|本|元|块|次|条|张|台|辆|吨|千克|公斤|克|公里|千米|米|家|所|户|头|匹|棵|座|间|股|份|页|篇|首|部|项|种|粒|滴|斤|亩|册|套|双|对|架|艘|枚|支|把|根|层|级|天|小时|分钟|周|岁|倍))');
+
   static final _numberSign = RegExp(r'(?<![A-Za-z])(?:No|NO|no)\.\s*(\d+)');
 
   static String normalize(
@@ -49,6 +57,9 @@ class SpeechText {
     result = result.replaceAllMapped(
         _power, (m) => _powerOfTen(_fromSuperscript(m[1]!)));
     result = result.replaceAllMapped(_numberSign, (m) => '第${m[1]}');
+    result = result.replaceAllMapped(
+        _count, (m) => chineseCount(int.parse(m[1]!)));
+    result = Polyphones.rewrite(result);
     return Chemistry.rewrite(result, formulas);
   }
 

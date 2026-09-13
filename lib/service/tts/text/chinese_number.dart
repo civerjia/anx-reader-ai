@@ -13,6 +13,13 @@ String chineseNumber(int n) {
   return '$head${rest < 1000 ? '零' : ''}${_belowTenThousand(rest, leading: false)}';
 }
 
+/// [n] as a count said before a measure word: 两 instead of 二 leading
+/// hundreds, thousands and ten thousands (两千零二十四箱).
+String chineseCount(int n) {
+  final words = chineseNumber(n);
+  return RegExp(r'^二(?=[百千万])').hasMatch(words) ? '两${words.substring(1)}' : words;
+}
+
 /// [digits] read one by one: 221 → 二二一.
 String chineseDigits(String digits) =>
     digits.split('').map((d) => _digits[int.parse(d)]).join();

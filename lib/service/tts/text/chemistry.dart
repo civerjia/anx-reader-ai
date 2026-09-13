@@ -212,22 +212,29 @@ class Chemistry {
     return true;
   }
 
-  static String read(ChemicalFormula formula, FormulaReading reading) {
+  /// Reads [formula] from [sentence]. By name, unless the sentence already
+  /// says the name (H₃O⁺就是水合氢离子, 醋酸CH3COOH): then the formula is
+  /// what the sentence is about, and it is spelled.
+  static String read(ChemicalFormula formula, FormulaReading reading,
+      {String sentence = ''}) {
     if (reading == FormulaReading.names && formula.coefficient == 0) {
-      final name = _names[formula.key];
-      if (name != null) return name;
-      if (formula.isMonatomic && formula.charge != 0) {
-        final element = formula._elements.first.symbol;
-        final elementName = elementNames[element];
-        if (elementName != null) {
-          final magnitude = formula.charge.abs();
-          return magnitude > 1 && _variableValence.contains(element)
-              ? '${chineseNumber(magnitude)}价$elementName离子'
-              : '$elementName离子';
-        }
-      }
+      final name = _name(formula);
+      if (name != null && !sentence.contains(name)) return name;
     }
     return spell(formula);
+  }
+
+  static String? _name(ChemicalFormula formula) {
+    final name = _names[formula.key];
+    if (name != null) return name;
+    if (!formula.isMonatomic || formula.charge == 0) return null;
+    final element = formula._elements.first.symbol;
+    final elementName = elementNames[element];
+    if (elementName == null) return null;
+    final magnitude = formula.charge.abs();
+    return magnitude > 1 && _variableValence.contains(element)
+        ? '${chineseNumber(magnitude)}价$elementName离子'
+        : '$elementName离子';
   }
 
   /// H3O+ → H 三 O 正离子; SO₄²⁻ → S O 四 二价负离子.
@@ -274,7 +281,7 @@ class Chemistry {
       final source = match[0]!;
       final formula = parse(source);
       if (formula == null || !looksLikeChemistry(formula, source)) return source;
-      return read(formula, reading);
+      return read(formula, reading, sentence: text);
     });
     return result;
   }

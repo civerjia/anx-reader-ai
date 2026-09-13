@@ -29,6 +29,23 @@ void main() {
       expect(symbols('共10¹²⁰种'), '共十的一百二十次方种');
     });
 
+    test('four-digit counts', () {
+      expect(symbols('仓库里有2024箱货。'), '仓库里有两千零二十四箱货。');
+      expect(symbols('来了1500多人'), '来了一千五百多人');
+      expect(symbols('这本书出版于2024年。'), '这本书出版于2024年。');
+      expect(symbols('2024届毕业生'), '2024届毕业生');
+      expect(symbols('编号12345个'), '编号12345个');
+    });
+
+    test('polyphones', () {
+      expect(symbols('朝阳照着古代的朝廷。'), '招阳照着古代的朝廷。');
+      expect(symbols('他住在朝阳区'), '他住在朝阳区');
+      expect(symbols('他曾经去过曾家。'), '他曾经去过增家。');
+      expect(symbols('他曾家境贫寒'), '他曾家境贫寒');
+      expect(symbols('身份暴露了，他只好露了一手。'), '身份暴露了，他只好漏了一手。');
+      expect(symbols('他很少露面'), '他很少漏面');
+    });
+
     test('No.', () {
       expect(symbols('他在比赛中排名No.1。'), '他在比赛中排名第1。');
       expect(symbols('排名 No. 12'), '排名 第12');
@@ -54,7 +71,10 @@ void main() {
       expect(names('SO₄²⁻与Ba²⁺生成沉淀。'), '硫酸根离子与钡离子生成沉淀。');
       expect(names('SO42-与Ba2+生成沉淀。'), '硫酸根离子与钡离子生成沉淀。');
       expect(names('Fe3+的溶液呈黄色。'), '三价铁离子的溶液呈黄色。');
-      expect(names('醋酸CH3COOH是弱酸。'), '醋酸醋酸是弱酸。');
+      // A name the sentence already says is not said twice.
+      expect(names('醋酸CH3COOH是弱酸。'), '醋酸C H 三 C O O H是弱酸。');
+      expect(names('H₃O⁺就是水合氢离子。'), 'H 三 O 正离子就是水合氢离子。');
+      expect(names('水的化学式是H2O。'), '水的化学式是H 二 O。');
       expect(names('NH4+和NO3-'), '铵根离子和硝酸根离子');
       // Equations are always spelled: names would make them unreadable.
       expect(names('反应式：2H2+O2=2H2O。'), '反应式：二 H 二 加 O 二 等于 二 H 二 O。');

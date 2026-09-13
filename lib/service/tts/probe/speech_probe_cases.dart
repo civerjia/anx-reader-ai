@@ -6,12 +6,35 @@ import 'package:anx_reader/service/tts/text/speech_text.dart';
 /// before any sound is made: how to say numbers, symbols and formulas, and
 /// which reading a polyphonic character takes. Chinese only: the reader's
 /// narration problems were heard in Chinese books.
-final speechProbeGroups = [..._heard, _rewritten()];
+final speechProbeGroups = [..._heard, _rewritten(), _notations];
+
+/// Pronunciations attached to characters the voice misreads on its own, so
+/// a correct reading can only come from the attribute.
+const _notations = ProbeGroup(
+  '读音写法（第二轮）',
+  '这些字不加标注时会读错。读对了说明这种写法有效。最后一句是对照：读成 yín xíng 才算有效。',
+  [
+    ProbeCase('q01', '朝阳照着大地。', '拼音 zhao1，应读 zhāo',
+        marks: [ProbeMark('朝', 'zhao1')]),
+    ProbeCase('q02', '朝阳照着大地。', 'IPA，应读 zhāo',
+        marks: [ProbeMark('朝', 'ʈʂɑʊ˥')]),
+    ProbeCase('q03', '他去过曾家。', '拼音 zeng1，应读 zēng',
+        marks: [ProbeMark('曾', 'zeng1')]),
+    ProbeCase('q04', '他去过曾家。', 'IPA，应读 zēng',
+        marks: [ProbeMark('曾', 'tsɤŋ˥')]),
+    ProbeCase('q05', '他只好露了一手。', '拼音 lou4，应读 lòu',
+        marks: [ProbeMark('露', 'lou4')]),
+    ProbeCase('q06', '他只好露了一手。', 'IPA，应读 lòu',
+        marks: [ProbeMark('露', 'loʊ˥˩')]),
+    ProbeCase('q07', '银行', '拼音 xing2，应读成错的 yín xíng',
+        marks: [ProbeMark('行', 'xing2')]),
+  ],
+);
 
 /// The sentences the system voice misread, rewritten the way narration now
 /// rewrites them, in both formula readings.
 ProbeGroup _rewritten() {
-  const misread = {'n18', 'n19', 'c03', 'c04', 'c05', 'c06', 'c07', 'c08', 'c09', 'c10', 'c12'};
+  const misread = {'n02', 'p09', 'p19', 'p20', 'n18', 'n19', 'c03', 'c04', 'c05', 'c06', 'c07', 'c08', 'c09', 'c10', 'c12'};
   final cases = <ProbeCase>[];
   for (final probe in _heard.expand((g) => g.cases)) {
     if (!misread.contains(probe.id)) continue;
@@ -36,7 +59,7 @@ const _heard = [
     ProbeCase('n03', '圆周率约等于3.14159。', '三点一四一五九'),
     ProbeCase('n04', '只剩下1/3的人。', '三分之一'),
     ProbeCase('n05', '销量增长了50%。', '百分之五十'),
-    ProbeCase('n06', '明天最低气温-5℃。', '零下五摄氏度'),
+    ProbeCase('n06', '明天最低气温-5℃。', '负五摄氏度'),
     ProbeCase('n07', '请拨打13812345678。', '逐位读，1 读"幺"'),
     ProbeCase('n08', '请升级到v2.1.3版本。', 'V 二点一点三'),
     ProbeCase('n09', '会议定在下午3:30。', '三点三十'),
