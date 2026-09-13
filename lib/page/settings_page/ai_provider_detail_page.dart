@@ -369,6 +369,17 @@ class _AiProviderDetailPageState extends ConsumerState<AiProviderDetailPage> {
           onChanged: (value) =>
               setState(() => Prefs().localLlmContextSize = value),
         ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(l10n.settingsAiProviderLocalThinking),
+          subtitle: Text(
+            l10n.settingsAiProviderLocalThinkingHint,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          value: Prefs().localLlmThinking,
+          onChanged: (value) =>
+              setState(() => Prefs().localLlmThinking = value),
+        ),
       ],
     );
   }

@@ -26,6 +26,12 @@ class LocalLlmText extends LocalLlmEvent {
   final String text;
 }
 
+/// Reasoning the model wrote before its answer, when thinking is on.
+class LocalLlmReasoning extends LocalLlmEvent {
+  const LocalLlmReasoning(this.text);
+  final String text;
+}
+
 /// The model asked for tools. The engine never runs them: the app's agent loop
 /// owns execution, so the same tools, confirmation UI and step tiles apply
 /// whichever provider is answering.
@@ -99,14 +105,21 @@ class LocalLlmEngine {
 
   /// Streams a reply as text pieces and, when [tools] are offered and the model
   /// uses them, one [LocalLlmToolCalls] at the end of the turn.
+  /// Extra tokens a turn may spend reasoning when thinking is on.
+  static const thinkingTokens = 1024;
+
   Stream<LocalLlmEvent> stream({
     required String modelName,
     required List<LLMMessage> messages,
     List<LLMTool> tools = const [],
     int maxTokens = 640,
     double temperature = 0.7,
+    bool think = false,
   }) {
     final out = StreamController<LocalLlmEvent>();
+    // Reasoning comes out of the same budget; without room for it the answer
+    // would be cut off or never start.
+    final budget = think ? maxTokens + thinkingTokens : maxTokens;
 
     // The deadline is armed outside the queued work so a helper isolate that
     // never answers still releases whoever is listening.
@@ -134,7 +147,9 @@ class LocalLlmEngine {
         final stream = repo.streamChatWithGenerationOptions(
           'local',
           messages: messages,
-          think: false, // Qwen3.5 would otherwise spend a few hundred tokens reasoning.
+          // Off by default: at 20 tok/s a few hundred tokens of reasoning is
+          // most of a minute. The setting opens the reply with <think>.
+          think: think,
           tools: tools,
           // Report calls, never run them: execution belongs to the app.
           options: tools.isEmpty
@@ -143,12 +158,24 @@ class LocalLlmEngine {
           generationOptions: GenerationOptions(
             temperature: temperature,
             topP: 0.9,
-            maxTokens: maxTokens,
+            maxTokens: budget,
           ),
         );
         // With thinking off the model still opens every reply with an empty
         // <think></think>, which the chat showed and fed back as history.
         final thinkFilter = EmptyThinkFilter();
+        final splitter = think ? ThinkSplitter() : null;
+        void emitText(String text) {
+          if (text.isEmpty || out.isClosed) return;
+          if (splitter == null) {
+            final visible = thinkFilter.add(text);
+            if (visible.isNotEmpty) out.add(LocalLlmText(visible));
+            return;
+          }
+          final parts = splitter.add(text);
+          if (parts.reasoning.isNotEmpty) out.add(LocalLlmReasoning(parts.reasoning));
+          if (parts.answer.isNotEmpty) out.add(LocalLlmText(parts.answer));
+        }
         await for (final chunk in stream) {
           final message = chunk.message;
           if (chunk.evalCount != null) tokens = chunk.evalCount!;
@@ -159,8 +186,7 @@ class LocalLlmEngine {
             deadline.cancel();
             pieces++;
             if (out.isClosed) break;
-            final visible = thinkFilter.add(piece);
-            if (visible.isNotEmpty) out.add(LocalLlmText(visible));
+            emitText(piece);
           }
 
           final calls = message.toolCalls;
@@ -172,15 +198,23 @@ class LocalLlmEngine {
             out.add(LocalLlmToolCalls(calls));
           }
         }
-        final held = thinkFilter.close();
-        if (held.isNotEmpty && !out.isClosed) out.add(LocalLlmText(held));
+        if (!out.isClosed) {
+          if (splitter == null) {
+            final held = thinkFilter.close();
+            if (held.isNotEmpty) out.add(LocalLlmText(held));
+          } else {
+            final parts = splitter.close();
+            if (parts.reasoning.isNotEmpty) out.add(LocalLlmReasoning(parts.reasoning));
+            if (parts.answer.isNotEmpty) out.add(LocalLlmText(parts.answer));
+          }
+        }
         final seconds = DateTime.now().difference(started).inMilliseconds / 1000;
         final generated = tokens > 0 ? tokens : pieces;
-        final capped = tokens >= maxTokens ? ' — hit the $maxTokens token cap' : '';
+        final capped = tokens >= budget ? ' — hit the $budget token cap' : '';
         AnxLog.info('LocalLlm $generated tokens in '
             '${seconds.toStringAsFixed(1)}s'
             '${seconds > 0 ? ' (${(generated / seconds).toStringAsFixed(1)} tok/s)' : ''}'
-            ' with ${tools.length} tools offered$capped');
+            ' with ${tools.length} tools offered${think ? ', thinking' : ''}$capped');
       } catch (e, st) {
         AnxLog.severe('LocalLlm generation failed: $e\n$st');
         if (!out.isClosed) out.addError(e, st);

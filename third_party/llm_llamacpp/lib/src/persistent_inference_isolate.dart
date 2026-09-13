@@ -116,6 +116,7 @@ class PersistentInferenceIsolate {
     double loraScale = 1.0,
     List<IsolateMessage>? messages,
     List<String> toolSchemasJson = const [],
+    bool think = false,
   }) async* {
     await _ensureInitialized();
 
@@ -139,6 +140,7 @@ class PersistentInferenceIsolate {
         loraScale: loraScale,
         messages: messages,
         toolSchemasJson: toolSchemasJson,
+        think: think,
       ),
     );
 

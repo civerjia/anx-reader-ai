@@ -57,6 +57,7 @@ class LangchainAiRegistry {
     LangchainAiConfig config, {
     bool useAgent = false,
     int? localAnswerTokens,
+    bool localThinking = false,
   }) {
     switch (protocol) {
       case AiProtocol.claude:
@@ -79,6 +80,7 @@ class LangchainAiRegistry {
             modelName: config.model,
             defaultOptions: LocalLlmChatModelOptions(
               maxTokens: localAnswerTokens ?? 2048,
+              think: localThinking,
             ),
           ),
           useAgent: useAgent,

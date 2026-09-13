@@ -881,6 +881,8 @@
   "settingsNarratePronunciationFixes": "读音纠正",
   "settingsNarratePronunciationFixesDescription": "听到读错后纠正过的词。在书里选中词语即可添加。",
   "pronunciationFixesEmpty": "还没有纠正。朗读读错时，在书里选中那个词，点“纠正读音”。",
+  "settingsAiProviderLocalThinking": "先思考再回答",
+  "settingsAiProviderLocalThinkingHint": "模型先推理再回答，推理过程收在“思考”里。每一步都会多等：按每秒约 20 个 token 算，几百个 token 的推理要半分钟以上。仅对 Qwen3 系列模型有效。",
   "settingsNarrateSpeechProbe": "发音测试",
   "settingsNarrateSpeechProbeDescription": "用系统语音朗读测试句，标出读错的地方",
   "speechProbeHint": "点句子播放，读对点 ✓，读错点 ✗。已标 {judged} / {total}。",

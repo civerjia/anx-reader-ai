@@ -18,6 +18,7 @@ class LocalLlmChatModelOptions extends ChatModelOptions {
     super.concurrencyLimit,
     this.maxTokens = 640,
     this.temperature = 0.7,
+    this.think = false,
   });
 
   /// Kept modest on purpose: at the 20 tok/s a phone manages, 640 tokens is
@@ -25,6 +26,9 @@ class LocalLlmChatModelOptions extends ChatModelOptions {
   final int maxTokens;
 
   final double temperature;
+
+  /// Reason before answering; shown as thinking, not as the answer.
+  final bool think;
 
   @override
   LocalLlmChatModelOptions copyWith({
@@ -34,6 +38,7 @@ class LocalLlmChatModelOptions extends ChatModelOptions {
     final int? concurrencyLimit,
     final int? maxTokens,
     final double? temperature,
+    final bool? think,
   }) {
     return LocalLlmChatModelOptions(
       model: model ?? this.model,
@@ -42,6 +47,7 @@ class LocalLlmChatModelOptions extends ChatModelOptions {
       concurrencyLimit: concurrencyLimit ?? super.concurrencyLimit,
       maxTokens: maxTokens ?? this.maxTokens,
       temperature: temperature ?? this.temperature,
+      think: think ?? this.think,
     );
   }
 }
@@ -108,11 +114,14 @@ class LocalLlmChatModel extends BaseChatModel<LocalLlmChatModelOptions> {
           tools: [for (final spec in specs) SchemaTool(spec)],
           maxTokens: options?.maxTokens ?? defaultOptions.maxTokens,
           temperature: options?.temperature ?? defaultOptions.temperature,
+          think: options?.think ?? defaultOptions.think,
         )
         .map(
           (final event) => switch (event) {
             LocalLlmText(:final text) =>
               _result(AIChatMessage(content: text)),
+            LocalLlmReasoning(:final text) =>
+              _result(AIChatMessage(content: '', reasoningContent: text)),
             LocalLlmToolCalls(:final calls) => _result(
                 AIChatMessage(
                   content: '',

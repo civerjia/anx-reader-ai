@@ -54,6 +54,14 @@ void _handleInferenceRequest(
       // and never produces an EOS. Detect this and prepend the BOS id by hand.
       final usingChatTemplate =
           request.messages != null && request.messages!.isNotEmpty;
+      // `think` was accepted and ignored. For a template that knows <think>
+      // (Qwen3), opening the reply with it is what its own enable_thinking
+      // does; llama_chat_apply_template has no such flag.
+      if (request.think &&
+          usingChatTemplate &&
+          (modelTemplateStr?.contains('<think>') ?? false)) {
+        prompt = '$prompt<think>\n';
+      }
       final addBosByTokenizer = bindings.llama_vocab_get_add_bos(vocab);
       final templateRefersToBos =
           modelTemplateStr != null &&

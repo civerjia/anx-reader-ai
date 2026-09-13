@@ -147,7 +147,8 @@ Stream<String> _generateStream({
             }
           }
           final pipeline = registry.resolveByProtocol(provider.protocol, config,
-              useAgent: agentCapable, localAnswerTokens: localAnswerTokens);
+              useAgent: agentCapable, localAnswerTokens: localAnswerTokens,
+              localThinking: Prefs().localLlmThinking);
           final model = pipeline.model;
 
           await _throttleIfNeeded();
@@ -221,7 +222,8 @@ Stream<String> _generateStream({
             final pipeline = registry.resolveByProtocol(
                 provider.protocol, config,
                 useAgent: agentCapable,
-                localAnswerTokens: localAnswerTokens);
+                localAnswerTokens: localAnswerTokens,
+              localThinking: Prefs().localLlmThinking);
             final model = pipeline.model;
 
             await _throttleIfNeeded();

@@ -21,4 +21,35 @@ void main() {
     expect(run(['<think>']), '<think>');
     expect(run(['<think>\n</think>']), '');
   });
+
+  group('thinking on', () {
+    ({String reasoning, String answer}) split(List<String> pieces) {
+      final splitter = ThinkSplitter();
+      var reasoning = '';
+      var answer = '';
+      for (final piece in [...pieces.map(splitter.add), splitter.close()]) {
+        reasoning += piece.reasoning;
+        answer += piece.answer;
+      }
+      return (reasoning: reasoning, answer: answer);
+    }
+
+    test('reasoning up to </think>, the answer after it', () {
+      expect(split(['条目写的是 Ēpáng。\n</think>\n\n读 ē。']),
+          (reasoning: '条目写的是 Ēpáng。\n', answer: '读 ē。'));
+    });
+
+    test('a closing tag split across pieces', () {
+      expect(split(['想', '一想</th', 'ink>', '\n', '\n答', '案']),
+          (reasoning: '想一想', answer: '答案'));
+    });
+
+    test('a look-alike is kept as reasoning', () {
+      expect(split(['a </thin', 'g> b']), (reasoning: 'a </thing> b', answer: ''));
+    });
+
+    test('cut off before </think>, everything is reasoning', () {
+      expect(split(['想了很久', '</thi']), (reasoning: '想了很久</thi', answer: ''));
+    });
+  });
 }

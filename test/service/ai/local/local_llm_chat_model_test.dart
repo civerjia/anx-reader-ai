@@ -20,6 +20,7 @@ class _FakeEngine extends LocalLlmEngine {
   List<LLMTool> seenTools = const [];
   String? seenModel;
   int? seenMaxTokens;
+  bool? seenThink;
 
   @override
   Stream<LocalLlmEvent> stream({
@@ -28,8 +29,10 @@ class _FakeEngine extends LocalLlmEngine {
     List<LLMTool> tools = const [],
     int maxTokens = 640,
     double temperature = 0.7,
+    bool think = false,
   }) {
     seenModel = modelName;
+    seenThink = think;
     seenMessages = messages;
     seenTools = tools;
     seenMaxTokens = maxTokens;
@@ -38,6 +41,26 @@ class _FakeEngine extends LocalLlmEngine {
 }
 
 void main() {
+  group('thinking', () {
+    test('reasoning becomes reasoning content, and the option reaches the engine',
+        () async {
+      final engine = _FakeEngine([
+        const LocalLlmReasoning('条目写的是 Ēpáng。'),
+        const LocalLlmText('读 ē。'),
+      ]);
+      final model = LocalLlmChatModel(
+        modelName: 'Qwen3.5-2B.gguf',
+        engine: engine,
+        defaultOptions: const LocalLlmChatModelOptions(think: true),
+      );
+      final chunks = await model.stream(PromptValue.string('阿房宫的阿怎么读？')).toList();
+      expect(engine.seenThink, isTrue);
+      expect(chunks.first.output.reasoningContent, '条目写的是 Ēpáng。');
+      expect(chunks.first.output.content, isEmpty);
+      expect(chunks.last.output.content, '读 ē。');
+    });
+  });
+
   group('streaming', () {
     test('each piece becomes a streaming chunk', () async {
       final engine = _FakeEngine.text(['格物', '致知', '出自《大学》。']);

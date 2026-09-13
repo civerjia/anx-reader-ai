@@ -1063,6 +1063,8 @@
   "settingsNarratePronunciationFixes": "Reading fixes",
   "settingsNarratePronunciationFixesDescription": "Words you corrected after hearing them misread. Add one by selecting a word in a book.",
   "pronunciationFixesEmpty": "No fixes yet. When narration misreads a word, select it in the book and choose “Fix reading”.",
+  "settingsAiProviderLocalThinking": "Think before answering",
+  "settingsAiProviderLocalThinkingHint": "The model reasons first; the reasoning is shown under Thinking. Every step waits longer: at about 20 tokens a second, a few hundred tokens of reasoning take half a minute or more. Qwen3 models only.",
   "settingsNarrateSpeechProbe": "Pronunciation test",
   "settingsNarrateSpeechProbeDescription": "Play test sentences with the system voice and mark what it reads wrong",
   "speechProbeHint": "Tap a sentence to hear it, then mark it ✓ read right or ✗ wrong. Marked {judged} of {total}.",

@@ -15,6 +15,7 @@ class _InferenceRequestMessage {
     this.loraScale = 1.0,
     this.messages,
     this.toolSchemasJson = const [],
+    this.think = false,
   });
 
   final int requestId;
@@ -28,6 +29,10 @@ class _InferenceRequestMessage {
   /// injected inside the isolate where the model's chat template is available to
   /// pick the right wire format.
   final List<String> toolSchemasJson;
+
+  /// Open the reply with `<think>` so a model whose template knows it reasons
+  /// before answering.
+  final bool think;
   final List<String> stopTokens;
   final int contextSize;
   final int batchSize;

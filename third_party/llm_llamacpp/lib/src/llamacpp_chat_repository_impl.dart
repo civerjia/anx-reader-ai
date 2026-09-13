@@ -104,6 +104,7 @@ Stream<LLMChunk> _streamChatImpl(
     loraPath: repo._loraPath,
     loraScale: repo._loraScale,
     messages: isolateMessages,
+    think: merged.think,
     // Encoded here and injected inside the isolate, where the model's chat
     // template is available to choose the wire format the model expects.
     toolSchemasJson: [

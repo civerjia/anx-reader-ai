@@ -1721,6 +1721,14 @@ class Prefs extends ChangeNotifier {
     bookTranslationModes = modes;
   }
 
+  /// Whether the on-device model reasons before answering (Qwen3 templates).
+  bool get localLlmThinking => prefs.getBool('localLlmThinking') ?? false;
+
+  set localLlmThinking(bool enabled) {
+    prefs.setBool('localLlmThinking', enabled);
+    notifyListeners();
+  }
+
   /// Corrections a listener made to words the system voice misread.
   List<PronunciationFix> get pronunciationFixes {
     final raw = prefs.getString('pronunciationFixes');

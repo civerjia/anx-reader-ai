@@ -49,15 +49,17 @@ the iOS path only:
    free. Fixed at all three call sites — the persistent inference isolate the
    package actually uses, the legacy one-shot isolate, and embeddings.
 
-6. **`think: false` is accepted and then ignored** — not patched, worked
-   around. `streamChat` and `streamChatWithGenerationOptions` take `think`,
+6. **`think` is accepted and then ignored** — patched for `true` only. `streamChat` and `streamChatWithGenerationOptions` take `think`,
    `StreamChatOptionsMerger` copies it into `MergedOptions`, and nothing in the
    llama.cpp backend ever reads it: no chat-template flag, no `/no_think`, no
    prefilled empty `<think>` block. Whether a Qwen3.5 reply opens with reasoning
    is left entirely to the model. Measured on Qwen3.5-2B with the app's tools
    offered, several replies spent seconds on visible reasoning, and one never
    reached the tool call. Callers that need thinking off have to ask the model
-   themselves.
+   themselves. `think: true` is now carried to the inference isolate, which
+   opens the reply with `<think>` when the model's chat template knows that tag
+   (what the template's own `enable_thinking` does); `false` still leaves it to
+   the model, since the app's measured tool behaviour was taken that way.
 
 7. **Every request reloaded the model and re-read the whole prompt.**
    The inference isolate loaded the weights, created a context, applied the
@@ -79,7 +81,7 @@ Patched files: `hook/build.dart`, `lib/src/loader/loader_flutter.dart`,
 `lib/src/inference_isolate_handler.dart`, `lib/src/inference_isolate.dart`,
 `lib/src/embedding_isolate.dart`, `lib/src/inference_token_generator.dart`,
 `lib/src/inference_isolate_messages.dart`, `lib/src/persistent_inference_isolate.dart`,
-`lib/src/llamacpp_chat_repository.dart`. None of them is
+`lib/src/llamacpp_chat_repository.dart`, `lib/src/llamacpp_chat_repository_impl.dart`. None of them is
 `lib/src/bindings/llama_bindings.dart`, so the ABI fingerprint — and with it the
 prebuilt the build hook downloads — is unchanged.
 
