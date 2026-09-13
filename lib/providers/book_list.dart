@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:isolate';
 
+import 'package:anx_reader/service/series/volume_order.dart';
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/dao/book.dart';
 import 'package:anx_reader/dao/series.dart';
@@ -43,7 +44,14 @@ class BookList extends _$BookList {
         }
       }
     }
-    return groupedBooks;
+    // Within a folder, the volumes of a series in order (三体Ⅰ, Ⅱ, Ⅲ), so its
+    // cover is the first volume.
+    return [
+      for (final group in groupedBooks)
+        group.length > 1
+            ? orderVolumes(group, title: (b) => b.title, series: (b) => b.series)
+            : group,
+    ];
   }
 
   int getChineseCompareResult(String a, String b) {
@@ -200,6 +208,16 @@ class BookList extends _$BookList {
 
   Future<void> refresh() async {
     state = AsyncData(await _buildWithFilters());
+  }
+
+  /// Puts [books] into the folder [groupId] at once, creating it with [name]
+  /// when it does not exist, and refreshes the shelf once.
+  Future<void> moveBooks(List<Book> books, int groupId, {String? name}) async {
+    await ref.read(groupDaoProvider.notifier).insertGroup(groupId, name: name);
+    for (final book in books) {
+      await bookDao.updateBook(book.copyWith(groupId: groupId));
+    }
+    await refresh();
   }
 
   void moveBook(Book data, int groupId) {

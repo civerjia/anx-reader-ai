@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+import 'package:anx_reader/models/tb_group.dart';
+import 'package:anx_reader/providers/bookshelf_selection.dart';
 import 'package:anx_reader/page/opds/opds_catalogs_page.dart';
 import 'dart:io';
 import 'dart:math';
@@ -202,6 +205,104 @@ class BookshelfPageState extends ConsumerState<BookshelfPage>
     }
 
     importBookList(fileList, context, ref);
+  }
+
+  /// Moves the selected books into a folder already on the shelf, or a new
+  /// one named here. Dragging moved one book at a time.
+  Future<void> _moveSelectedToFolder() async {
+    final l10n = L10n.of(context);
+    final ids = ref.read(bookshelfSelectionProvider) ?? const <int>{};
+    final shelf =
+        ref.read(bookListProvider).valueOrNull ?? const <List<Book>>[];
+    final selected = [
+      for (final group in shelf)
+        for (final book in group)
+          if (ids.contains(book.id)) book,
+    ];
+    if (selected.isEmpty) return;
+    final groups = ref.read(groupDaoProvider).valueOrNull ?? const <TbGroup>[];
+    final names = {for (final group in groups) group.id: group.name};
+    final folders = <int, String>{
+      for (final group in shelf)
+        if (group.first.groupId != 0)
+          group.first.groupId: names[group.first.groupId] ?? '',
+    };
+    final choice = await showModalBottomSheet<int>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.create_new_folder_outlined),
+              title: Text(l10n.bookshelfNewFolder),
+              onTap: () => Navigator.pop(sheetContext, -1),
+            ),
+            for (final folder in folders.entries)
+              ListTile(
+                leading: const Icon(Icons.folder_outlined),
+                title: Text(folder.value.isEmpty ? '…' : folder.value),
+                onTap: () => Navigator.pop(sheetContext, folder.key),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+    final int groupId;
+    final String name;
+    if (choice == -1) {
+      final typed = await _askFolderName();
+      if (typed == null || !mounted) return;
+      name = typed.isEmpty ? l10n.bookshelfNewFolder : typed;
+      // A new folder takes a selected book's id, as dragging does, unless a
+      // folder already has that id.
+      final taken = {for (final group in groups) group.id, ...folders.keys};
+      final free =
+          selected.map((b) => b.id).where((id) => !taken.contains(id));
+      groupId = free.isNotEmpty
+          ? free.first
+          : [...taken, ...selected.map((b) => b.id)].reduce(math.max) + 1;
+    } else {
+      groupId = choice;
+      name = folders[choice] ?? '';
+    }
+    await ref
+        .read(bookListProvider.notifier)
+        .moveBooks(selected, groupId, name: name);
+    if (!mounted) return;
+    ref.read(bookshelfSelectionProvider.notifier).state = null;
+    AnxToast.show(l10n.bookshelfMovedToFolder(selected.length, name));
+  }
+
+  Future<String?> _askFolderName() async {
+    final l10n = L10n.of(context);
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.bookshelfNewFolder),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(hintText: l10n.bookshelfFolderNameHint),
+          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(l10n.commonCancel),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
+            child: Text(l10n.commonOk),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return name;
   }
 
   @override
@@ -492,7 +593,8 @@ class BookshelfPageState extends ConsumerState<BookshelfPage>
                 : ReorderableBuilder(
                     // lock all index of books
                     lockedIndices: lockedIndices,
-                    enableDraggable: true,
+                    enableDraggable:
+                        ref.watch(bookshelfSelectionProvider) == null,
                     longPressDelay: const Duration(milliseconds: 300),
                     onReorder: (ReorderedListFunction reorderedListFunction) {},
                     scrollController: _scrollController,
@@ -631,7 +733,27 @@ class BookshelfPageState extends ConsumerState<BookshelfPage>
       ],
     );
 
-    PreferredSizeWidget appBar = AppBar(
+    final shelfSelection = ref.watch(bookshelfSelectionProvider);
+    PreferredSizeWidget appBar = shelfSelection != null
+        ? AppBar(
+            forceMaterialTransparency: true,
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () =>
+                  ref.read(bookshelfSelectionProvider.notifier).state = null,
+            ),
+            title: Text(
+                L10n.of(context).bookshelfSelectedN(shelfSelection.length)),
+            actions: [
+              TextButton.icon(
+                onPressed:
+                    shelfSelection.isEmpty ? null : _moveSelectedToFolder,
+                icon: const Icon(Icons.drive_file_move_outline),
+                label: Text(L10n.of(context).bookshelfMoveToFolder),
+              ),
+            ],
+          )
+        : AppBar(
       forceMaterialTransparency: true,
       title: Container(
           height: 34,
@@ -727,6 +849,12 @@ class BookshelfPageState extends ConsumerState<BookshelfPage>
                   PopupMenuItem(
                     onTap: _groupSeries,
                     child: Text(L10n.of(context).bookshelfGroupSeries),
+                  ),
+                  PopupMenuItem(
+                    onTap: () => ref
+                        .read(bookshelfSelectionProvider.notifier)
+                        .state = <int>{},
+                    child: Text(L10n.of(context).bookshelfSelect),
                   ),
                 ],
               );

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 
+import 'package:anx_reader/providers/bookshelf_selection.dart';
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/dao/book.dart';
 import 'package:anx_reader/enums/hint_key.dart';
@@ -263,6 +264,14 @@ class BookBottomSheet extends ConsumerWidget {
     }
 
     final actions = [
+      {
+        "icon": Icons.check_box_outlined,
+        "text": L10n.of(context).bookshelfSelect,
+        "onTap": () {
+          Navigator.of(context).pop();
+          ref.read(bookshelfSelectionProvider.notifier).state = {book.id};
+        }
+      },
       {
         "icon": EvaIcons.share,
         "text": L10n.of(context).shareFile,

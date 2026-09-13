@@ -1,3 +1,4 @@
+import 'package:anx_reader/providers/bookshelf_selection.dart';
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/enums/book_sync_status.dart';
 import 'package:anx_reader/models/book.dart';
@@ -48,11 +49,26 @@ class BookItem extends ConsumerWidget {
             }) ??
             BookSyncStatusEnum.checking;
 
+    final shelfSelection = ref.watch(bookshelfSelectionProvider);
+    void toggleSelected() {
+      final next = {...?shelfSelection};
+      if (!next.remove(book.id)) next.add(book.id);
+      ref.read(bookshelfSelectionProvider.notifier).state = next;
+    }
+
     return GestureDetector(
       onTap: () {
+        if (shelfSelection != null) {
+          toggleSelected();
+          return;
+        }
         pushToReadingPage(ref, context, book);
       },
       onLongPress: () {
+        if (shelfSelection != null) {
+          toggleSelected();
+          return;
+        }
         handleLongPress(context);
       },
       onSecondaryTap: () {
@@ -79,7 +95,28 @@ class BookItem extends ConsumerWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: BookCover(book: book),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          BookCover(book: book),
+                          if (shelfSelection != null)
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Icon(
+                                shelfSelection.contains(book.id)
+                                    ? Icons.check_circle
+                                    : Icons.radio_button_unchecked,
+                                color: shelfSelection.contains(book.id)
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Colors.white,
+                                shadows: const [
+                                  Shadow(blurRadius: 4, color: Colors.black54),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

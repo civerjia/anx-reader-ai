@@ -187,6 +187,14 @@
       "folders": {"type": "int"}
     }
   },
+  "bookshelfSelect": "Select",
+  "bookshelfSelectedN": "{count, plural, other{{count} selected}}",
+  "@bookshelfSelectedN": {"placeholders": {"count": {"type": "int"}}},
+  "bookshelfMoveToFolder": "Move to folder",
+  "bookshelfNewFolder": "New folder",
+  "bookshelfFolderNameHint": "Folder name",
+  "bookshelfMovedToFolder": "{count, plural, =1{Moved 1 book to “{name}”} other{Moved {count} books to “{name}”}}",
+  "@bookshelfMovedToFolder": {"placeholders": {"count": {"type": "int"}, "name": {"type": "String"}}},
   "bookshelfGroupSeriesDone": "Moved {books} books into folders",
   "@bookshelfGroupSeriesDone": {
     "placeholders": {
