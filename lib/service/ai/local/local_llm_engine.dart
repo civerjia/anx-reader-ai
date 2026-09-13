@@ -161,20 +161,20 @@ class LocalLlmEngine {
             maxTokens: budget,
           ),
         );
-        // With thinking off the model still opens every reply with an empty
-        // <think></think>, which the chat showed and fed back as history.
-        final thinkFilter = EmptyThinkFilter();
+        // With thinking asked for, the reply was opened with <think> and runs
+        // to </think>. Without, the model still opens with a <think> block of
+        // its own (empty, or reasoning), which the chat showed as raw tags.
         final splitter = think ? ThinkSplitter() : null;
-        void emitText(String text) {
-          if (text.isEmpty || out.isClosed) return;
-          if (splitter == null) {
-            final visible = thinkFilter.add(text);
-            if (visible.isNotEmpty) out.add(LocalLlmText(visible));
-            return;
-          }
-          final parts = splitter.add(text);
+        final router = think ? null : LeadingThinkRouter();
+        void emitParts(({String reasoning, String answer}) parts) {
+          if (out.isClosed) return;
           if (parts.reasoning.isNotEmpty) out.add(LocalLlmReasoning(parts.reasoning));
           if (parts.answer.isNotEmpty) out.add(LocalLlmText(parts.answer));
+        }
+
+        void emitText(String text) {
+          if (text.isEmpty) return;
+          emitParts(splitter?.add(text) ?? router!.add(text));
         }
         await for (final chunk in stream) {
           final message = chunk.message;
@@ -198,16 +198,7 @@ class LocalLlmEngine {
             out.add(LocalLlmToolCalls(calls));
           }
         }
-        if (!out.isClosed) {
-          if (splitter == null) {
-            final held = thinkFilter.close();
-            if (held.isNotEmpty) out.add(LocalLlmText(held));
-          } else {
-            final parts = splitter.close();
-            if (parts.reasoning.isNotEmpty) out.add(LocalLlmReasoning(parts.reasoning));
-            if (parts.answer.isNotEmpty) out.add(LocalLlmText(parts.answer));
-          }
-        }
+        emitParts(splitter?.close() ?? router!.close());
         final seconds = DateTime.now().difference(started).inMilliseconds / 1000;
         final generated = tokens > 0 ? tokens : pieces;
         final capped = tokens >= budget ? ' — hit the $budget token cap' : '';

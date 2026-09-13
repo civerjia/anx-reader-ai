@@ -1,52 +1,61 @@
 import 'dart:math' as math;
 
-/// Drops the empty `<think></think>` a Qwen model writes at the start of a
-/// reply when thinking is turned off. It arrives in pieces (`<think>`, a
-/// newline, `</think>`), so the start of the reply is held back until it is
-/// clear whether it is that block. Anything else passes through unchanged,
-/// including real thinking.
-class EmptyThinkFilter {
+/// Routes a reply's leading `<think>…</think>` into reasoning when thinking
+/// was not asked for. Qwen3.5 opens replies with an empty block, and on its
+/// own sometimes with real reasoning; either way the chat showed the raw tags.
+/// The tag arrives in pieces, so the start is held until it is clear. A reply
+/// that does not open with `<think>` passes through unchanged.
+class LeadingThinkRouter {
   static const _open = '<think>';
-  static const _close = '</think>';
-  static final _emptyBlock = RegExp(r'^\s*<think>\s*</think>\s*');
 
   final _held = StringBuffer();
   bool _decided = false;
+  ThinkSplitter? _splitter;
+  bool _reasoningStarted = false;
 
-  /// The part of [piece] that can be shown now.
-  String add(String piece) {
-    if (_decided) return piece;
+  ({String reasoning, String answer}) add(String piece) {
+    if (_decided) return _route(piece);
     _held.write(piece);
     final text = _held.toString();
-    final block = _emptyBlock.firstMatch(text);
-    if (block != null) {
-      final rest = text.substring(block.end);
-      // Whitespace after the block may still be followed by more; wait for
-      // the first visible character.
-      if (rest.isEmpty) return '';
-      _decided = true;
-      _held.clear();
-      return rest;
+    final trimmed = text.trimLeft();
+    if (trimmed.length < _open.length && _open.startsWith(trimmed)) {
+      return (reasoning: '', answer: '');
     }
-    if (_couldBecomeEmptyBlock(text.trimLeft())) return '';
     _decided = true;
     _held.clear();
-    return text;
+    if (trimmed.startsWith(_open)) {
+      _splitter = ThinkSplitter();
+      return _route(trimmed.substring(_open.length));
+    }
+    return (reasoning: '', answer: text);
   }
 
-  /// Whatever is still held when the reply ends.
-  String close() {
-    final text = _held.toString();
-    _held.clear();
-    _decided = true;
-    return _emptyBlock.hasMatch(text) ? text.replaceFirst(_emptyBlock, '') : text;
+  ({String reasoning, String answer}) close() {
+    if (!_decided) {
+      final text = _held.toString();
+      _held.clear();
+      _decided = true;
+      return (reasoning: '', answer: text);
+    }
+    final splitter = _splitter;
+    if (splitter == null) return (reasoning: '', answer: '');
+    return _clean(splitter.close());
   }
 
-  static bool _couldBecomeEmptyBlock(String text) {
-    if (_open.startsWith(text)) return true;
-    if (!text.startsWith(_open)) return false;
-    final inside = text.substring(_open.length).trimLeft();
-    return _close.startsWith(inside);
+  ({String reasoning, String answer}) _route(String piece) {
+    final splitter = _splitter;
+    if (splitter == null) return (reasoning: '', answer: piece);
+    return _clean(splitter.add(piece));
+  }
+
+  /// An empty block has only blank lines as reasoning; they are not shown.
+  ({String reasoning, String answer}) _clean(({String reasoning, String answer}) parts) {
+    var reasoning = parts.reasoning;
+    if (!_reasoningStarted) {
+      reasoning = reasoning.trimLeft();
+      if (reasoning.isNotEmpty) _reasoningStarted = true;
+    }
+    return (reasoning: reasoning, answer: parts.answer);
   }
 }
 
