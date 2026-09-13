@@ -1,5 +1,6 @@
 import 'package:anx_reader/service/tts/text/chemistry.dart';
 import 'package:anx_reader/service/tts/text/chinese_number.dart';
+import 'package:anx_reader/service/tts/text/polyphones.dart';
 import 'package:anx_reader/service/tts/text/speech_text.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -37,18 +38,32 @@ void main() {
       expect(symbols('编号12345个'), '编号12345个');
     });
 
-    test('polyphones', () {
-      expect(symbols('朝阳照着古代的朝廷。'), '招阳照着古代的朝廷。');
-      expect(symbols('他住在朝阳区'), '他住在朝阳区');
-      expect(symbols('他曾经去过曾家。'), '他曾经去过增家。');
-      expect(symbols('他曾家境贫寒'), '他曾家境贫寒');
-      expect(symbols('身份暴露了，他只好露了一手。'), '身份暴露了，他只好漏了一手。');
-      expect(symbols('他很少露面'), '他很少漏面');
-      expect(symbols('不愿抛头露面'), '不愿抛头露面');
-      expect(symbols('她从小就学女红。'), '她从小就学女工。');
-      expect(symbols('他们几个在划拳喝酒。'), '他们几个在划拳喝酒。');
-      expect(symbols('他长出一口气。'), '他常出一口气。');
-      expect(symbols('树上长出新芽'), '树上长出新芽');
+    test('polyphones are marked, not rewritten', () {
+      Map<String, String> marks(String text) => {
+            for (final m in Polyphones.marks(text)) '${text[m.start]}${m.start}': m.notation,
+          };
+      expect(symbols('朝阳照着古代的朝廷。'), '朝阳照着古代的朝廷。');
+      expect(marks('朝阳照着古代的朝廷。'), {'朝0': 'zhao1'});
+      expect(marks('一轮朝阳升起'), {'朝2': 'zhao1'});
+      expect(marks('这是朝阳产业'), {'朝2': 'zhao1'});
+      expect(marks('迎着朝阳出发'), {'朝2': 'zhao1'});
+      expect(marks('他曾经去过曾家。'), {'曾5': 'zeng1'});
+      expect(marks('他是曾国藩的曾孙'), {'曾2': 'zeng1', '曾6': 'zeng1'});
+      expect(marks('身份暴露了，他只好露了一手。'), {'露9': 'lou4'});
+      expect(marks('他很少露面'), {'露3': 'lou4'});
+      expect(marks('他连不露富都不知道'), {'露3': 'lou4'});
+      expect(marks('多说露怯'), {'露2': 'lou4'});
+      expect(marks('他露了两手'), {'露1': 'lou4'});
+      expect(marks('她从小就学女红。'), {'红6': 'gong1'});
+      expect(marks('他长出一口气。'), {'长1': 'chang2'});
+      for (final text in const [
+        '他住在朝阳区', '李朝阳著', '丹凤朝阳', '向日葵朝阳开放', '一株朝阳花',
+        '他曾家境贫寒', '他曾家访过学生', '不愿抛头露面', '不愿出头露面',
+        '共计揭露面积4400平方米', '这是一支女红军队伍', '绿女红男',
+        '树上长出新芽', '他们几个在划拳喝酒。',
+      ]) {
+        expect(marks(text), isEmpty, reason: text);
+      }
     });
 
     test('No.', () {
@@ -102,7 +117,7 @@ void main() {
       'NH4NO3': '硝酸铵', 'Cu(NO3)2': '硝酸铜', 'NaNO2': '亚硝酸钠',
       'Na2CO3': '碳酸钠', 'K2CO3': '碳酸钾', 'CaCO3': '碳酸钙', 'NaHCO3': '碳酸氢钠',
       'NH4HCO3': '碳酸氢铵', 'Na3PO4': '磷酸钠', 'KH2PO4': '磷酸二氢钾',
-      'Na2HPO4': '磷酸氢钠', 'NaOH': '氢氧化钠', 'KOH': '氢氧化钾',
+      'Na2HPO4': '磷酸氢二钠', 'NaOH': '氢氧化钠', 'KOH': '氢氧化钾',
       'Ca(OH)2': '氢氧化钙', 'Mg(OH)2': '氢氧化镁', 'Al(OH)3': '氢氧化铝',
       'Fe(OH)3': '氢氧化铁', 'Fe(OH)2': '氢氧化亚铁', 'Cu(OH)2': '氢氧化铜',
       'Ba(OH)2': '氢氧化钡', 'Na2O': '氧化钠', 'Na2O2': '过氧化钠', 'CaO': '氧化钙',
@@ -115,7 +130,7 @@ void main() {
       'K2Cr2O7': '重铬酸钾', 'K2CrO4': '铬酸钾', 'Na2SiO3': '硅酸钠', 'NaAlO2': '偏铝酸钠',
       'Na2S2O3': '硫代硫酸钠', 'CH3COONa': '醋酸钠', 'FeS': '硫化亚铁', 'CuS': '硫化铜',
       'Cu2S': '硫化亚铜', 'H2S': '硫化氢', 'Na2S': '硫化钠', 'NaF': '氟化钠',
-      'KBr': '溴化钾', 'NaI': '碘化钠', 'KSCN': '硫氰化钾', 'NaH': '氢化钠',
+      'KBr': '溴化钾', 'NaI': '碘化钠', 'KSCN': '硫氰酸钾', 'NaH': '氢化钠',
       'HBr': '溴化氢', 'H2C2O4': '草酸', 'Na2C2O4': '草酸钠', 'KIO3': '碘酸钾',
       'SO2': '二氧化硫', 'SO3': '三氧化硫', 'NO2': '二氧化氮', 'N2O5': '五氧化二氮',
       'N2O': '一氧化二氮', 'N2O4': '四氧化二氮', 'P2O5': '五氧化二磷', 'CCl4': '四氯化碳',
@@ -135,7 +150,7 @@ void main() {
       'CO32-': '碳酸根离子', 'HCO3-': '碳酸氢根离子', 'MnO4-': '高锰酸根离子',
       'MnO42-': '锰酸根离子', 'Cr2O72-': '重铬酸根离子', 'S2O32-': '硫代硫酸根离子',
       'PO43-': '磷酸根离子', 'NH4+': '铵根离子', 'CH3COO-': '醋酸根离子',
-      'SCN-': '硫氰根离子', 'Mn²⁺': '锰离子', 'Fe³⁺': '铁离子',
+      'SCN-': '硫氰酸根离子', 'Mn²⁺': '锰离子', 'Fe³⁺': '铁离子',
     };
     expected.forEach((formula, name) {
       test(formula, () => expect(names('溶液里加入$formula。'), '溶液里加入$name。'));

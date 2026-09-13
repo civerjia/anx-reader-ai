@@ -5,6 +5,7 @@ import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/page/reading_page.dart';
 import 'package:anx_reader/service/tts/base_tts.dart';
 import 'package:anx_reader/service/tts/text/chemistry.dart';
+import 'package:anx_reader/service/tts/text/polyphones.dart';
 import 'package:anx_reader/service/tts/text/pronunciation_lexicon.dart';
 import 'package:anx_reader/service/tts/text/speech_text.dart';
 import 'package:anx_reader/service/tts/tts_skip.dart';
@@ -238,18 +239,25 @@ class SystemTts extends BaseTts {
   String _spoken(String text) =>
       SpeechText.normalize(text, formulas: FormulaReading.names);
 
-  /// Dictionary readings for the polyphonic characters of [text], in the
-  /// form the patched flutter_tts passes to AVSpeechSynthesizer.
+  /// Readings for polyphonic characters of [text], in the form the patched
+  /// flutter_tts passes to AVSpeechSynthesizer: the words the voice was heard
+  /// misreading, then the dictionary's when that setting is on.
   List<Map<String, Object>> _pronunciations(String text) {
-    if (!isIOS || !Prefs().ttsPronunciationLexicon) return const [];
-    final lexicon = PronunciationLexicon.loaded;
-    if (lexicon == null) {
-      unawaited(PronunciationLexicon.load());
-      return const [];
+    if (!isIOS) return const [];
+    final marks = {for (final m in Polyphones.marks(text)) m.start: m.notation};
+    if (Prefs().ttsPronunciationLexicon) {
+      final lexicon = PronunciationLexicon.loaded;
+      if (lexicon == null) {
+        unawaited(PronunciationLexicon.load());
+      } else {
+        for (final m in lexicon.marks(text)) {
+          marks.putIfAbsent(m.start, () => m.notation);
+        }
+      }
     }
     return [
-      for (final mark in lexicon.marks(text))
-        {'start': mark.start, 'length': 1, 'notation': mark.notation},
+      for (final entry in marks.entries)
+        {'start': entry.key, 'length': 1, 'notation': entry.value},
     ];
   }
 

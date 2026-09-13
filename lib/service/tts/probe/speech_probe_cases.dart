@@ -1,5 +1,6 @@
 import 'package:anx_reader/service/tts/probe/speech_probe.dart';
 import 'package:anx_reader/service/tts/text/chemistry.dart';
+import 'package:anx_reader/service/tts/text/polyphones.dart';
 import 'package:anx_reader/service/tts/text/pronunciation_lexicon.dart';
 import 'package:anx_reader/service/tts/text/speech_text.dart';
 
@@ -141,7 +142,13 @@ ProbeGroup _rewritten() {
     if (!misread.contains(probe.id)) continue;
     final spelled = SpeechText.normalize(probe.text);
     final named = SpeechText.normalize(probe.text, formulas: FormulaReading.names);
-    cases.add(ProbeCase('r-${probe.id}', spelled, '字母读法 · 原句 ${probe.text}'));
+    final heard = [
+      for (final m in Polyphones.marks(spelled))
+        ProbeMark(spelled[m.start], m.notation, start: m.start),
+    ];
+    cases.add(ProbeCase('r-${probe.id}', spelled,
+        heard.isEmpty ? '字母读法 · 原句 ${probe.text}' : '拼音标注 ${heard.map((m) => '${m.target}=${m.notation}').join(' ')}',
+        marks: heard));
     if (named != spelled) {
       cases.add(ProbeCase('r-${probe.id}-name', named, '名称读法 · 原句 ${probe.text}'));
     }
