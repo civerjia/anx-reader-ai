@@ -198,54 +198,73 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   ui.Image? _pageImageAt(String? at) =>
       at == null ? null : _pageImages[at]?.clone();
 
-  /// The picture of the page before this one, when this one was reached by
-  /// turning.
-  ui.Image? _previousPageImage() => _pageImageAt(_previousOf[cfi]);
+  /// Where the reader is, asked of the page itself. The location the app last
+  /// heard of can still be the page before when a turn follows quickly, and
+  /// pictures looked up by it showed the wrong page curling. [afterPaint]
+  /// waits for the page to be drawn, for a snapshot to match.
+  Future<String?> _readerPageKey({bool afterPaint = false}) async {
+    final watch = Stopwatch()..start();
+    final result = await _curlStep(
+      webViewController.callAsyncJavaScript(
+          functionBody: (afterPaint
+                  ? 'await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); '
+                  : '') +
+              'return globalThis.reader?.view?.lastLocation?.cfi ?? null;'),
+      afterPaint ? 800 : 300,
+      'reading the page location',
+    );
+    if (!afterPaint) _curlTiming?.add('key', watch.elapsedMilliseconds);
+    final value = result?.value;
+    return value is String && value.isNotEmpty ? value : null;
+  }
 
-  /// Once the reader reports where a turn from [from] arrived, keeps
-  /// [picture] — the page left when turning forward, the page arrived at when
-  /// turning back — and which page comes before which.
+  /// The picture of the page before [here], when [here] was reached by
+  /// turning.
+  ui.Image? _previousPageImage(String? here) =>
+      _pageImageAt(here == null ? null : _previousOf[here]);
+
+  /// Keeps [picture] — the page left when turning forward, the page arrived
+  /// at when turning back — under where the reader says the turn from [from]
+  /// arrived, with which page comes before which.
   Future<void> _rememberArrival({
     required String from,
     required ui.Image picture,
     required bool forward,
   }) async {
     final generation = _pageImagesGeneration;
-    final watch = Stopwatch()..start();
-    while (cfi == from && watch.elapsedMilliseconds < 800) {
-      await Future<void>.delayed(const Duration(milliseconds: 40));
-    }
-    if (cfi == from || !mounted || generation != _pageImagesGeneration) {
+    final arrived = await _readerPageKey();
+    if (arrived == null ||
+        arrived == from ||
+        !mounted ||
+        generation != _pageImagesGeneration) {
       picture.dispose();
       return;
     }
     if (forward) {
       _keepPageImage(from, picture);
-      _previousOf[cfi] = from;
+      _previousOf[arrived] = from;
     } else {
-      _keepPageImage(cfi, picture);
-      _previousOf[from] = cfi;
+      _keepPageImage(arrived, picture);
+      _previousOf[from] = arrived;
     }
   }
 
-  /// Photographs the page being read once it has settled, unless a picture is
-  /// already kept, so the next turn forward starts without a snapshot.
+  /// Photographs the page being read once it has settled and been drawn,
+  /// unless a picture is already kept, so the next turn forward starts
+  /// without a snapshot. A picture whose page moved meanwhile is dropped.
   void _scheduleSnapshotHere() {
     if (!_usePageCurl) return;
     _snapshotHereTimer?.cancel();
     _snapshotHereTimer = Timer(const Duration(milliseconds: 250), () async {
-      final at = cfi;
-      if (!mounted ||
-          at.isEmpty ||
-          _pageImages.containsKey(at) ||
-          _pageCurlRunning > 0 ||
-          _curlDrag != null) {
-        return;
-      }
+      bool busy() => !mounted || _pageCurlRunning > 0 || _curlDrag != null;
+      if (busy()) return;
       final generation = _pageImagesGeneration;
+      final at = await _readerPageKey(afterPaint: true);
+      if (at == null || busy() || _pageImages.containsKey(at)) return;
       final image = await _snapshotReader();
       if (image == null) return;
-      if (!mounted || generation != _pageImagesGeneration || cfi != at) {
+      final still = await _readerPageKey();
+      if (busy() || generation != _pageImagesGeneration || still != at) {
         image.dispose();
         return;
       }
@@ -290,9 +309,10 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     final size = overlay.size;
     final grab = Offset(size.width, size.height * 0.9);
     final away = turnedAwayFinger(size, grab);
+    final here = await _readerPageKey();
 
     if (!forward) {
-      final previous = _previousPageImage();
+      final previous = _previousPageImage(here);
       _curlTiming?.note('cache', previous != null ? 'hit' : 'miss');
       if (previous != null) {
         try {
@@ -308,11 +328,11 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       }
     }
 
-    final kept = _pageImageAt(cfi);
+    final kept = _pageImageAt(here);
     _curlTiming?.note('here', kept != null ? 'hit' : 'miss');
     final current = kept ?? await _snapshotReader();
     if (current == null) return _turnInstantly(forward);
-    final from = cfi;
+    final from = here ?? cfi;
     ui.Image? keep;
     try {
       if (forward) {
@@ -429,10 +449,11 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     }
     final size = overlay.size;
     final away = turnedAwayFinger(size, drag.grab);
+    final here = await _readerPageKey();
     ui.Image? keep;
     try {
       if (!drag.forward) {
-        final previous = _previousPageImage();
+        final previous = _previousPageImage(here);
         _curlTiming?.note('cache', previous != null ? 'hit' : 'miss');
         if (previous != null) {
           // Back to the page just left: it is already in hand, so it follows
@@ -450,7 +471,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         }
       }
 
-      final kept = _pageImageAt(cfi);
+      final kept = _pageImageAt(here);
       _curlTiming?.note('here', kept != null ? 'hit' : 'miss');
       final current = kept ?? await _snapshotReader();
       if (current == null) {
@@ -458,7 +479,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         if (drag.forward ? vx < 0 : vx > 0) await _turnInstantly(drag.forward);
         return;
       }
-      final from = cfi;
+      final from = here ?? cfi;
       if (drag.forward) {
         keep = current.clone();
         overlay.curl(page: current, grab: drag.grab, finger: drag.finger);
