@@ -1,0 +1,10 @@
+{
+  "module": {
+    "name": "flutter_tts",
+    "type": "har",
+    "deviceTypes": [
+      "default",
+      "tablet"
+    ]
+  }
+}

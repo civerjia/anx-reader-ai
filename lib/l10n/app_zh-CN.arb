@@ -861,6 +861,8 @@
   "settingsNarrateSherpaDebug": "输出引擎日志",
   "settingsNarrateSherpaDebugDescription": "让 sherpa-onnx 打印内部信息，包括神经网络加速器接手了模型的多少部分。日志很啰嗦，用于排查速度问题。",
   "settingsNarrateSherpaLexicon": "词典文件",
+  "settingsNarratePronunciationLexicon": "按词典标注读音",
+  "settingsNarratePronunciationLexiconDescription": "用《普通话异读词审音表》、成语词典和词语表标注多音字读音（iOS 系统语音）",
   "settingsNarrateSpeechProbe": "发音测试",
   "settingsNarrateSpeechProbeDescription": "用系统语音朗读测试句，标出读错的地方",
   "speechProbeHint": "点句子播放，读对点 ✓，读错点 ✗。已标 {judged} / {total}。",

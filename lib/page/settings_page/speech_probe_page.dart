@@ -4,6 +4,7 @@ import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/l10n/generated/L10n.dart';
 import 'package:anx_reader/service/tts/probe/speech_probe.dart';
 import 'package:anx_reader/service/tts/probe/speech_probe_cases.dart';
+import 'package:anx_reader/service/tts/text/pronunciation_lexicon.dart';
 import 'package:anx_reader/service/tts/tts_service.dart';
 import 'package:anx_reader/utils/log/common.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +24,17 @@ class _SpeechProbePageState extends State<SpeechProbePage> {
   static const _verdictsKey = 'speechProbeVerdicts';
 
   late final Map<String, bool> _verdicts = _load();
+  List<ProbeGroup> _groups = speechProbeGroups;
+
+  @override
+  void initState() {
+    super.initState();
+    PronunciationLexicon.load().then((lexicon) {
+      if (mounted) {
+        setState(() => _groups = [...speechProbeGroups, lexiconProbeGroup(lexicon)]);
+      }
+    });
+  }
   String? _playing;
   String _voice = '';
 
@@ -71,7 +83,7 @@ class _SpeechProbePageState extends State<SpeechProbePage> {
 
   String _summary() {
     final lines = <String>['voice: $_voice'];
-    for (final group in speechProbeGroups) {
+    for (final group in _groups) {
       for (final probe in group.cases) {
         final verdict = _verdicts[probe.id];
         final mark = verdict == null ? '?' : verdict ? '✓' : '✗';
@@ -86,7 +98,7 @@ class _SpeechProbePageState extends State<SpeechProbePage> {
     final l10n = L10n.of(context);
     final judged = _verdicts.length;
     final total =
-        speechProbeGroups.fold<int>(0, (sum, g) => sum + g.cases.length);
+        _groups.fold<int>(0, (sum, g) => sum + g.cases.length);
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.settingsNarrateSpeechProbe),
@@ -116,7 +128,7 @@ class _SpeechProbePageState extends State<SpeechProbePage> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(_voice, style: Theme.of(context).textTheme.bodySmall),
             ),
-          for (final group in speechProbeGroups) ...[
+          for (final group in _groups) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 2),
               child: Text(group.title,

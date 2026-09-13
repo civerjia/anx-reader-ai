@@ -5,6 +5,7 @@ import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/page/reading_page.dart';
 import 'package:anx_reader/service/tts/base_tts.dart';
 import 'package:anx_reader/service/tts/text/chemistry.dart';
+import 'package:anx_reader/service/tts/text/pronunciation_lexicon.dart';
 import 'package:anx_reader/service/tts/text/speech_text.dart';
 import 'package:anx_reader/service/tts/tts_skip.dart';
 import 'package:anx_reader/service/tts/models/tts_voice.dart';
@@ -99,6 +100,7 @@ class SystemTts extends BaseTts {
     getPrevTextFunction = getPrevText;
 
     await setAwaitOptions();
+    if (isIOS) unawaited(PronunciationLexicon.load());
 
     if (isAndroid) {
       await getDefaultEngine();
@@ -221,7 +223,8 @@ class SystemTts extends BaseTts {
       await _applyVoice(selectedVoice);
     }
 
-    await flutterTts.speak(_spoken(_currentVoiceText!));
+    final spoken = _spoken(_currentVoiceText!);
+    await flutterTts.speak(spoken, pronunciations: _pronunciations(spoken));
 
     if (!isAndroid && ttsStateNotifier.value == TtsStateEnum.playing) {
       _currentVoiceText = await getNextTextFunction();
@@ -234,6 +237,21 @@ class SystemTts extends BaseTts {
   /// highlighting and resuming find it in the book.
   String _spoken(String text) =>
       SpeechText.normalize(text, formulas: FormulaReading.names);
+
+  /// Dictionary readings for the polyphonic characters of [text], in the
+  /// form the patched flutter_tts passes to AVSpeechSynthesizer.
+  List<Map<String, Object>> _pronunciations(String text) {
+    if (!isIOS || !Prefs().ttsPronunciationLexicon) return const [];
+    final lexicon = PronunciationLexicon.loaded;
+    if (lexicon == null) {
+      unawaited(PronunciationLexicon.load());
+      return const [];
+    }
+    return [
+      for (final mark in lexicon.marks(text))
+        {'start': mark.start, 'length': 1, 'notation': mark.notation},
+    ];
+  }
 
   @override
   Future<dynamic> stop() async {

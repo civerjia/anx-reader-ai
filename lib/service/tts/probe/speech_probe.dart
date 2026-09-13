@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 
 /// A pronunciation attached to part of a probe sentence.
 class ProbeMark {
-  const ProbeMark(this.target, this.notation, {this.occurrence = 0});
+  const ProbeMark(this.target, this.notation, {this.occurrence = 0, this.start});
 
   /// The text the pronunciation applies to.
   final String target;
@@ -13,6 +13,9 @@ class ProbeMark {
 
   /// Which occurrence of [target] in the sentence, from 0.
   final int occurrence;
+
+  /// Where [target] starts, when known; overrides [occurrence].
+  final int? start;
 }
 
 class ProbeCase {
@@ -50,8 +53,8 @@ class SpeechProbe {
     if (!isAvailable) return null;
     final marks = <Map<String, dynamic>>[];
     for (final mark in probe.marks) {
-      var start = -1;
-      for (var i = 0; i <= mark.occurrence; i++) {
+      var start = mark.start ?? -1;
+      for (var i = 0; mark.start == null && i <= mark.occurrence; i++) {
         start = probe.text.indexOf(mark.target, start + 1);
         if (start < 0) break;
       }

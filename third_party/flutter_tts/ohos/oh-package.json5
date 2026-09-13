@@ -1,0 +1,13 @@
+{
+  "name": "flutter_tts",
+  "version": "1.0.0",
+  "description": "HarmonyOS implementation of flutter_tts plugin",
+  "main": "index.ets",
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@ohos/flutter_ohos": "file:./har/flutter.har"
+  },
+  "devDependencies": {},
+  "dynamicDependencies": {}
+}

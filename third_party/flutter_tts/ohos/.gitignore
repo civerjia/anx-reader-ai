@@ -1,0 +1,18 @@
+# Build artifacts
+/build/
+/.preview/
+/node_modules/
+/oh_modules/
+
+# HAR files (generated during build)
+/har/
+
+# IDE files
+/.idea/
+*.iml
+
+# OS files
+.DS_Store
+
+# Lock files
+oh-package-lock.json5

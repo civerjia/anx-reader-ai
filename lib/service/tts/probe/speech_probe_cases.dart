@@ -1,5 +1,6 @@
 import 'package:anx_reader/service/tts/probe/speech_probe.dart';
 import 'package:anx_reader/service/tts/text/chemistry.dart';
+import 'package:anx_reader/service/tts/text/pronunciation_lexicon.dart';
 import 'package:anx_reader/service/tts/text/speech_text.dart';
 
 /// Sentences that exercise what a text-to-speech front end has to decide
@@ -7,6 +8,43 @@ import 'package:anx_reader/service/tts/text/speech_text.dart';
 /// which reading a polyphonic character takes. Chinese only: the reader's
 /// narration problems were heard in Chinese books.
 final speechProbeGroups = [..._heard, _rewritten(), _notations];
+
+/// Idioms and words with traps, each read as is and with the readings the
+/// bundled lexicon marks, plus how ü has to be written.
+ProbeGroup lexiconProbeGroup(PronunciationLexicon lexicon) {
+  const sentences = [
+    ('l01', '他不愿抛头露面。', 'lù'),
+    ('l02', '他就爱露富。', 'lòu'),
+    ('l03', '他装模作样地笑了。', 'mú'),
+    ('l04', '他们是一丘之貉。', 'hé'),
+    ('l05', '大家都忍俊不禁。', 'jīn'),
+    ('l06', '他大腹便便地走来。', 'pián pián'),
+    ('l07', '这人心宽体胖。', 'pán'),
+    ('l08', '这是呕心沥血之作。', 'xuè'),
+    ('l09', '学习不能一曝十寒。', 'pù'),
+    ('l10', '做事要量体裁衣。', 'liàng'),
+    ('l11', '人才济济，满座高朋。', 'jǐ jǐ'),
+    ('l12', '他说话有点结巴。', 'jiē'),
+    ('l13', '好高骛远不可取。', 'hào'),
+    ('l14', '这是一个模棱两可的回答。', 'mó'),
+  ];
+  final cases = <ProbeCase>[];
+  for (final (id, text, expect) in sentences) {
+    final marks = lexicon.marks(text);
+    cases.add(ProbeCase(id, text, '原样，应读 $expect'));
+    cases.add(ProbeCase('$id-dict', text,
+        marks.isEmpty ? '词典没有标注' : '词典标注，应读 $expect',
+        marks: [
+          for (final m in marks) ProbeMark(text[m.start], m.notation, start: m.start),
+        ]));
+  }
+  for (final (id, notation) in const [('u1', 'lv4'), ('u2', 'lü4'), ('u3', 'lu:4'), ('u4', 'lyu4')]) {
+    cases.add(ProbeCase(id, '银行', 'ü 写成 $notation：读成错的 yín lǜ 才算有效',
+        marks: [ProbeMark('行', notation)]));
+  }
+  return ProbeGroup('词典标注',
+      '每句先听原样，再听词典标注。最后四句测 ü 的写法。', cases);
+}
 
 /// Pronunciations attached to characters the voice misreads on its own, so
 /// a correct reading can only come from the attribute.

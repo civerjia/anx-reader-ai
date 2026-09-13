@@ -1720,6 +1720,16 @@ class Prefs extends ChangeNotifier {
     bookTranslationModes = modes;
   }
 
+  /// Whether the system voice is given dictionary readings for polyphonic
+  /// characters.
+  bool get ttsPronunciationLexicon =>
+      prefs.getBool('ttsPronunciationLexicon') ?? true;
+
+  set ttsPronunciationLexicon(bool enabled) {
+    prefs.setBool('ttsPronunciationLexicon', enabled);
+    notifyListeners();
+  }
+
   bool get allowMixWithOtherAudio {
     return prefs.getBool('allowMixWithOtherAudio') ?? false;
   }

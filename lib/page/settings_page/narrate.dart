@@ -435,6 +435,18 @@ class _NarrateSettingsState extends ConsumerState<NarrateSettings>
             if (ttsServiceId != 'system')
               CustomSettingsTile(child: _buildConfigSection(ttsServiceId)),
             if (ttsServiceId == 'system' && SpeechProbe.isAvailable)
+              SettingsTile.switchTile(
+                leading: const Icon(Icons.menu_book_outlined),
+                title: Text(L10n.of(context).settingsNarratePronunciationLexicon),
+                description: Text(
+                    L10n.of(context).settingsNarratePronunciationLexiconDescription),
+                initialValue: Prefs().ttsPronunciationLexicon,
+                onToggle: (value) {
+                  Prefs().ttsPronunciationLexicon = value;
+                  setState(() {});
+                },
+              ),
+            if (ttsServiceId == 'system' && SpeechProbe.isAvailable)
               SettingsTile.navigation(
                 leading: const Icon(Icons.record_voice_over_outlined),
                 title: Text(L10n.of(context).settingsNarrateSpeechProbe),
