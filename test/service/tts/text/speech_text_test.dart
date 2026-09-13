@@ -46,7 +46,7 @@ void main() {
       expect(symbols('他很少露面'), '他很少漏面');
       expect(symbols('不愿抛头露面'), '不愿抛头露面');
       expect(symbols('她从小就学女红。'), '她从小就学女工。');
-      expect(symbols('他们几个在划拳喝酒。'), '他们几个在华拳喝酒。');
+      expect(symbols('他们几个在划拳喝酒。'), '他们几个在划拳喝酒。');
       expect(symbols('他长出一口气。'), '他常出一口气。');
       expect(symbols('树上长出新芽'), '树上长出新芽');
     });
