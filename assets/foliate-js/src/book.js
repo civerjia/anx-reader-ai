@@ -1530,6 +1530,9 @@ class Reader {
       callFlutter('onCurlDrag', {
         phase: 'start', t: Date.now(), x: drag.start.x, y: drag.start.y,
         forward,
+        // Where the reader is, sent with the touch: asking for it separately
+        // waited behind a snapshot now and then, and the page did not follow.
+        key: this.view?.lastLocation?.cfi ?? null,
       })
     }
     // Every move is sent: touchmove already arrives at the display rate, and

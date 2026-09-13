@@ -403,6 +403,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
           start: point,
           size: overlay.size,
           finger: forward ? point : rolledAtLeftFinger(overlay.size, grab),
+          key: event['key'] as String?,
         );
         _curlDrag = started;
         _armCurlWatchdog(started);
@@ -449,7 +450,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     }
     final size = overlay.size;
     final away = turnedAwayFinger(size, drag.grab);
-    final here = await _readerPageKey();
+    _curlTiming?.note('key', drag.key != null ? 'touch' : 'asked');
+    final here = drag.key ?? await _readerPageKey();
     ui.Image? keep;
     try {
       if (!drag.forward) {
@@ -1821,9 +1823,14 @@ class _CurlDrag {
     required this.start,
     required this.size,
     required this.finger,
+    this.key,
   });
 
   final bool forward;
+
+  /// Where the reader was when the finger went down, as it reported with the
+  /// touch.
+  final String? key;
   final Offset grab;
 
   /// Where the finger went down.
