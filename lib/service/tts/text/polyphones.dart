@@ -10,6 +10,10 @@ class Polyphones {
     (RegExp(r'朝(?=阳(?!区|门|市|县|路|街|大街|公园|医院|剧场))'), '招'),
     // 曾 as a surname is zēng, otherwise céng (曾经).
     (RegExp(r'曾(?=家(?!境|乡)|先生|女士|老师|国藩|子|氏|姓|某)'), '增'),
+    // Heard misread on the phone: 女红 (gōng), 划拳 (huá), 长出一口气 (cháng).
+    (RegExp(r'女红'), '女工'),
+    (RegExp(r'划(?=拳)'), '华'),
+    (RegExp(r'长(?=[出舒]了?一口气)'), '常'),
     // 露 is lòu in a handful of spoken words, lù everywhere else (暴露, and
     // 抛头露面 per the 1985 审音表).
     (RegExp(r'(?<!抛头)露(?=了?一手|脸|面|馅|怯|富|马脚|相)'), '漏'),

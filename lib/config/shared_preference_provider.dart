@@ -1721,9 +1721,10 @@ class Prefs extends ChangeNotifier {
   }
 
   /// Whether the system voice is given dictionary readings for polyphonic
-  /// characters.
+  /// characters. Off by default: on the phone, marked sentences the voice
+  /// read right on its own were misread far more often than marks fixed one.
   bool get ttsPronunciationLexicon =>
-      prefs.getBool('ttsPronunciationLexicon') ?? true;
+      prefs.getBool('ttsPronunciationLexicon') ?? false;
 
   set ttsPronunciationLexicon(bool enabled) {
     prefs.setBool('ttsPronunciationLexicon', enabled);

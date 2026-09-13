@@ -106,6 +106,7 @@ const contextDependent = {
   '暴晒', // bào in modern use; listed as pù
   '长出', // 长出一口气 (cháng)
   '上相', // 比不上相… cuts across words
+  '睡着', // marked zháo, heard misread on the phone
 };
 
 class Shenyin {

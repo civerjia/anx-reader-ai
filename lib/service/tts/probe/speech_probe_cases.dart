@@ -7,7 +7,30 @@ import 'package:anx_reader/service/tts/text/speech_text.dart';
 /// before any sound is made: how to say numbers, symbols and formulas, and
 /// which reading a polyphonic character takes. Chinese only: the reader's
 /// narration problems were heard in Chinese books.
-final speechProbeGroups = [..._heard, _rewritten(), _notations];
+final speechProbeGroups = [..._heard, _rewritten(), _notations, _markDiagnosis];
+
+/// Marks from the lexicon misread sentences the voice read right on its own.
+/// First rule out the new code path (a mark placed by position), then force
+/// syllables that failed onto a carrier word to hear whether the voice can
+/// say them from the notation at all.
+const _markDiagnosis = ProbeGroup(
+  '标注诊断',
+  'd01 和 d02 应该一样读 lòu。d03 起把"银行"的"行"强行标成别的音，照着标注读才算有效。',
+  [
+    ProbeCase('d01', '他就爱露富。', '按字找位置标 lou4，应读 lòu',
+        marks: [ProbeMark('露', 'lou4')]),
+    ProbeCase('d02', '他就爱露富。', '按位置标 lou4，应读 lòu',
+        marks: [ProbeMark('露', 'lou4', start: 3)]),
+    ProbeCase('d03', '银行', '行=he2，应读 yín hé', marks: [ProbeMark('行', 'he2')]),
+    ProbeCase('d04', '银行', '行=ji3，应读 yín jǐ', marks: [ProbeMark('行', 'ji3')]),
+    ProbeCase('d05', '银行', '行=jie1，应读 yín jiē', marks: [ProbeMark('行', 'jie1')]),
+    ProbeCase('d06', '银行', '行=e3，应读 yín ě', marks: [ProbeMark('行', 'e3')]),
+    ProbeCase('d07', '银行', '行=gang3，应读 yín gǎng', marks: [ProbeMark('行', 'gang3')]),
+    ProbeCase('d08', '银行', '行=xue2，应读 yín xué', marks: [ProbeMark('行', 'xue2')]),
+    ProbeCase('d09', '银行', '行=hong3，应读 yín hǒng', marks: [ProbeMark('行', 'hong3')]),
+    ProbeCase('d10', '银行', '行=zuo1，应读 yín zuō', marks: [ProbeMark('行', 'zuo1')]),
+  ],
+);
 
 /// Idioms and words with traps, each read as is and with the readings the
 /// bundled lexicon marks, plus how ü has to be written.
