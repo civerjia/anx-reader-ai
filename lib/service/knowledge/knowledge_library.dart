@@ -165,7 +165,12 @@ class KnowledgeLibrary {
           final html = utf8.decode(await archive.content(article), allowMalformed: true);
           final text = articleLeadText(html, maxCharacters: maxCharacters);
           if (text.isEmpty) continue;
-          hits.add(KnowledgeHit(pack: pack, title: article.title, text: text));
+          // Chinese Wikipedia mixes scripts within an article; readers here
+          // (and small models) do better with one.
+          hits.add(KnowledgeHit(
+              pack: pack,
+              title: toSimplifiedChinese(article.title),
+              text: toSimplifiedChinese(text)));
         } catch (_) {
           continue;
         }

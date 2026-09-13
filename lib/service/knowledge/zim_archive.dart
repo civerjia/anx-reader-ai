@@ -435,16 +435,33 @@ class _Cluster {
 
 /// The opening paragraphs of a Wikipedia article page as plain text — what a
 /// reader or a model needs from it — without infoboxes, tables or scripts.
+final _coordinates = RegExp(
+    r'-?\d+(?:\.\d+)?°(?:\s*\d+(?:\.\d+)?′)?(?:\s*\d+(?:\.\d+)?″)?\s*[NSEW]?'
+    r'|-?\d+\.\d+\s*;\s*-?\d+\.\d+');
+
 String articleLeadText(String html, {int maxCharacters = 1200}) {
-  final cleaned = html
+  var cleaned = html
       .replaceAll(RegExp(r'<(script|style)[^>]*>[\s\S]*?</\1>', caseSensitive: false), '')
       .replaceAll(RegExp(r'<sup[^>]*>[\s\S]*?</sup>', caseSensitive: false), '');
+  // Infoboxes and other tables hold paragraphs too (缅甸's map caption);
+  // remove innermost tables until none are left.
+  final innermostTable = RegExp(r'<table\b(?:(?!<table\b)[\s\S])*?</table>', caseSensitive: false);
+  while (innermostTable.hasMatch(cleaned)) {
+    cleaned = cleaned.replaceAll(innermostTable, '');
+  }
   final paragraphs = <String>[];
   var length = 0;
   for (final match in RegExp(r'<p[^>]*>([\s\S]*?)</p>', caseSensitive: false)
       .allMatches(cleaned)) {
     final text = stripMarkup(match[1]!).replaceAll(RegExp(r'\s+'), ' ').trim();
     if (text.length < 6) continue;
+    // A paragraph that is a coordinate line (黄河源 34°29′31″N 96°20′25″E …).
+    final withoutCoordinates = text.replaceAll(_coordinates, '');
+    if (RegExp(r'\d°').hasMatch(text) &&
+        RegExp(r'[一-鿿]').allMatches(withoutCoordinates).length < 6 &&
+        withoutCoordinates.replaceAll(RegExp(r'[\s/;\ufeff]'), '').length < 12) {
+      continue;
+    }
     paragraphs.add(text);
     length += text.length;
     if (length >= maxCharacters) break;
