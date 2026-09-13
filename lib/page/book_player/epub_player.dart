@@ -126,6 +126,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   int _pageCurlRunning = 0;
   _CurlDrag? _curlDrag;
   Timer? _curlDragWatchdog;
+  Timer? _curlRescueTimer;
 
   /// Pictures of pages seen in this session, by cfi, oldest first, so a turn
   /// starts from a picture already in hand. Taking one when the finger goes
@@ -378,6 +379,18 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     });
   }
 
+  /// A curl still running well after the finger let go is stuck somewhere: a
+  /// page must never stay half turned. Clears it and logs how far it got.
+  void _armCurlRescue(_CurlDrag drag) {
+    _curlRescueTimer?.cancel();
+    _curlRescueTimer = Timer(const Duration(seconds: 3), () {
+      if (!identical(_curlDrag, drag)) return;
+      AnxLog.info('Page curl: still running 3 s after release; clearing it. '
+          '${_curlTiming?.summary() ?? ''}');
+      _pageCurlKey.currentState?.clear();
+    });
+  }
+
   /// A drag streamed from the reader: the page edge at the height the finger
   /// went down follows the finger, and letting go finishes or undoes the turn.
   void _onCurlDrag(Map<dynamic, dynamic> event) {
@@ -427,6 +440,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         if (!drag.released.isCompleted) {
           drag.released.complete((event['vx'] as num?)?.toDouble() ?? 0);
         }
+        _armCurlRescue(drag);
     }
   }
 

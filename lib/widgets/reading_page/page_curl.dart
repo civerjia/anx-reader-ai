@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:anx_reader/utils/log/common.dart';
 import 'package:flutter/material.dart';
 
 /// The line a page rolls around. The page lies flat on the side against
@@ -394,9 +396,18 @@ class PageCurlOverlayState extends State<PageCurlOverlay>
 
     _settle.addListener(follow);
     try {
-      await _settle.forward(from: 0).orCancel;
+      await _settle
+          .forward(from: 0)
+          .orCancel
+          .timeout(_settle.duration! + const Duration(milliseconds: 500));
     } on TickerCanceled {
       // Interrupted by a new curl.
+    } on TimeoutException {
+      // The animation stopped advancing, and the page stayed half turned
+      // until touched again. Finish the move without it.
+      _settle.stop();
+      AnxLog.info('Page curl: settle animation stalled; finishing without it');
+      if (mounted) setState(() => _finger = target);
     } finally {
       _settle.removeListener(follow);
     }
