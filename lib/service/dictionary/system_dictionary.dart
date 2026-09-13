@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:anx_reader/utils/log/common.dart';
 import 'package:flutter/services.dart';
 
 /// The dictionaries enabled in iOS Settings, shown in Apple's look-up panel.
@@ -13,10 +14,16 @@ class SystemDictionary {
   static Future<bool> hasDefinition(String term) async {
     if (!isAvailable || term.trim().isEmpty) return false;
     try {
-      return await _channel.invokeMethod<bool>('hasDefinition', {'term': term}) ?? false;
-    } on PlatformException {
+      final has = await _channel
+              .invokeMethod<bool>('hasDefinition', {'term': term}) ??
+          false;
+      AnxLog.info('SystemDictionary: definition for a ${term.runes.length}-character term: $has');
+      return has;
+    } on PlatformException catch (e) {
+      AnxLog.info('SystemDictionary: hasDefinition failed: $e');
       return false;
-    } on MissingPluginException {
+    } on MissingPluginException catch (e) {
+      AnxLog.info('SystemDictionary: channel not registered: $e');
       return false;
     }
   }

@@ -63,20 +63,25 @@ class _TranslationMenuState extends State<TranslationMenu> {
   /// when asked for. Passages go straight to translation.
   Future<void> _lookUpThenTranslate() async {
     var entries = const <DictionaryEntry>[];
+    var systemHas = false;
     if (isDictionaryTerm(widget.content)) {
+      final systemCheck = SystemDictionary.hasDefinition(widget.content)
+          .timeout(const Duration(seconds: 2), onTimeout: () => false);
       try {
         entries = await dictionaryLibrary.lookup(widget.content);
       } catch (_) {
         entries = const [];
       }
-      SystemDictionary.hasDefinition(widget.content).then((has) {
-        if (mounted && has) setState(() => _systemHasDefinition = true);
-      });
+      systemHas = await systemCheck;
     }
     if (!mounted) return;
     setState(() {
       _entries = entries;
-      if (entries.isEmpty) _translateOnline();
+      _systemHasDefinition = systemHas;
+      // Online only when nothing on the device explains the term: a Chinese
+      // word the bundled English dictionary lacks may still be in iOS's own
+      // dictionaries. Online translation stays one tap away.
+      if (entries.isEmpty && !systemHas) _translateOnline();
     });
   }
 
@@ -105,27 +110,29 @@ class _TranslationMenuState extends State<TranslationMenu> {
           Text(entry.definition, style: const TextStyle(fontSize: 14)),
           const SizedBox(height: 8),
         ],
-        Wrap(
-          spacing: 12,
-          children: [
-            if (_translationWidget == null)
-              PointerInterceptor(
-                child: TextButton.icon(
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  onPressed: () => setState(_translateOnline),
-                  icon: const Icon(Icons.translate, size: 16),
-                  label: Text(L10n.of(context).dictionaryOnlineTranslate),
-                ),
-              ),
-            if (_systemHasDefinition) _systemDictionaryButton(),
-          ],
-        ),
+        _lookupActions(),
       ],
     );
   }
+
+  Widget _lookupActions() => Wrap(
+        spacing: 12,
+        children: [
+          if (_systemHasDefinition) _systemDictionaryButton(),
+          if (_translationWidget == null)
+            PointerInterceptor(
+              child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: () => setState(_translateOnline),
+                icon: const Icon(Icons.translate, size: 16),
+                label: Text(L10n.of(context).dictionaryOnlineTranslate),
+              ),
+            ),
+        ],
+      );
 
   Widget _systemDictionaryButton() => PointerInterceptor(
         child: TextButton.icon(
@@ -223,11 +230,9 @@ class _TranslationMenuState extends State<TranslationMenu> {
                   children: [
                     // Show translation widget if initialized, otherwise show loading placeholder
                     if (_entries?.isNotEmpty ?? false)
-                      _dictionaryEntries(_entries!),
-                    // With no local entry the system dictionary still belongs
-                    // above the online translation.
-                    if ((_entries?.isEmpty ?? false) && _systemHasDefinition)
-                      _systemDictionaryButton(),
+                      _dictionaryEntries(_entries!)
+                    else if ((_entries?.isEmpty ?? false) && _systemHasDefinition)
+                      _lookupActions(),
                     if (_translationWidget != null)
                       _translationWidget!
                     else if (_entries == null)
