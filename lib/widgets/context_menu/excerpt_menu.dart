@@ -312,6 +312,17 @@ class ExcerptMenuState extends State<ExcerptMenu> {
             icon: const Icon(EvaIcons.globe),
             text: L10n.of(context).contextMenuSearch,
           ),
+          // search this book for the selection
+          IconAndText(
+            compact: true,
+            onTap: () {
+              final query = widget.annoContent;
+              widget.onClose();
+              readingPageKey.currentState?.openSearchInBook(query: query);
+            },
+            icon: const Icon(Icons.manage_search),
+            text: L10n.of(context).searchInBook,
+          ),
           // toggle translation menu
           IconAndText(
             compact: true,

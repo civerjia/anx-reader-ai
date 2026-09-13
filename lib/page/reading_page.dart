@@ -33,6 +33,7 @@ import 'package:anx_reader/widgets/reading_page/style_widget.dart';
 import 'package:anx_reader/widgets/reading_page/toc_widget.dart';
 import 'package:anx_reader/widgets/common/axis_flex.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:anx_reader/widgets/reading_page/widgets/book_toc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 // import 'package:flutter/foundation.dart'
@@ -346,6 +347,19 @@ class ReadingPageState extends ConsumerState<ReadingPage>
 
   Future<void> tocHandler() async {
     hideBottomBar();
+    _scaffoldKey.currentState?.openDrawer();
+  }
+
+  /// Opens the contents panel on its search: with [query], searches the book
+  /// for it at once; without, puts the cursor in the search box.
+  void openSearchInBook({String? query}) {
+    hideBottomBar();
+    final text = query?.trim() ?? '';
+    if (text.isNotEmpty) {
+      epubPlayerKey.currentState?.search(text);
+    } else {
+      tocSearchFocusRequested.value = true;
+    }
     _scaffoldKey.currentState?.openDrawer();
   }
 
@@ -711,6 +725,11 @@ class ReadingPageState extends ConsumerState<ReadingPage>
                     },
                   ),
                   actions: [
+                    IconButton(
+                      icon: const Icon(Icons.search),
+                      tooltip: L10n.of(context).searchInBook,
+                      onPressed: () => openSearchInBook(),
+                    ),
                     if (EnvVar.enableAIFeature) aiButton,
                     IconButton(
                       icon: const Icon(Icons.copy),

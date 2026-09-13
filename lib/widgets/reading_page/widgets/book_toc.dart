@@ -1,3 +1,4 @@
+import 'package:anx_reader/l10n/generated/L10n.dart';
 import 'package:anx_reader/main.dart';
 import 'package:anx_reader/models/search_result_model.dart';
 import 'package:anx_reader/models/toc_item.dart';
@@ -8,6 +9,9 @@ import 'package:anx_reader/widgets/common/container/filled_container.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+
+/// Set before opening the contents panel to put the cursor in its search box.
+final tocSearchFocusRequested = ValueNotifier<bool>(false);
 
 class BookToc extends ConsumerStatefulWidget {
   const BookToc({
@@ -27,6 +31,7 @@ class BookToc extends ConsumerStatefulWidget {
 
 class _BookTocState extends ConsumerState<BookToc> {
   final TextEditingController searchBarController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
   final ScrollController searchResultsScrollController = ScrollController();
   late List<TocItem> tocItems;
   List<_VisibleTocEntry> _visibleItems = const [];
@@ -45,6 +50,12 @@ class _BookTocState extends ConsumerState<BookToc> {
     searchBarController.text = ref.read(tocSearchProvider).query ?? '';
     // Add listener to save scroll position
     searchResultsScrollController.addListener(_saveScrollPosition);
+    if (tocSearchFocusRequested.value) {
+      tocSearchFocusRequested.value = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _searchFocus.requestFocus();
+      });
+    }
   }
 
   void _saveScrollPosition() {
@@ -58,6 +69,7 @@ class _BookTocState extends ConsumerState<BookToc> {
   @override
   void dispose() {
     searchBarController.dispose();
+    _searchFocus.dispose();
     searchResultsScrollController.dispose();
     super.dispose();
   }
@@ -317,6 +329,7 @@ class _BookTocState extends ConsumerState<BookToc> {
       height: 35,
       child: SearchBar(
         controller: searchBarController,
+        focusNode: _searchFocus,
         shadowColor: const WidgetStatePropertyAll<Color>(Colors.transparent),
         padding: const WidgetStatePropertyAll<EdgeInsets>(
             EdgeInsets.symmetric(horizontal: 16.0)),
@@ -353,7 +366,16 @@ class _BookTocState extends ConsumerState<BookToc> {
           ),
         Expanded(
           child: searchResults.isEmpty
-              ? const SizedBox()
+              ? (showSearchProgress
+                  ? const SizedBox()
+                  : Padding(
+                      padding: const EdgeInsets.only(top: 24),
+                      child: Text(
+                        L10n.of(context).searchInBookNoResult(currentQuery),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Theme.of(context).hintColor),
+                      ),
+                    ))
               : ListView.builder(
                   controller: searchResultsScrollController,
                   itemCount: searchResults.length,

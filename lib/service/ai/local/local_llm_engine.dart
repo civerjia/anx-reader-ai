@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:anx_reader/service/ai/local/empty_think_filter.dart';
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/service/ai/local/local_llm_models.dart';
+import 'package:anx_reader/service/ai/local/tool_argument_repair.dart';
 import 'package:anx_reader/utils/log/common.dart';
 import 'package:flutter/foundation.dart';
 import 'package:llm_llamacpp/llm_llamacpp.dart';
@@ -117,6 +118,9 @@ class LocalLlmEngine {
     bool think = false,
   }) {
     final out = StreamController<LocalLlmEvent>();
+    final lastUser = messages.lastWhere((m) => m.role == LLMRole.user,
+        orElse: () => LLMMessage(role: LLMRole.user, content: ''));
+    final userText = lastUser.content ?? '';
     // Reasoning comes out of the same budget; without room for it the answer
     // would be cut off or never start.
     final budget = think ? maxTokens + thinkingTokens : maxTokens;
@@ -195,7 +199,14 @@ class LocalLlmEngine {
             if (out.isClosed) break;
             AnxLog.info('LocalLlm requested tools: '
                 '${calls.map((c) => '${c.name}(${c.arguments})').join(', ')}');
-            out.add(LocalLlmToolCalls(calls));
+            final repaired = repairToolCalls(calls, userText);
+            for (var i = 0; i < calls.length; i++) {
+              if (repaired[i].arguments != calls[i].arguments) {
+                AnxLog.info('LocalLlm tool arguments put back to the user\'s '
+                    'words: ${calls[i].arguments} -> ${repaired[i].arguments}');
+              }
+            }
+            out.add(LocalLlmToolCalls(repaired));
           }
         }
         emitParts(splitter?.close() ?? router!.close());
