@@ -1,10 +1,35 @@
 import 'package:anx_reader/service/tts/probe/speech_probe.dart';
+import 'package:anx_reader/service/tts/text/chemistry.dart';
+import 'package:anx_reader/service/tts/text/speech_text.dart';
 
 /// Sentences that exercise what a text-to-speech front end has to decide
 /// before any sound is made: how to say numbers, symbols and formulas, and
 /// which reading a polyphonic character takes. Chinese only: the reader's
 /// narration problems were heard in Chinese books.
-const speechProbeGroups = [
+final speechProbeGroups = [..._heard, _rewritten()];
+
+/// The sentences the system voice misread, rewritten the way narration now
+/// rewrites them, in both formula readings.
+ProbeGroup _rewritten() {
+  const misread = {'n18', 'n19', 'c03', 'c04', 'c05', 'c06', 'c07', 'c08', 'c09', 'c10', 'c12'};
+  final cases = <ProbeCase>[];
+  for (final probe in _heard.expand((g) => g.cases)) {
+    if (!misread.contains(probe.id)) continue;
+    final spelled = SpeechText.normalize(probe.text);
+    final named = SpeechText.normalize(probe.text, formulas: FormulaReading.names);
+    cases.add(ProbeCase('r-${probe.id}', spelled, '字母读法 · 原句 ${probe.text}'));
+    if (named != spelled) {
+      cases.add(ProbeCase('r-${probe.id}-name', named, '名称读法 · 原句 ${probe.text}'));
+    }
+    if (probe.id == 'c12') {
+      cases.add(ProbeCase('r-c12-ipa', spelled, '字母读法，H 标英文读音，防止读成"小时"',
+          marks: [for (var k = 0; k < 3; k++) ProbeMark('H', 'eɪtʃ', occurrence: k)]));
+    }
+  }
+  return ProbeGroup('改写效果', '上面读错的句子改写后再读。字母读法和名称读法你更想要哪种？', cases);
+}
+
+const _heard = [
   ProbeGroup('数字', '年份逐位读、数量按数值读、各种符号和单位。', [
     ProbeCase('n01', '这本书出版于2024年。', '二零二四年'),
     ProbeCase('n02', '仓库里有2024箱货。', '两千零二十四箱'),

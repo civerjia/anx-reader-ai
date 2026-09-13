@@ -4,6 +4,8 @@ import 'package:anx_reader/utils/platform_utils.dart';
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/page/reading_page.dart';
 import 'package:anx_reader/service/tts/base_tts.dart';
+import 'package:anx_reader/service/tts/text/chemistry.dart';
+import 'package:anx_reader/service/tts/text/speech_text.dart';
 import 'package:anx_reader/service/tts/tts_skip.dart';
 import 'package:anx_reader/service/tts/models/tts_voice.dart';
 import 'package:anx_reader/service/tts/tts_service.dart';
@@ -112,7 +114,7 @@ class SystemTts extends BaseTts {
       _currentVoiceText = await epubPlayerKey.currentState!.ttsPrepare();
 
       if (_currentVoiceText?.isNotEmpty ?? false) {
-        flutterTts.speak(_currentVoiceText!);
+        flutterTts.speak(_spoken(_currentVoiceText!));
       }
     });
 
@@ -219,13 +221,19 @@ class SystemTts extends BaseTts {
       await _applyVoice(selectedVoice);
     }
 
-    await flutterTts.speak(_currentVoiceText!);
+    await flutterTts.speak(_spoken(_currentVoiceText!));
 
     if (!isAndroid && ttsStateNotifier.value == TtsStateEnum.playing) {
       _currentVoiceText = await getNextTextFunction();
       speak();
     }
   }
+
+  /// What the voice is given: the sentence with formulas, powers of ten and
+  /// the like rewritten. The sentence itself stays as it is, since
+  /// highlighting and resuming find it in the book.
+  String _spoken(String text) =>
+      SpeechText.normalize(text, formulas: FormulaReading.names);
 
   @override
   Future<dynamic> stop() async {
