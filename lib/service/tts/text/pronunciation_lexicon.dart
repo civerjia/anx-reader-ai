@@ -97,7 +97,8 @@ class PronunciationLexicon {
   }
 
   static String? _notation(String reading) {
-    if (reading == '_') return null;
+    // Neutral tones (shi5 in 钥匙) have no notation confirmed by ear.
+    if (reading == '_' || reading.endsWith('5')) return null;
     if (!reading.contains('v')) return reading;
     final u = umlaut;
     return u == null ? null : reading.replaceAll('v', u);

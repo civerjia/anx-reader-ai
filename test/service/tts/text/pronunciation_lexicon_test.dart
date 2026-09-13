@@ -17,7 +17,12 @@ void main() {
       '露面\tlou4 _',
       '朝阳',
       '绿林\tlv4 _',
+      '钥匙\t_ shi5',
     ].join('\n'));
+
+    test('leaves neutral tones to the voice', () {
+      expect(marked(lexicon, '找钥匙'), isEmpty);
+    });
 
     test('marks the longest word', () {
       expect(marked(lexicon, '他不愿抛头露面。'), {'露5': 'lu4'});
