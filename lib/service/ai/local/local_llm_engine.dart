@@ -75,6 +75,9 @@ class LocalLlmEngine {
   /// The model currently resident, for the settings page to report.
   String? get loadedModel => _loadedPath;
 
+  /// File name of the model in memory, or null; the unload buttons watch it.
+  final ValueNotifier<String?> loaded = ValueNotifier<String?>(null);
+
   Future<LlamaCppChatRepository> _repositoryFor(String modelName) async {
     final path = await LocalLlmModels.resolve(modelName);
     if (path == null) throw LocalLlmModelMissing(modelName);
@@ -103,6 +106,7 @@ class LocalLlmEngine {
     _repo = repo;
     _loadedPath = path;
     _loadedContext = contextSize;
+    loaded.value = path.split('/').last;
     return repo;
   }
 
@@ -246,9 +250,20 @@ class LocalLlmEngine {
   /// Drops the resident model. Worth calling when the user switches away from
   /// the local provider, since nothing else will reclaim the 1.8 GB.
   void unload() {
+    if (_repo != null) AnxLog.info('LocalLlm unloading $_loadedPath on request');
     _repo?.dispose();
     _repo = null;
     _loadedPath = null;
     _loadedContext = null;
+    loaded.value = null;
+  }
+
+  /// Unloads once any answer being generated has finished, so the button never
+  /// pulls the model out from under a reply. Held in memory, 1.8 GB made the
+  /// whole phone sluggish between the occasional questions.
+  Future<void> unloadWhenIdle() {
+    final done = _tail.then((_) => unload());
+    _tail = done.catchError((Object _) {});
+    return done;
   }
 }

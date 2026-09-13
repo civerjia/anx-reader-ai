@@ -3,6 +3,8 @@ import 'package:anx_reader/l10n/generated/L10n.dart';
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/models/ai_provider.dart';
 import 'package:anx_reader/service/ai/local/local_llm_models.dart';
+import 'package:anx_reader/service/ai/local/local_llm_engine.dart';
+import 'package:anx_reader/utils/toast/common.dart';
 import 'package:anx_reader/utils/log/common.dart';
 import 'package:anx_reader/providers/ai_providers.dart';
 import 'package:anx_reader/service/ai/ai_model_service.dart';
@@ -379,6 +381,25 @@ class _AiProviderDetailPageState extends ConsumerState<AiProviderDetailPage> {
           value: Prefs().localLlmThinking,
           onChanged: (value) =>
               setState(() => Prefs().localLlmThinking = value),
+        ),
+        ValueListenableBuilder<String?>(
+          valueListenable: LocalLlmEngine.instance.loaded,
+          builder: (context, name, _) => ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.memory),
+            title: Text(name == null
+                ? l10n.localLlmNotLoaded
+                : l10n.localLlmInMemory(name)),
+            trailing: name == null
+                ? null
+                : TextButton(
+                    onPressed: () async {
+                      await LocalLlmEngine.instance.unloadWhenIdle();
+                      AnxToast.show(l10n.localLlmUnloaded);
+                    },
+                    child: Text(l10n.localLlmUnload),
+                  ),
+          ),
         ),
       ],
     );

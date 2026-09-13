@@ -11,6 +11,7 @@ import 'package:anx_reader/providers/ai_providers.dart';
 import 'package:anx_reader/service/ai/ai_services.dart';
 import 'package:anx_reader/service/ai/ai_history.dart';
 import 'package:anx_reader/service/ai/index.dart';
+import 'package:anx_reader/service/ai/local/local_llm_engine.dart';
 import 'package:anx_reader/utils/env_var.dart';
 import 'package:anx_reader/utils/toast/common.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -889,6 +890,21 @@ class AiChatStreamState extends ConsumerState<AiChatStream> {
               icon: const Icon(Icons.tune),
               tooltip: L10n.of(context).settingsAiProviderModel,
               onPressed: () => _pickModel(currentProvider),
+            ),
+          if (currentProvider?.protocol == AiProtocol.local)
+            ValueListenableBuilder<String?>(
+              valueListenable: LocalLlmEngine.instance.loaded,
+              builder: (context, name, _) => name == null
+                  ? const SizedBox.shrink()
+                  : IconButton(
+                      icon: const Icon(Icons.eject_outlined),
+                      tooltip: L10n.of(context).localLlmUnload,
+                      onPressed: () async {
+                        final l10n = L10n.of(context);
+                        await LocalLlmEngine.instance.unloadWhenIdle();
+                        AnxToast.show(l10n.localLlmUnloaded);
+                      },
+                    ),
             ),
           IconButton(
             icon: const Icon(Icons.add_comment_outlined),
