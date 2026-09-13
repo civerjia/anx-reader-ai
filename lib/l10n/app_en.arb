@@ -116,6 +116,8 @@
   "importSupportTypes": "Support types: {types}",
   "importNBooksNotSupport": "{count, plural, one{1 book not support yet} other{{count} books not support yet}}",
   "importImportNBooks": "{count, plural, one{Import 1 book} other{Import {count} books}}",
+  "importDoneNBooks": "{count, plural, =1{Imported 1 book} other{Imported {count} books}}",
+  "@importDoneNBooks": {"placeholders": {"count": {"type": "int"}}},
   "bookshelfTips_1": "There are no books.",
   "bookshelfTips_2": "Click the add button to add a book!",
   "statisticsTips_1": "No reading in the selected time period.",

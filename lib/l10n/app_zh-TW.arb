@@ -115,6 +115,7 @@
   "importSupportTypes": "支援格式：{types}",
   "importNBooksNotSupport": "{count, plural, =0{目前沒有不支援的書籍} other{有 {count} 本書暫不支援}}",
   "importImportNBooks": "{count, plural, =0{尚未選取任何書籍} other{匯入 {count} 本書}}",
+  "importDoneNBooks": "{count, plural, other{已匯入 {count} 本書}}",
   "bookshelfTips_1": "書架上沒有書籍",
   "bookshelfTips_2": "點選新增按鈕以加入書籍！",
   "statisticsTips_1": "此期間尚無閱讀紀錄。",

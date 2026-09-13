@@ -228,8 +228,17 @@ void _showImportDialog(
         List<String> errorFiles = [];
         bool finished = false;
         Map<String, String> errorMessages = {};
+        final importedFiles = <String>{};
 
         return StatefulBuilder(builder: (context, setState) {
+          // A book is ticked once it has been imported, not while it waits.
+          Widget statusIcon(String filePath) => errorFiles.contains(filePath)
+              ? const Icon(Icons.error)
+              : importedFiles.contains(filePath)
+                  ? const Icon(Icons.done)
+                  : Icon(Icons.radio_button_unchecked,
+                      color: Theme.of(context).disabledColor);
+
           return AlertDialog(
             title: Text(L10n.of(context).importNBooksSelected(fileList.length)),
             contentPadding: const EdgeInsets.all(16),
@@ -255,9 +264,7 @@ void _showImportDialog(
                             ))
                         : bookItem(
                             file.path,
-                            errorFiles.contains(file.path)
-                                ? const Icon(Icons.error)
-                                : const Icon(Icons.done),
+                            statusIcon(file.path),
                             errorMessage: errorFiles.contains(file.path)
                                 ? errorMessages[file.path]
                                 : null,
@@ -302,9 +309,7 @@ void _showImportDialog(
                             )
                           : bookItem(
                               file.path,
-                              errorFiles.contains(file.path)
-                                  ? const Icon(Icons.error)
-                                  : const Icon(Icons.done),
+                              statusIcon(file.path),
                               isDuplicate: true,
                               duplicateTitle: duplicateInfo[file.path]?.title,
                               errorMessage: errorFiles.contains(file.path)
@@ -367,11 +372,13 @@ void _showImportDialog(
                           await importBook(file, ref);
                           setState(() {
                             currentHandlingFile = '';
+                            importedFiles.add(file.path);
                           });
                         } catch (e, stackTrace) {
                           AnxLog.severe('Failed to import ${file.path}: $e');
                           AnxLog.severe('Stack trace: $stackTrace');
                           setState(() {
+                            currentHandlingFile = '';
                             errorFiles.add(file.path);
                             errorMessages[file.path] = e.toString();
                           });
@@ -387,12 +394,23 @@ void _showImportDialog(
                         }
                       }
 
-                      setState(() {
-                        finished = true;
-                      });
                       ref.read(syncProvider.notifier).syncData(
                           SyncDirection.upload, ref,
                           trigger: SyncTrigger.auto);
+                      // When every book went in there is nothing left to read
+                      // in the dialog, so it closes instead of asking for
+                      // another tap. With errors it stays to show them.
+                      if (errorFiles.isEmpty) {
+                        if (context.mounted) {
+                          AnxToast.show(L10n.of(context)
+                              .importDoneNBooks(importedFiles.length));
+                          Navigator.of(context).pop('dialog');
+                        }
+                        return;
+                      }
+                      setState(() {
+                        finished = true;
+                      });
                     },
                     child: Text(finished
                         ? L10n.of(context).commonOk
