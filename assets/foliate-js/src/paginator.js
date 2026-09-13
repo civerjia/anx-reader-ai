@@ -15,6 +15,30 @@ const animate = (a, b, duration, ease, render) => new Promise(resolve => {
   requestAnimationFrame(step)
 })
 
+// An animated scroll by setting the position every animation frame is capped
+// by the page's rendering rate: 30 frames a second on an iPhone, measured,
+// against a 120 Hz screen. A native smooth scroll is animated by WebKit's
+// scrolling, not by the page. Settles when the position reaches the target,
+// or after a timeout; `scrollend` is not used, since cancelling the finger's
+// momentum can fire one before this scroll has moved.
+const smoothScrollSupported = 'scrollBehavior' in document.documentElement.style
+const smoothScroll = (element, scrollProp, offset) => new Promise(resolve => {
+  let settled = false
+  const reached = () => Math.abs(element[scrollProp] - offset) < 1
+  const settle = () => {
+    if (settled) return
+    settled = true
+    clearTimeout(timer)
+    element.removeEventListener('scroll', onScroll)
+    resolve()
+  }
+  const onScroll = () => { if (reached()) settle() }
+  const timer = setTimeout(settle, 800)
+  element.addEventListener('scroll', onScroll)
+  element.scrollTo({ [scrollProp === 'scrollLeft' ? 'left' : 'top']: offset, behavior: 'smooth' })
+  if (reached()) settle()
+})
+
 // collapsed range doesn't return client rects sometimes (or always?)
 // try make get a non-collapsed range or element
 const uncollapse = range => {
@@ -803,12 +827,9 @@ export class Paginator extends HTMLElement {
     const { scrollProp } = this
     const isHorizontal = scrollProp === 'scrollLeft'
     
-    // Stop native momentum scrolling immediately
+    // The scroll to the page below cancels the native momentum itself. Hiding
+    // overflow to stop it would also stop a native smooth scroll running.
     const currentScrollPos = element[scrollProp]
-    const overflowProp = isHorizontal ? 'overflowX' : 'overflowY'
-    const prevOverflow = element.style[overflowProp]
-    element.style[overflowProp] = 'hidden'
-    element[scrollProp] = currentScrollPos
     
     // Calculate current position and target page
     const currentOffset = Math.abs(currentScrollPos)
@@ -851,8 +872,6 @@ export class Paginator extends HTMLElement {
       })
       .finally(() => {
         this.#isSnapping = false
-        // Restore overflow after snap is complete
-        element.style[overflowProp] = prevOverflow
         if (timing) {
           timing.snapDone = performance.now()
           setTimeout(() => this.#logSlideTiming(timing), 120)
@@ -902,7 +921,7 @@ export class Paginator extends HTMLElement {
       + `gapP50=${pct(0.5)}ms gapP95=${pct(0.95)}ms maxGap=${gaps.length ? Math.max(...gaps).toFixed(1) : '-'}ms `
       + `over12=${gaps.filter(g => g > 12).length} over20=${gaps.filter(g => g > 20).length} `
       + `releaseToSnap=${r(timing.snapCalled - timing.released)}ms releaseToFirstFrame=${r(timing.firstFrame - timing.released)}ms `
-      + `snap=${r(timing.snapDone - timing.snapCalled)}ms`)
+      + `snap=${r(timing.snapDone - timing.snapCalled)}ms native=${timing.native === true}`)
   }
   #onTouchStart(e) {
     this.#startSlideTiming()
@@ -1066,15 +1085,12 @@ export class Paginator extends HTMLElement {
     }
 
 
-    // XXX: Firefox seems to report scale as 1... sometimes...?
-    // at this point I'm basically throwing `requestAnimationFrame` at
-    // anything that doesn't work
-    requestAnimationFrame(() => {
-      if (globalThis.visualViewport.scale === 1 && state && !this.hasAttribute('curl'))
-        Promise.resolve(this.snap(state.vx, state.vy, state))
-          .finally(() => { this.#touchState = null })
-      else this.#touchState = null
-    })
+    // Snap at once: waiting a frame here cost 33 ms on an iPhone, whose page
+    // rendering ran at 30 frames a second, before the page began to move.
+    if (globalThis.visualViewport.scale === 1 && state && !this.hasAttribute('curl'))
+      Promise.resolve(this.snap(state.vx, state.vy, state))
+        .finally(() => { this.#touchState = null })
+    else this.#touchState = null
   }
   // allows one to process rects as if they were LTR and horizontal
   #getRectMapper() {
@@ -1139,6 +1155,16 @@ export class Paginator extends HTMLElement {
 
       this.#justAnchored = true
       const timing = this.#slideTiming
+
+      if (smoothScrollSupported) {
+        if (timing) timing.native = true
+        return smoothScroll(element, scrollProp, offset).then(() => {
+          element[scrollProp] = offset
+          finish()
+        }).catch(() => {
+          this.#ignoreNativeScroll = false
+        })
+      }
 
       return animate(
         element[scrollProp],
