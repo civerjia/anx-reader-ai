@@ -437,6 +437,8 @@ export class Paginator extends HTMLElement {
   #pendingScrollFrame = null
   #scrollEndTimer = null
   #touchState
+  // Timing of the swipe in progress, logged when its snap ends.
+  #slideTiming = null
   #touchScrolled
   #loadingNext = false
   #loadingPrev = false
@@ -577,14 +579,14 @@ export class Paginator extends HTMLElement {
 
     const opts = { passive: false }
     this.addEventListener('touchstart', this.#onTouchStart.bind(this), opts)
-    this.addEventListener('touchmove', this.#onTouchMove.bind(this), opts)
+    this.addEventListener('touchmove', this.#timedTouchMove, opts)
     this.addEventListener('touchend', this.#onTouchEnd.bind(this), opts)
     // A touch the system takes over ends in touchcancel; without it a drag
     // (the page curl among them) would never learn the finger has gone.
     this.addEventListener('touchcancel', this.#onTouchEnd.bind(this), opts)
     this.addEventListener('load', ({ detail: { doc } }) => {
       doc.addEventListener('touchstart', this.#onTouchStart.bind(this), opts)
-      doc.addEventListener('touchmove', this.#onTouchMove.bind(this), opts)
+      doc.addEventListener('touchmove', this.#timedTouchMove, opts)
       doc.addEventListener('touchend', this.#onTouchEnd.bind(this), opts)
       doc.addEventListener('touchcancel', this.#onTouchEnd.bind(this), opts)
     })
@@ -789,6 +791,8 @@ export class Paginator extends HTMLElement {
   }
   snap(vx, vy, touchState) {
     if (this.#isSnapping) return
+    const timing = this.#slideTiming
+    if (timing) timing.snapCalled = performance.now()
     
     const state = touchState ?? this.#touchState
     const velocity = this.#vertical ? vy : vx
@@ -849,9 +853,59 @@ export class Paginator extends HTMLElement {
         this.#isSnapping = false
         // Restore overflow after snap is complete
         element.style[overflowProp] = prevOverflow
+        if (timing) {
+          timing.snapDone = performance.now()
+          setTimeout(() => this.#logSlideTiming(timing), 120)
+        }
       })
   }
+  // Every touchmove is handled before WebKit may scroll (the listeners are not
+  // passive), so time spent here delays the page under the finger.
+  #timedTouchMove = e => {
+    const started = performance.now()
+    this.#onTouchMove(e)
+    const timing = this.#slideTiming
+    if (!timing) return
+    const ms = performance.now() - started
+    timing.moves++
+    timing.moveMs += ms
+    timing.moveMax = Math.max(timing.moveMax, ms)
+  }
+  #startSlideTiming() {
+    if (this.scrolled || !this.hasAttribute('animated') || this.hasAttribute('curl')) return
+    if (this.#slideTiming) this.#slideTiming.stop = true
+    const timing = {
+      start: performance.now(), moves: 0, moveMs: 0, moveMax: 0,
+      gaps: [], last: null, stop: false,
+      released: null, snapCalled: null, firstFrame: null, snapDone: null,
+    }
+    this.#slideTiming = timing
+    const sample = now => {
+      if (timing.stop) return
+      if (timing.last != null) timing.gaps.push(now - timing.last)
+      timing.last = now
+      requestAnimationFrame(sample)
+    }
+    requestAnimationFrame(sample)
+  }
+  #logSlideTiming(timing) {
+    timing.stop = true
+    if (this.#slideTiming === timing) this.#slideTiming = null
+    const gaps = timing.gaps
+    const span = gaps.reduce((a, b) => a + b, 0)
+    const sorted = [...gaps].sort((a, b) => a - b)
+    const pct = q => sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))].toFixed(1) : '-'
+    const r = x => x == null ? '-' : Math.round(x)
+    console.log(`Slide timing: drag=${r(timing.released - timing.start)}ms `
+      + `moves=${timing.moves} moveAvg=${timing.moves ? (timing.moveMs / timing.moves).toFixed(2) : '-'}ms moveMax=${timing.moveMax.toFixed(1)}ms `
+      + `frames=${gaps.length} fps=${span ? Math.round(gaps.length * 1000 / span) : '-'} `
+      + `gapP50=${pct(0.5)}ms gapP95=${pct(0.95)}ms maxGap=${gaps.length ? Math.max(...gaps).toFixed(1) : '-'}ms `
+      + `over12=${gaps.filter(g => g > 12).length} over20=${gaps.filter(g => g > 20).length} `
+      + `releaseToSnap=${r(timing.snapCalled - timing.released)}ms releaseToFirstFrame=${r(timing.firstFrame - timing.released)}ms `
+      + `snap=${r(timing.snapDone - timing.snapCalled)}ms`)
+  }
   #onTouchStart(e) {
+    this.#startSlideTiming()
     const touch = e.changedTouches[0]
     const scrollProp = this.scrollProp
     this.#touchState = {
@@ -974,6 +1028,8 @@ export class Paginator extends HTMLElement {
     }
   }
   #onTouchEnd(e) {
+    if (this.#slideTiming && this.#slideTiming.released == null)
+      this.#slideTiming.released = performance.now()
     const state = this.#touchState
     this.dispatchEvent(new CustomEvent('doctouchend', {
       detail: {
@@ -1082,13 +1138,17 @@ export class Paginator extends HTMLElement {
       const duration = opts.duration ?? Math.max(200, Math.min(300, 250 * (distance / (size || 1))))
 
       this.#justAnchored = true
+      const timing = this.#slideTiming
 
       return animate(
         element[scrollProp],
         offset,
         duration,
         easing,
-        x => element[scrollProp] = x,
+        x => {
+          if (timing && timing.firstFrame == null) timing.firstFrame = performance.now()
+          element[scrollProp] = x
+        },
       ).then(() => {
         // Ensure exact position
         element[scrollProp] = offset
