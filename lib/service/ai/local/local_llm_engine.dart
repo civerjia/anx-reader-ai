@@ -4,6 +4,8 @@ import 'package:anx_reader/service/ai/local/empty_think_filter.dart';
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/service/ai/local/local_llm_models.dart';
 import 'package:anx_reader/service/ai/local/tool_argument_repair.dart';
+import 'package:anx_reader/service/ai/local/context_fit.dart';
+import 'dart:convert';
 import 'package:anx_reader/utils/log/common.dart';
 import 'package:flutter/foundation.dart';
 import 'package:llm_llamacpp/llm_llamacpp.dart';
@@ -145,12 +147,24 @@ class LocalLlmEngine {
       var pieces = 0;
       try {
         final repo = await _repositoryFor(modelName);
+        // Room for the tool definitions llama.cpp adds to the prompt, the
+        // template's own markup, and the reply itself.
+        final toolTokens = tools.fold<int>(
+            0, (sum, t) => sum + roughTokens(jsonEncode(t.toJson)));
+        final available =
+            Prefs().localLlmContextSize - budget - toolTokens - 256;
+        final fitted = fitToContext(messages, available);
+        if (fitted.clipped > 0 || fitted.dropped > 0) {
+          AnxLog.info('LocalLlm prompt fitted to ${Prefs().localLlmContextSize} '
+              'context: shortened ${fitted.clipped} earlier turns, left out '
+              '${fitted.dropped} (tools ~$toolTokens tokens)');
+        }
         // streamChat() discards the caller's options: it hands its
         // implementation a hardcoded GenerationOptions(). This entry point is
         // the one that honours them.
         final stream = repo.streamChatWithGenerationOptions(
           'local',
-          messages: messages,
+          messages: fitted.messages,
           // Off by default: at 20 tok/s a few hundred tokens of reasoning is
           // most of a minute. The setting opens the reply with <think>.
           think: think,
