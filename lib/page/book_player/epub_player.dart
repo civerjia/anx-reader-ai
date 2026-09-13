@@ -127,11 +127,17 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   _CurlDrag? _curlDrag;
   Timer? _curlDragWatchdog;
 
-  /// The page just turned away from, kept so that turning back starts at once
-  /// rather than after turning the reader and photographing the page. Valid
-  /// only while the reader is still where that turn arrived.
-  ui.Image? _pageLeftImage;
-  String? _pageLeftAt;
+  /// Pictures of pages seen in this session, by cfi, oldest first, so a turn
+  /// starts from a picture already in hand. Taking one when the finger goes
+  /// down cost 110–150 ms on the phone — about half of a quick swipe — and
+  /// held the finger's own events back for as long. Each is about 12 MB.
+  final _pageImages = <String, ui.Image>{};
+
+  /// For a page reached by turning, the page before it.
+  final _previousOf = <String, String>{};
+  static const _pageImageLimit = 5;
+  Timer? _snapshotHereTimer;
+  int _pageImagesGeneration = 0;
 
   bool get _usePageCurl => Prefs().pageTurnStyle == PageTurn.curl;
 
@@ -166,37 +172,85 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     _curlTiming?.add('turn', watch.elapsedMilliseconds);
   }
 
-  void _forgetPageLeft() {
-    _pageLeftImage?.dispose();
-    _pageLeftImage = null;
-    _pageLeftAt = null;
-  }
-
-  ui.Image? _takePageLeft() {
-    final image = _pageLeftImage;
-    if (image == null || _pageLeftAt != cfi) {
-      _forgetPageLeft();
-      return null;
+  void _forgetPageImages() {
+    _snapshotHereTimer?.cancel();
+    _pageImagesGeneration++;
+    for (final image in _pageImages.values) {
+      image.dispose();
     }
-    _pageLeftImage = null;
-    _pageLeftAt = null;
-    return image;
+    _pageImages.clear();
+    _previousOf.clear();
   }
 
-  /// Keeps [image], the page turned away from at [from], once the reader has
-  /// reported where the turn arrived.
-  Future<void> _rememberPageLeft(ui.Image image, String from) async {
+  void _keepPageImage(String at, ui.Image image) {
+    if (at.isEmpty) {
+      image.dispose();
+      return;
+    }
+    _pageImages.remove(at)?.dispose();
+    _pageImages[at] = image;
+    while (_pageImages.length > _pageImageLimit) {
+      _pageImages.remove(_pageImages.keys.first)?.dispose();
+    }
+  }
+
+  /// A copy of the picture of the page at [at], for the overlay to own.
+  ui.Image? _pageImageAt(String? at) =>
+      at == null ? null : _pageImages[at]?.clone();
+
+  /// The picture of the page before this one, when this one was reached by
+  /// turning.
+  ui.Image? _previousPageImage() => _pageImageAt(_previousOf[cfi]);
+
+  /// Once the reader reports where a turn from [from] arrived, keeps
+  /// [picture] — the page left when turning forward, the page arrived at when
+  /// turning back — and which page comes before which.
+  Future<void> _rememberArrival({
+    required String from,
+    required ui.Image picture,
+    required bool forward,
+  }) async {
+    final generation = _pageImagesGeneration;
     final watch = Stopwatch()..start();
     while (cfi == from && watch.elapsedMilliseconds < 800) {
       await Future<void>.delayed(const Duration(milliseconds: 40));
     }
-    if (cfi == from || !mounted) {
-      image.dispose();
+    if (cfi == from || !mounted || generation != _pageImagesGeneration) {
+      picture.dispose();
       return;
     }
-    _forgetPageLeft();
-    _pageLeftImage = image;
-    _pageLeftAt = cfi;
+    if (forward) {
+      _keepPageImage(from, picture);
+      _previousOf[cfi] = from;
+    } else {
+      _keepPageImage(cfi, picture);
+      _previousOf[from] = cfi;
+    }
+  }
+
+  /// Photographs the page being read once it has settled, unless a picture is
+  /// already kept, so the next turn forward starts without a snapshot.
+  void _scheduleSnapshotHere() {
+    if (!_usePageCurl) return;
+    _snapshotHereTimer?.cancel();
+    _snapshotHereTimer = Timer(const Duration(milliseconds: 250), () async {
+      final at = cfi;
+      if (!mounted ||
+          at.isEmpty ||
+          _pageImages.containsKey(at) ||
+          _pageCurlRunning > 0 ||
+          _curlDrag != null) {
+        return;
+      }
+      final generation = _pageImagesGeneration;
+      final image = await _snapshotReader();
+      if (image == null) return;
+      if (!mounted || generation != _pageImagesGeneration || cfi != at) {
+        image.dispose();
+        return;
+      }
+      _keepPageImage(at, image);
+    });
   }
 
   /// A tap, key or volume-button turn: the page is picked up by its edge and
@@ -220,6 +274,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     } finally {
       _pageCurlRunning--;
       timing.mark('done');
+      _scheduleSnapshotHere();
       if (identical(_curlTiming, timing)) _curlTiming = null;
       // Frame timings arrive in batches; give the last one a moment.
       Future<void>.delayed(const Duration(milliseconds: 250), () {
@@ -237,7 +292,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     final away = turnedAwayFinger(size, grab);
 
     if (!forward) {
-      final previous = _takePageLeft();
+      final previous = _previousPageImage();
       _curlTiming?.note('cache', previous != null ? 'hit' : 'miss');
       if (previous != null) {
         try {
@@ -253,7 +308,9 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       }
     }
 
-    final current = await _snapshotReader();
+    final kept = _pageImageAt(cfi);
+    _curlTiming?.note('here', kept != null ? 'hit' : 'miss');
+    final current = kept ?? await _snapshotReader();
     if (current == null) return _turnInstantly(forward);
     final from = cfi;
     ui.Image? keep;
@@ -264,7 +321,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         _curlTiming?.mark('shown');
         await _turnInstantly(true);
         await overlay.settle(away);
-        unawaited(_rememberPageLeft(keep, from));
+        unawaited(_rememberArrival(from: from, picture: keep, forward: true));
         keep = null;
       } else {
         overlay.cover(current);
@@ -273,12 +330,15 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         final previous = await _snapshotReader();
         if (previous == null) return;
         _curlTiming?.mark('shown');
+        keep = previous.clone();
         overlay.curl(
             page: previous,
             under: current,
             grab: grab,
             finger: rolledAtLeftFinger(size, grab));
         await overlay.settle(grab);
+        unawaited(_rememberArrival(from: from, picture: keep, forward: false));
+        keep = null;
       }
     } finally {
       keep?.dispose();
@@ -372,7 +432,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     ui.Image? keep;
     try {
       if (!drag.forward) {
-        final previous = _takePageLeft();
+        final previous = _previousPageImage();
         _curlTiming?.note('cache', previous != null ? 'hit' : 'miss');
         if (previous != null) {
           // Back to the page just left: it is already in hand, so it follows
@@ -390,7 +450,9 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         }
       }
 
-      final current = await _snapshotReader();
+      final kept = _pageImageAt(cfi);
+      _curlTiming?.note('here', kept != null ? 'hit' : 'miss');
+      final current = kept ?? await _snapshotReader();
       if (current == null) {
         final vx = await drag.released.future;
         if (drag.forward ? vx < 0 : vx > 0) await _turnInstantly(drag.forward);
@@ -413,6 +475,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
           return;
         }
         _curlTiming?.mark('shown');
+        keep = previous.clone();
         overlay.curl(
             page: previous, under: current, grab: drag.grab, finger: drag.finger);
         drag.show = overlay.moveFinger;
@@ -433,8 +496,9 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       // hand went the other way, put it back before uncovering it.
       if (!completed) {
         await _turnInstantly(!drag.forward);
-      } else if (keep != null) {
-        unawaited(_rememberPageLeft(keep, from));
+      } else {
+        unawaited(_rememberArrival(
+            from: from, picture: keep, forward: drag.forward));
         keep = null;
       }
     } finally {
@@ -535,8 +599,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   }
 
   void changeTheme(ReadTheme readTheme) {
-    // The kept picture of the page just left no longer looks like it.
-    _forgetPageLeft();
+    // Kept page pictures no longer look like the pages.
+    _forgetPageImages();
     textColor = readTheme.textColor;
     backgroundColor = readTheme.backgroundColor;
 
@@ -552,8 +616,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   }
 
   void changeStyle(BookStyle? bookStyle) {
-    // The kept picture of the page just left no longer looks like it.
-    _forgetPageLeft();
+    // Kept page pictures no longer look like the pages.
+    _forgetPageImages();
     styleTimer?.cancel();
     String bgimgUrl = Prefs().bgimg.getEffectiveUrl(
           isDarkMode: isDarkMode,
@@ -593,8 +657,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   }
 
   void changeBgimgEffect() {
-    // The kept picture of the page just left no longer looks like it.
-    _forgetPageLeft();
+    // Kept page pictures no longer look like the pages.
+    _forgetPageImages();
     if (!mounted) return;
     final bgimg = Prefs().bgimg;
     final bgimgUrl = bgimg.getEffectiveUrl(
@@ -621,8 +685,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   }
 
   void changeFont(FontModel font) {
-    // The kept picture of the page just left no longer looks like it.
-    _forgetPageLeft();
+    // Kept page pictures no longer look like the pages.
+    _forgetPageImages();
     webViewController.evaluateJavascript(source: '''
       changeStyle({
         fontName: '${font.name}',
@@ -632,8 +696,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   }
 
   void changePageTurnStyle(PageTurn pageTurnStyle) {
-    // The kept picture of the page just left no longer looks like it.
-    _forgetPageLeft();
+    // Kept page pictures no longer look like the pages.
+    _forgetPageImages();
     webViewController.evaluateJavascript(source: '''
       changeStyle({
         pageTurnStyle: '${pageTurnStyle.name}',
@@ -648,6 +712,9 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       webViewController.evaluateJavascript(source: "goToCfi('$cfi')");
 
   void addAnnotation(BookNote bookNote) {
+    // Kept page pictures would miss the new highlight.
+    _forgetPageImages();
+    _scheduleSnapshotHere();
     final noteContent =
         (bookNote.content).replaceAll('\n', ' ').replaceAll("'", "\\'");
     webViewController.evaluateJavascript(source: '''
@@ -662,6 +729,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   }
 
   void addBookmark(BookmarkModel bookmark) {
+    _forgetPageImages();
+    _scheduleSnapshotHere();
     webViewController.evaluateJavascript(source: '''
       addAnnotation({
         id: ${bookmark.id},
@@ -679,8 +748,11 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       ''');
   }
 
-  void removeAnnotation(String cfi) =>
-      webViewController.evaluateJavascript(source: "removeAnnotation('$cfi')");
+  void removeAnnotation(String cfi) {
+    _forgetPageImages();
+    _scheduleSnapshotHere();
+    webViewController.evaluateJavascript(source: "removeAnnotation('$cfi')");
+  }
 
   void clearSearch() {
     ref.read(tocSearchProvider.notifier).clear();
@@ -1090,6 +1162,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
           widget.updateParent();
           saveReadingProgress();
           readingPageKey.currentState?.resetAwakeTimer();
+          _scheduleSnapshotHere();
         });
     controller.addJavaScriptHandler(
         handlerName: 'onCurlDrag',
@@ -1408,6 +1481,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   @override
   void dispose() {
     _scrollDebounceTimer?.cancel();
+    _forgetPageImages();
     _animationController?.dispose();
     saveReadingProgress();
     removeOverlay();
