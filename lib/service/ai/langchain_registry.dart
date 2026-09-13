@@ -150,6 +150,7 @@ class LangchainAiRegistry {
                   enabledIds.contains('knowledge_lookup') && hasKnowledgePacks(),
               today: DateTime.now(),
               languageName: _replyLanguageName(),
+              isReading: isReading,
             ))
           : _buildAgentSystemMessage(
               isReading: isReading,
@@ -321,6 +322,7 @@ String localAgentGuidance({
   required DateTime today,
   required String languageName,
   bool canLookUpFacts = false,
+  bool isReading = false,
 }) {
   String two(int n) => n.toString().padLeft(2, '0');
   final date = '${today.year}-${two(today.month)}-${two(today.day)}';
@@ -337,6 +339,12 @@ String localAgentGuidance({
           'article, keeping names and readings exactly as it writes them; if '
           'nothing is found, say the encyclopedia does not cover it.'
       : 'For general questions, answer directly without any tool.';
+  // Asked about a character in the open book, the model went to the
+  // encyclopedia; the book comes first.
+  final bookLine = isReading
+      ? 'A book is open (see Now reading). Names, characters and events are '
+          'searched in that book first.\n'
+      : '';
   return "You are the reading assistant in Anx Reader, running on the reader's "
       'own phone. Today is $date.\n'
       'Reply in $languageName, briefly.\n'
@@ -345,6 +353,7 @@ String localAgentGuidance({
       'answer. Call a tool only when they do not, or when the reader asks you '
       'to change something — organizing the shelf needs real book ids from '
       'those sections.\n'
+      '$bookLine'
       '$factsLine\n'
       'Never invent a title, a date, an id or a note.';
 }

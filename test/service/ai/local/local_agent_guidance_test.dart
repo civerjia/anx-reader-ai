@@ -35,6 +35,20 @@ void main() {
     expect(guidance, isNot(contains('knowledge_lookup')));
   });
 
+  test('with a book open, its names are searched in the book first', () {
+    final reading = localAgentGuidance(
+      today: DateTime(2026, 9, 2),
+      languageName: '简体中文',
+      canLookUpFacts: true,
+      isReading: true,
+    );
+    expect(reading, contains('searched in that book first'));
+    expect(reading.indexOf('that book first'),
+        lessThan(reading.indexOf('knowledge_lookup')));
+    expect(reading.length, lessThan(1000));
+    expect(guidance, isNot(contains('that book first')));
+  });
+
   test('stays a fraction of the full agent guidance', () {
     // The full guidance is about 2,900 characters and measured worse.
     expect(guidance.length, lessThan(900));

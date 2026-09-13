@@ -26,21 +26,30 @@ Future<String?> buildLibraryDigest(WidgetRef ref) async {
   final sections = <String>[];
   final now = DateTime.now();
 
-  sections.add('[Today] ${_date(now)}');
-
+  // The open book goes first. Without its id, asked about a character in it,
+  // the model looked the name up in the encyclopedia, then had to ask which
+  // book was open before it could search the book.
   final reading = ref.read(currentReadingProvider);
   if (reading.isReading && reading.book != null) {
     final book = reading.book!;
     final parts = <String>[
-      '${book.title} — ${book.author}',
+      '#${book.id} ${book.title} — ${book.author}',
       '${(book.readingPercentage * 100).toStringAsFixed(0)}% read',
     ];
     final chapter = reading.chapterTitle?.trim();
     if (chapter != null && chapter.isNotEmpty) {
       parts.add('currently in "$chapter"');
     }
-    sections.add('[Now reading] ${parts.join(' · ')}');
+    final line = '[Now reading] ${parts.join(' · ')}';
+    AnxLog.info('LocalLlm digest: $line');
+    sections.add('$line\n'
+        '  The reader has this book open. "This book", and any character, '
+        'place or event the question names, mean this book: search it with '
+        'book_content_search (bookId ${book.id}), or read the current chapter '
+        'with current_chapter_content.');
   }
+
+  sections.add('[Today] ${_date(now)}');
 
   try {
     final books = await const BooksRepository().searchBooks(limit: 200);
