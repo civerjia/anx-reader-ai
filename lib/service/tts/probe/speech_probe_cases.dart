@@ -8,7 +8,50 @@ import 'package:anx_reader/service/tts/text/speech_text.dart';
 /// before any sound is made: how to say numbers, symbols and formulas, and
 /// which reading a polyphonic character takes. Chinese only: the reader's
 /// narration problems were heard in Chinese books.
-final speechProbeGroups = [..._heard, _rewritten(), _notations];
+final speechProbeGroups = [..._heard, _rewritten(), _notations, _ruleMarks()];
+
+/// The words narration marks by rule, read exactly as narration reads them,
+/// and sentences the rules must leave alone.
+ProbeGroup _ruleMarks() {
+  const sentences = [
+    ('m01', '朝阳照着古代的朝廷。', '朝阳 zhāo'),
+    ('m02', '一轮朝阳升起来了。', '朝阳 zhāo'),
+    ('m03', '这是一个朝阳产业。', '朝阳 zhāo'),
+    ('m04', '他曾经去过曾家。', '曾家 zēng'),
+    ('m05', '他是曾国藩的曾孙。', '曾国藩、曾孙 zēng'),
+    ('m06', '他只好露了一手。', '露 lòu'),
+    ('m07', '他连不露富都不知道。', '露富 lòu'),
+    ('m08', '他很少在公开场合露面。', '露面 lòu'),
+    ('m09', '说多了容易露怯。', '露怯 lòu'),
+    ('m10', '她从小就学女红。', '女红 gōng'),
+    ('m11', '他长出一口气。', '长 cháng'),
+    ('g01', '他住在朝阳区。', '朝阳区 cháo，不该标'),
+    ('g02', '这幅画叫丹凤朝阳。', '丹凤朝阳 cháo，不该标'),
+    ('g03', '向日葵朝阳开放。', '朝阳 cháo，不该标'),
+    ('g04', '他曾家境贫寒。', '曾 céng，不该标'),
+    ('g05', '他不愿抛头露面。', '露面 lù，不该标'),
+    ('g06', '这次共计揭露面积四千平方米。', '揭露 lù，不该标'),
+    ('g07', '这是一支女红军队伍。', '红 hóng，不该标'),
+    ('g08', '树上长出了新芽。', '长 zhǎng，不该标'),
+  ];
+  return ProbeGroup(
+    '规则标注',
+    '朗读时实际用的标注。m 组应该读对，g 组不该被标注、应该照常读对。',
+    [
+      for (final (id, text, expect) in sentences)
+        () {
+          final marks = [
+            for (final m in Polyphones.marks(text))
+              ProbeMark(text[m.start], m.notation, start: m.start),
+          ];
+          final notes = marks.map((m) => '${m.target}=${m.notation}').join(' ');
+          return ProbeCase(id, text,
+              marks.isEmpty ? '没有标注（$expect）' : '标注 $notes（$expect）',
+              marks: marks);
+        }(),
+    ],
+  );
+}
 
 /// Idioms and words with traps, each read as is and with the readings the
 /// bundled lexicon marks, plus how ü has to be written.
