@@ -37,6 +37,20 @@ String? formatToolDefinitions(
           'tags:\n<tool_call>\n{"name": <function-name>, "arguments": '
           '<args-json-object>}\n</tool_call>',
 
+    // MiniCPM5's template writes this after the system prompt (verified
+    // against openbmb/MiniCPM5-2B chat_template.jinja), then expects XML calls.
+    ToolCallFormat.minicpmXml =>
+      '# Tools\n\nYou are provided with function signatures within <tools></tools> '
+          'XML tags:\n<tools>\n${schemas.map(json.encode).join('\n')}\n</tools>\n\n'
+          'Tool usage guidelines:\n'
+          '- You may call zero or more functions. If no function calls are needed, '
+          'just answer normally and do not include any <function ... </function>.\n'
+          '- When calling a function, return an XML object within <function ... '
+          '</function> using:\n'
+          '<function name="function-name"><param name="param-name">param-value</param></function>\n'
+          '- param-value may be multi-line. If it contains <, & or newline characters, '
+          'wrap it in a CDATA block: <param name="param-name"><![CDATA[...multi-line value...]]></param>',
+
     ToolCallFormat.mistral =>
       '[AVAILABLE_TOOLS][${schemas.map(json.encode).join(', ')}][/AVAILABLE_TOOLS]',
 

@@ -93,6 +93,7 @@ class ToolCallParser {
     // Inside an explicit delimiter we already know the model meant to call a
     // tool, so malformed-but-recoverable syntax is worth salvaging. Outside one,
     // leniency would invent calls out of prose.
+    if (format.isXml) return _parseXml(payload);
     if (format.isPythonic) return _parsePythonic(payload, lenient: true);
     return _parseJson(payload);
   }
@@ -106,6 +107,34 @@ class ToolCallParser {
       for (final call in parsed)
         LLMToolCall(id: '', name: call.name, arguments: call.argumentsJson),
     ];
+  }
+
+  /// What follows `<function name="`: `fn"><param name="a">1</param>…`.
+  static List<LLMToolCall> _parseXml(String payload) {
+    final nameEnd = payload.indexOf('"');
+    if (nameEnd <= 0) return const [];
+    final name = payload.substring(0, nameEnd).trim();
+    if (name.isEmpty) return const [];
+    final arguments = <String, dynamic>{};
+    for (final match in RegExp(
+      r'<param(?:eter)? name="([^"]+)">([\s\S]*?)</param(?:eter)?>',
+    ).allMatches(payload)) {
+      final raw = match[2]!.trim();
+      // Values holding <, & or newlines come wrapped in CDATA, as text.
+      if (raw.startsWith('<![CDATA[') && raw.endsWith(']]>')) {
+        arguments[match[1]!] = raw.substring(9, raw.length - 3);
+        continue;
+      }
+      dynamic value = raw;
+      try {
+        final decoded = json.decode(raw);
+        if (decoded is! String) value = decoded;
+      } catch (_) {
+        // Plain text, as most values are.
+      }
+      arguments[match[1]!] = value;
+    }
+    return [LLMToolCall(id: '', name: name, arguments: json.encode(arguments))];
   }
 
   /// Parses a JSON payload that is either one call object or an array of them.

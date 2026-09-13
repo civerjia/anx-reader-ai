@@ -20,6 +20,13 @@ enum ToolCallFormat {
   /// See https://docs.liquid.ai/lfm/key-concepts/tool-use
   lfm2,
 
+  /// OpenBMB MiniCPM5.
+  ///
+  /// `<function name="fn"><param name="a">1</param></function>` — XML with one
+  /// element per argument; a value is taken as JSON when it parses as JSON, as
+  /// text otherwise.
+  minicpmXml,
+
   /// Hermes / Qwen and most ChatML tool-tuned models.
   ///
   /// `<tool_call>{"name": "fn", "arguments": {...}}</tool_call>`, repeated once
@@ -50,6 +57,7 @@ enum ToolCallFormat {
   /// An empty close means the payload runs to the end of the output.
   (String open, String close)? get delimiters => switch (this) {
     lfm2 => ('<|tool_call_start|>', '<|tool_call_end|>'),
+    minicpmXml => ('<function name="', '</function>'),
     hermes => ('<tool_call>', '</tool_call>'),
     mistral => ('[TOOL_CALLS]', ''),
     llama3Pythonic => ('<|python_tag|>', ''),
@@ -61,11 +69,15 @@ enum ToolCallFormat {
   bool get isPythonic =>
       this == lfm2 || this == llama3Pythonic || this == pythonic;
 
+  /// Whether the payload is XML parameter elements.
+  bool get isXml => this == minicpmXml;
+
   /// Formats that announce themselves with an opening delimiter.
   ///
   /// Ordered so longer, more specific openers are tested first.
   static const List<ToolCallFormat> delimited = [
     lfm2,
+    minicpmXml,
     hermes,
     mistral,
     llama3Pythonic,

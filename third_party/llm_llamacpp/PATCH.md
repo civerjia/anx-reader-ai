@@ -77,11 +77,18 @@ the iOS path only:
    The state APIs were already in the bindings, so the ABI fingerprint is
    unchanged.
 
+8. **MiniCPM5 tool calls were not recognised.** MiniCPM5-2B writes
+   `<function name="fn"><param name="a">1</param></function>`, none of the
+   formats the parser knew, so a call reached the chat as markup and no tool
+   ran. It is now a delimited format (`minicpmXml`) with an XML payload parser;
+   the stream handler picks it up from the delimiters like the others.
+
 Patched files: `hook/build.dart`, `lib/src/loader/loader_flutter.dart`,
 `lib/src/inference_isolate_handler.dart`, `lib/src/inference_isolate.dart`,
 `lib/src/embedding_isolate.dart`, `lib/src/inference_token_generator.dart`,
 `lib/src/inference_isolate_messages.dart`, `lib/src/persistent_inference_isolate.dart`,
-`lib/src/llamacpp_chat_repository.dart`, `lib/src/llamacpp_chat_repository_impl.dart`. None of them is
+`lib/src/llamacpp_chat_repository.dart`, `lib/src/llamacpp_chat_repository_impl.dart`,
+`lib/src/tool_calls/tool_call_syntax.dart`, `lib/src/tool_call_parser.dart`. None of them is
 `lib/src/bindings/llama_bindings.dart`, so the ABI fingerprint — and with it the
 prebuilt the build hook downloads — is unchanged.
 
