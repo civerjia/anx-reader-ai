@@ -349,7 +349,9 @@ class Chemistry {
             if (cation.symbol == 'H') {
               return anion.stem.endsWith('化') ? '${anion.stem}氢' : anion.stem;
             }
-            return '${anion.stem}${_cationName(cation.symbol, charge)}';
+            // Two cations on a hydrogen phosphate are named: 磷酸氢二钠.
+            final count = anion.stem == '磷酸氢' && cation.count == 2 ? '二' : '';
+            return '${anion.stem}$count${_cationName(cation.symbol, charge)}';
           }
         }
       }
@@ -495,7 +497,7 @@ class Chemistry {
     'O2': [_Anion(2, '过氧化', '过氧根离子')],
     'OH': [_Anion(1, '氢氧化', '氢氧根离子')],
     'CN': [_Anion(1, '氰化', '氰根离子')],
-    'SCN': [_Anion(1, '硫氰化', '硫氰根离子')],
+    'SCN': [_Anion(1, '硫氰酸', '硫氰酸根离子')],
     'HS': [_Anion(1, '硫氢化', '硫氢根离子')],
     'SO4': [_Anion(2, '硫酸', '硫酸根离子')],
     'HSO4': [_Anion(1, '硫酸氢', '硫酸氢根离子')],
