@@ -66,6 +66,31 @@ class _BookOpenedFolderState extends ConsumerState<BookOpenedFolder> {
     }
   }
 
+  Future<void> _confirmDissolve(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(L10n.of(dialogContext).bookshelfDissolveConfirmTitle),
+        content: Text(L10n.of(dialogContext).bookshelfDissolveConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(L10n.of(dialogContext).commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(
+                foregroundColor: Theme.of(dialogContext).colorScheme.error),
+            child: Text(L10n.of(dialogContext).commonDissolve),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    ref.read(bookListProvider.notifier).dissolveGroup(books);
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -162,13 +187,17 @@ class _BookOpenedFolderState extends ConsumerState<BookOpenedFolder> {
                   ],
                 )),
       ),
+      // Dissolving sat next to Edit and acted on one tap. It now shows only
+      // while editing, at the far side from Cancel, and asks first.
+      actionsAlignment:
+          isEditing ? MainAxisAlignment.spaceBetween : MainAxisAlignment.end,
       actions: [
-        TextButton(
-            onPressed: () {
-              ref.read(bookListProvider.notifier).dissolveGroup(books);
-              Navigator.pop(context);
-            },
-            child: Text(L10n.of(context).commonDissolve)),
+        if (isEditing)
+          TextButton(
+              style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error),
+              onPressed: () => _confirmDissolve(context),
+              child: Text(L10n.of(context).commonDissolve)),
         TextButton(
             onPressed: () {
               isEditing = !isEditing;

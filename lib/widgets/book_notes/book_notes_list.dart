@@ -392,8 +392,44 @@ class BookNotesList extends ConsumerWidget {
           label: L10n.of(context).commonEdit,
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         ),
+        // Deleting was only reachable by long-pressing into selection mode.
+        SlidableAction(
+          onPressed: (_) => _deleteBookNote(context, ref, bookNote),
+          icon: EvaIcons.trash_2,
+          label: L10n.of(context).commonDelete,
+          foregroundColor: Colors.red,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        ),
       ],
     );
+  }
+
+  Future<void> _deleteBookNote(
+      BuildContext context, WidgetRef ref, BookNote bookNote) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        content: Text(L10n.of(dialogContext).notesDeleteOneConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(L10n.of(dialogContext).commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(L10n.of(dialogContext).commonDelete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref
+        .read(bookNotesControllerProvider(book).notifier)
+        .deleteNotes([bookNote]);
+    if (reading && bookNote.cfi.isNotEmpty) {
+      epubPlayerKey.currentState?.removeAnnotation(bookNote.cfi);
+    }
   }
 
   void _editBookNote(BuildContext context, WidgetRef ref, BookNote bookNote) {
