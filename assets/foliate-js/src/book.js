@@ -1528,13 +1528,13 @@ class Reader {
       }
       drag.started = true
       callFlutter('onCurlDrag', {
-        phase: 'start', x: drag.start.x, y: drag.start.y,
+        phase: 'start', t: Date.now(), x: drag.start.x, y: drag.start.y,
         forward,
       })
     }
     // Every move is sent: touchmove already arrives at the display rate, and
     // waiting for an animation frame would leave the curl behind the finger.
-    callFlutter('onCurlDrag', { phase: 'move', ...position })
+    callFlutter('onCurlDrag', { phase: 'move', t: Date.now(), ...position })
     return true
   }
 
@@ -1545,7 +1545,7 @@ class Reader {
     const position = e.touch ? this.#curlPosition(e.touch) : drag.last
     // The paginator measures velocity as screen movement backwards, in px/ms.
     callFlutter('onCurlDrag', {
-      phase: 'end', ...position, vx: -(e.touchState?.vx ?? 0),
+      phase: 'end', t: Date.now(), ...position, vx: -(e.touchState?.vx ?? 0),
     })
     return true
   }

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'dart:async';
 import 'dart:convert';
@@ -48,6 +49,7 @@ import 'package:anx_reader/widgets/reading_page/style_widget.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/material.dart';
 import 'package:anx_reader/widgets/reading_page/page_curl.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -116,6 +118,10 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       ModalRoute.of(context)?.isCurrent ?? false;
 
   final _pageCurlKey = GlobalKey<PageCurlOverlayState>();
+
+  /// Timing of the curl in progress, logged when it ends, so where a turn
+  /// feels slow can be read from the phone's log rather than guessed.
+  _CurlTiming? _curlTiming;
   Future<void> _pageCurlQueue = Future.value();
   int _pageCurlRunning = 0;
   _CurlDrag? _curlDrag;
@@ -145,6 +151,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   }
 
   Future<void> _turnInstantly(bool forward) async {
+    final watch = Stopwatch()..start();
     await _curlStep(
       webViewController.callAsyncJavaScript(
           functionBody:
@@ -156,6 +163,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       1500,
       'turning the reader',
     );
+    _curlTiming?.add('turn', watch.elapsedMilliseconds);
   }
 
   void _forgetPageLeft() {
@@ -195,16 +203,29 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   /// turned the whole way. Turns asked for while one is running follow it.
   void _curlTurn({required bool forward}) {
     _pageCurlQueue = _pageCurlQueue
-        .then((_) => _runCurl(() => _playCurl(forward)))
+        .then((_) => _runCurl(() => _playCurl(forward),
+            kind: 'tap', forward: forward))
         .catchError((Object e) => AnxLog.info('Page curl: turn failed: $e'));
   }
 
-  Future<void> _runCurl(Future<void> Function() body) async {
+  Future<void> _runCurl(Future<void> Function() body,
+      {required String kind, required bool forward}) async {
     _pageCurlRunning++;
+    final timing = _CurlTiming(kind: kind, forward: forward);
+    _curlTiming = timing;
+    void onFrames(List<ui.FrameTiming> frames) => timing.frames.addAll(frames);
+    SchedulerBinding.instance.addTimingsCallback(onFrames);
     try {
       await body();
     } finally {
       _pageCurlRunning--;
+      timing.mark('done');
+      if (identical(_curlTiming, timing)) _curlTiming = null;
+      // Frame timings arrive in batches; give the last one a moment.
+      Future<void>.delayed(const Duration(milliseconds: 250), () {
+        SchedulerBinding.instance.removeTimingsCallback(onFrames);
+        AnxLog.info(timing.summary());
+      });
     }
   }
 
@@ -217,10 +238,12 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
 
     if (!forward) {
       final previous = _takePageLeft();
+      _curlTiming?.note('cache', previous != null ? 'hit' : 'miss');
       if (previous != null) {
         try {
           overlay.curl(
               page: previous, grab: grab, finger: rolledAtLeftFinger(size, grab));
+          _curlTiming?.mark('shown');
           await overlay.settle(grab);
           await _turnInstantly(false);
         } finally {
@@ -238,15 +261,18 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       if (forward) {
         keep = current.clone();
         overlay.curl(page: current, grab: grab, finger: grab);
+        _curlTiming?.mark('shown');
         await _turnInstantly(true);
         await overlay.settle(away);
         unawaited(_rememberPageLeft(keep, from));
         keep = null;
       } else {
         overlay.cover(current);
+        _curlTiming?.mark('covered');
         await _turnInstantly(false);
         final previous = await _snapshotReader();
         if (previous == null) return;
+        _curlTiming?.mark('shown');
         overlay.curl(
             page: previous,
             under: current,
@@ -281,6 +307,10 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       (event['y'] as num?)?.toDouble() ?? 0,
     );
     final drag = _curlDrag;
+    final sentAt = (event['t'] as num?)?.toInt();
+    if (sentAt != null) {
+      _curlTiming?.bridge(DateTime.now().millisecondsSinceEpoch - sentAt);
+    }
     switch (phase) {
       case 'start':
         final overlay = _pageCurlKey.currentState;
@@ -297,7 +327,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         _curlDrag = started;
         _armCurlWatchdog(started);
         _pageCurlQueue = _pageCurlQueue
-            .then((_) => _runCurl(() => _followCurlDrag(started)))
+            .then((_) => _runCurl(() => _followCurlDrag(started),
+                kind: 'drag', forward: forward))
             .catchError((Object e) => AnxLog.info('Page curl: drag failed: $e'))
             .whenComplete(() {
           if (identical(_curlDrag, started)) _curlDrag = null;
@@ -342,11 +373,13 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     try {
       if (!drag.forward) {
         final previous = _takePageLeft();
+        _curlTiming?.note('cache', previous != null ? 'hit' : 'miss');
         if (previous != null) {
           // Back to the page just left: it is already in hand, so it follows
           // the finger at once over the live page, and the reader turns back
           // only if the page is laid down.
           overlay.curl(page: previous, grab: drag.grab, finger: drag.finger);
+          _curlTiming?.mark('shown');
           drag.show = overlay.moveFinger;
           final vx = await drag.released.future;
           final laidDown = _laysDown(vx, drag);
@@ -367,22 +400,26 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       if (drag.forward) {
         keep = current.clone();
         overlay.curl(page: current, grab: drag.grab, finger: drag.finger);
+        _curlTiming?.mark('shown');
         drag.show = overlay.moveFinger;
         await _turnInstantly(true);
       } else {
         overlay.cover(current);
+        _curlTiming?.mark('covered');
         await _turnInstantly(false);
         final previous = await _snapshotReader();
         if (previous == null) {
           await drag.released.future;
           return;
         }
+        _curlTiming?.mark('shown');
         overlay.curl(
             page: previous, under: current, grab: drag.grab, finger: drag.finger);
         drag.show = overlay.moveFinger;
       }
 
       final vx = await drag.released.future;
+      _curlTiming?.mark('released');
       final bool completed;
       if (drag.forward) {
         completed = _turnsAway(vx, drag.finger, size);
@@ -408,6 +445,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
 
   Future<ui.Image?> _snapshotReader() async {
     final watch = Stopwatch()..start();
+    final timing = _curlTiming;
     final bytes = await _curlStep(
       webViewController.takeScreenshot(
         screenshotConfiguration: ScreenshotConfiguration(
@@ -420,9 +458,14 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       'snapshot',
     );
     if (bytes == null) return null;
+    final captured = watch.elapsedMilliseconds;
     final codec = await ui.instantiateImageCodec(bytes);
     final frame = await codec.getNextFrame();
     codec.dispose();
+    timing
+      ?..add('capture', captured)
+      ..add('decode', watch.elapsedMilliseconds - captured)
+      ..note('jpeg', '${bytes.length ~/ 1024}KB ${frame.image.width}x${frame.image.height}');
     if (watch.elapsedMilliseconds > 150) {
       AnxLog.info('Page curl: snapshot took ${watch.elapsedMilliseconds} ms');
     }
@@ -1711,4 +1754,45 @@ class _CurlDrag {
 
   /// Completes with the horizontal velocity, in px per ms, when the finger lifts.
   final Completer<double> released = Completer<double>();
+}
+
+/// What one curl spent its time on. Milliseconds from its start.
+class _CurlTiming {
+  _CurlTiming({required this.kind, required this.forward});
+
+  final String kind;
+  final bool forward;
+  final _watch = Stopwatch()..start();
+  final _marks = <String, int>{};
+  final _durations = <String, int>{};
+  final _notes = <String, String>{};
+  final frames = <ui.FrameTiming>[];
+  final _bridge = <int>[];
+
+  void mark(String name) => _marks.putIfAbsent(name, () => _watch.elapsedMilliseconds);
+  void add(String name, int ms) => _durations[name] = (_durations[name] ?? 0) + ms;
+  void note(String name, String value) => _notes[name] = value;
+  void bridge(int ms) => _bridge.add(ms);
+
+  String summary() {
+    final spans = [for (final f in frames) f.totalSpan.inMicroseconds / 1000];
+    // 120 Hz on a ProMotion phone leaves 8.3 ms a frame; 60 Hz leaves 16.7.
+    final over8 = spans.where((ms) => ms > 8.4).length;
+    final over16 = spans.where((ms) => ms > 16.8).length;
+    final worst = spans.isEmpty ? 0 : spans.reduce(math.max);
+    final build = frames.isEmpty
+        ? 0
+        : frames.map((f) => f.buildDuration.inMicroseconds).reduce(math.max) / 1000;
+    final raster = frames.isEmpty
+        ? 0
+        : frames.map((f) => f.rasterDuration.inMicroseconds).reduce(math.max) / 1000;
+    final bridge = _bridge.isEmpty
+        ? '-'
+        : 'avg ${(_bridge.reduce((a, b) => a + b) / _bridge.length).round()} max ${_bridge.reduce(math.max)} ms over ${_bridge.length}';
+    return 'Page curl timing: $kind ${forward ? 'forward' : 'back'} '
+        'marks=$_marks durations=$_durations notes=$_notes '
+        'frames=${frames.length} over8ms=$over8 over16ms=$over16 '
+        'worst=${worst.toStringAsFixed(1)}ms maxBuild=${build.toStringAsFixed(1)}ms '
+        'maxRaster=${raster.toStringAsFixed(1)}ms bridge=$bridge';
+  }
 }
