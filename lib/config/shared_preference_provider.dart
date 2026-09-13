@@ -1,3 +1,4 @@
+import 'package:anx_reader/service/tts/text/pronunciation_fixes.dart';
 import 'package:anx_reader/service/tts/tts_resume.dart';
 import 'package:anx_reader/models/opds_catalog.dart';
 import 'dart:convert';
@@ -1718,6 +1719,30 @@ class Prefs extends ChangeNotifier {
       modes[bookIdStr] = mode;
     }
     bookTranslationModes = modes;
+  }
+
+  /// Corrections a listener made to words the system voice misread.
+  List<PronunciationFix> get pronunciationFixes {
+    final raw = prefs.getString('pronunciationFixes');
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final fixes = <PronunciationFix>[];
+      for (final entry in jsonDecode(raw) as List<dynamic>) {
+        if (entry is! Map) continue;
+        final fix = PronunciationFix.fromMap(Map<String, dynamic>.from(entry));
+        if (fix != null) fixes.add(fix);
+      }
+      return fixes;
+    } catch (e) {
+      AnxLog.warning('Prefs: Failed to decode pronunciation fixes. $e');
+      return const [];
+    }
+  }
+
+  set pronunciationFixes(List<PronunciationFix> fixes) {
+    prefs.setString(
+        'pronunciationFixes', jsonEncode([for (final f in fixes) f.toMap()]));
+    notifyListeners();
   }
 
   /// Whether the system voice is given dictionary readings for polyphonic

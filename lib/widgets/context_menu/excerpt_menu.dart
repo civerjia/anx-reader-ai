@@ -7,12 +7,14 @@ import 'package:anx_reader/main.dart';
 import 'package:anx_reader/models/book_note.dart';
 import 'package:anx_reader/page/reading_page.dart';
 import 'package:anx_reader/service/search/search_engine.dart';
+import 'package:anx_reader/service/tts/probe/speech_probe.dart';
 import 'package:anx_reader/service/tts/tts_handler.dart';
 import 'package:anx_reader/utils/env_var.dart';
 import 'package:anx_reader/utils/toast/common.dart';
 import 'package:anx_reader/widgets/book_share/excerpt_share_service.dart';
 import 'package:anx_reader/widgets/common/axis_flex.dart';
 import 'package:anx_reader/widgets/icon_and_text.dart';
+import 'package:anx_reader/widgets/tts/pronunciation_fix_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iconsx_plus/iconsx_plus.dart';
@@ -341,6 +343,22 @@ class ExcerptMenuState extends State<ExcerptMenu> {
             icon: const Icon(Icons.headphones),
             text: L10n.of(context).contextMenuNarrate,
           ),
+          // fix how narration reads the selection
+          if (SpeechProbe.isAvailable &&
+              PronunciationFixSheet.canFix(widget.annoContent))
+            IconAndText(
+              compact: true,
+              onTap: () {
+                final rootContext = navigatorKey.currentContext;
+                final word = widget.annoContent;
+                widget.onClose();
+                if (rootContext != null) {
+                  PronunciationFixSheet.show(rootContext, word);
+                }
+              },
+              icon: const Icon(Icons.record_voice_over_outlined),
+              text: L10n.of(context).contextMenuFixPronunciation,
+            ),
           // edit note
           if (!widget.footnote)
             IconAndText(

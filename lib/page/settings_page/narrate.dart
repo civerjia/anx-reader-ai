@@ -1,5 +1,6 @@
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/l10n/generated/L10n.dart';
+import 'package:anx_reader/page/settings_page/pronunciation_fixes_page.dart';
 import 'package:anx_reader/page/settings_page/speech_probe_page.dart';
 import 'package:anx_reader/providers/tts_providers.dart';
 import 'package:anx_reader/service/tts/probe/speech_probe.dart';
@@ -434,6 +435,16 @@ class _NarrateSettingsState extends ConsumerState<NarrateSettings>
             CustomSettingsTile(child: _buildServiceSelection(ttsServiceId)),
             if (ttsServiceId != 'system')
               CustomSettingsTile(child: _buildConfigSection(ttsServiceId)),
+            if (ttsServiceId == 'system' && SpeechProbe.isAvailable)
+              SettingsTile.navigation(
+                leading: const Icon(Icons.spellcheck),
+                title: Text(L10n.of(context).settingsNarratePronunciationFixes),
+                description: Text(
+                    L10n.of(context).settingsNarratePronunciationFixesDescription),
+                onPressed: (_) => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PronunciationFixesPage()),
+                ),
+              ),
             if (ttsServiceId == 'system' && SpeechProbe.isAvailable)
               SettingsTile.switchTile(
                 leading: const Icon(Icons.menu_book_outlined),

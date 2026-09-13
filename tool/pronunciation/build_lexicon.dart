@@ -19,6 +19,11 @@
 // right on every one they had, where CC-CEDICT and mapull/chinese-dictionary
 // were each wrong on four.
 //
+// Also writes chars.txt next to the lexicon: every CJK character with its
+// readings and how many lexicon words use it, for picking a reading and a
+// homophone when a listener corrects one. Each reading carries the number
+// of listed words that read the character that way: 露\tlu4:150,lou4:27\t177.
+//
 // Output, one word per line: the word alone when nothing in it needs a mark
 // (kept so segmentation sees it), or the word, a tab and one reading per
 // character, `_` for characters left to the voice. Readings are pinyin with
@@ -354,9 +359,30 @@ void main(List<String> args) {
       marked++;
     }
   }
-  File(args[4])
+  final output = File(args[4])
     ..parent.createSync(recursive: true)
     ..writeAsStringSync(buffer.toString());
+
+  final uses = <String, int>{};
+  for (final word in readings.keys) {
+    for (final char in word.split('')) {
+      uses[char] = (uses[char] ?? 0) + 1;
+    }
+  }
+  final chars = StringBuffer();
+  final sortedChars = charReadings.keys.where((c) {
+    final code = c.codeUnitAt(0);
+    return c.length == 1 && code >= 0x4E00 && code <= 0x9FFF;
+  }).toList()
+    ..sort();
+  for (final char in sortedChars) {
+    final set = charReadings[char]!;
+    if (set.isEmpty) continue;
+    final byReading = counts[char] ?? const <String, int>{};
+    chars.writeln('$char\t${set.map((r) => '$r:${byReading[r] ?? 0}').join(',')}'
+        '\t${uses[char] ?? 0}');
+  }
+  File('${output.parent.path}/chars.txt').writeAsStringSync(chars.toString());
   stdout.writeln('$invalid readings dropped as not the character\'s, '
       '${contextDependent.length} context-dependent words unmarked');
   stdout.writeln('${lines.length} words, $marked with marks, '

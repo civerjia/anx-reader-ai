@@ -6,6 +6,7 @@ import 'package:anx_reader/page/reading_page.dart';
 import 'package:anx_reader/service/tts/base_tts.dart';
 import 'package:anx_reader/service/tts/text/chemistry.dart';
 import 'package:anx_reader/service/tts/text/polyphones.dart';
+import 'package:anx_reader/service/tts/text/pronunciation_fixes.dart';
 import 'package:anx_reader/service/tts/text/pronunciation_lexicon.dart';
 import 'package:anx_reader/service/tts/text/speech_text.dart';
 import 'package:anx_reader/service/tts/tts_skip.dart';
@@ -236,15 +237,23 @@ class SystemTts extends BaseTts {
   /// What the voice is given: the sentence with formulas, powers of ten and
   /// the like rewritten. The sentence itself stays as it is, since
   /// highlighting and resuming find it in the book.
-  String _spoken(String text) =>
-      SpeechText.normalize(text, formulas: FormulaReading.names);
+  String _spoken(String text) => PronunciationFixes.rewrite(
+      SpeechText.normalize(text, formulas: FormulaReading.names),
+      Prefs().pronunciationFixes);
 
   /// Readings for polyphonic characters of [text], in the form the patched
   /// flutter_tts passes to AVSpeechSynthesizer: the words the voice was heard
   /// misreading, then the dictionary's when that setting is on.
   List<Map<String, Object>> _pronunciations(String text) {
     if (!isIOS) return const [];
-    final marks = {for (final m in Polyphones.marks(text)) m.start: m.notation};
+    // The listener's own corrections come first, then the built-in rules.
+    final marks = {
+      for (final m in PronunciationFixes.marks(text, Prefs().pronunciationFixes))
+        m.start: m.notation,
+    };
+    for (final m in Polyphones.marks(text)) {
+      marks.putIfAbsent(m.start, () => m.notation);
+    }
     if (Prefs().ttsPronunciationLexicon) {
       final lexicon = PronunciationLexicon.loaded;
       if (lexicon == null) {
