@@ -51,10 +51,14 @@ void main() {
       expect(marks('他是曾国藩的曾孙'), {'曾2': 'zeng1', '曾6': 'zeng1'});
       expect(marks('身份暴露了，他只好露了一手。'), {'露9': 'lou4'});
       expect(marks('他很少露面'), {'露3': 'lou4'});
-      expect(marks('他连不露富都不知道'), {'露3': 'lou4'});
+      expect(marks('他连不露富都不知道'), isEmpty);
+      expect(symbols('他连不露富都不知道'), '他连不漏富都不知道');
+      expect(symbols('这是揭露富豪的报道'), '这是揭露富豪的报道');
       expect(marks('多说露怯'), {'露2': 'lou4'});
       expect(marks('他露了两手'), {'露1': 'lou4'});
-      expect(marks('她从小就学女红。'), {'红6': 'gong1'});
+      expect(marks('她从小就学女红。'), isEmpty);
+      expect(symbols('她从小就学女红。'), '她从小就学女工。');
+      expect(symbols('这是一支女红军队伍'), '这是一支女红军队伍');
       expect(marks('他长出一口气。'), {'长1': 'chang2'});
       for (final text in const [
         '他住在朝阳区', '李朝阳著', '丹凤朝阳', '向日葵朝阳开放', '一株朝阳花',

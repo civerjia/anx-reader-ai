@@ -1,5 +1,6 @@
 import 'package:anx_reader/service/tts/text/chemistry.dart';
 import 'package:anx_reader/service/tts/text/chinese_number.dart';
+import 'package:anx_reader/service/tts/text/polyphones.dart';
 
 /// Rewrites Chinese text before a system voice reads it, for what the voice
 /// was heard to get wrong: powers of ten, per-units, "No.", and chemical
@@ -58,6 +59,7 @@ class SpeechText {
     result = result.replaceAllMapped(_numberSign, (m) => '第${m[1]}');
     result = result.replaceAllMapped(
         _count, (m) => chineseCount(int.parse(m[1]!)));
+    result = Polyphones.rewrite(result);
     return Chemistry.rewrite(result, formulas);
   }
 

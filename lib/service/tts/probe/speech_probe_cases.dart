@@ -40,13 +40,17 @@ ProbeGroup _ruleMarks() {
     [
       for (final (id, text, expect) in sentences)
         () {
+          final spoken = SpeechText.normalize(text, formulas: FormulaReading.names);
           final marks = [
-            for (final m in Polyphones.marks(text))
-              ProbeMark(text[m.start], m.notation, start: m.start),
+            for (final m in Polyphones.marks(spoken))
+              ProbeMark(spoken[m.start], m.notation, start: m.start),
           ];
-          final notes = marks.map((m) => '${m.target}=${m.notation}').join(' ');
-          return ProbeCase(id, text,
-              marks.isEmpty ? '没有标注（$expect）' : '标注 $notes（$expect）',
+          final notes = [
+            if (spoken != text) '读作 $spoken',
+            if (marks.isNotEmpty) '标注 ${marks.map((m) => '${m.target}=${m.notation}').join(' ')}',
+          ];
+          return ProbeCase(id, spoken,
+              notes.isEmpty ? '没有改动（$expect）' : '${notes.join(' · ')}（$expect）',
               marks: marks);
         }(),
     ],
