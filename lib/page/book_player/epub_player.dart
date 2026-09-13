@@ -136,7 +136,6 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   DateTime? _fingerLiftedAt;
   Offset? _fingerLiftedWhere;
   double _fingerLiftVx = 0;
-  Timer? _fingerLiftTimer;
 
   /// Taps waiting behind a turn in progress; one is kept, more are dropped, so
   /// a few quick taps do not run on page after page.
@@ -451,8 +450,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         if (_fingerPointer == null &&
             lifted != null &&
             DateTime.now().difference(lifted).inMilliseconds < 1000) {
-          _releaseIfReaderSilent(
-              started, _fingerLiftedWhere ?? point, _fingerLiftVx);
+          _letGo(started, _fingerLiftedWhere ?? point, _fingerLiftVx);
         }
         _pageCurlQueue = _pageCurlQueue
             .then((_) => _runCurl(() => _followCurlDrag(started),
@@ -463,15 +461,13 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         });
       case 'move':
         if (drag == null || drag.followingNatively) return;
-        drag.readerEventAt = DateTime.now();
         final shown = drag.follow(point);
         drag.show?.call(shown);
         _armCurlWatchdog(drag);
       case 'end':
         if (drag == null) return;
         _curlDragWatchdog?.cancel();
-        _fingerLiftTimer?.cancel();
-        if (!drag.followingNatively) {
+            if (!drag.followingNatively) {
           final shown = drag.follow(point);
           drag.show?.call(shown);
         }
@@ -495,16 +491,10 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     _finger?.addPosition(event.timeStamp, event.localPosition);
     final drag = _curlDrag;
     if (drag == null || drag.released.isCompleted) return;
-    if (!drag.followingNatively) {
-      // Reader moves normally arrive a few ms behind these; only a reader that
-      // has gone quiet while the finger moves is not sending them any more.
-      if (DateTime.now().difference(drag.readerEventAt).inMilliseconds < 150) {
-        return;
-      }
-      drag.followingNatively = true;
-      AnxLog.info('Page curl: the reader stopped sending the drag; '
-          'following the finger here');
-    }
+    // Once the reader has started a drag, Flutter's own pointer drives it: the
+    // reader's moves arrive later, and stop altogether when a turn loads the
+    // next chapter under the finger. Waiting to notice that froze the page.
+    drag.followingNatively = true;
     drag.show?.call(drag.follow(event.localPosition));
   }
 
@@ -519,23 +509,19 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         : 0;
     final drag = _curlDrag;
     if (drag != null && !drag.released.isCompleted) {
-      _releaseIfReaderSilent(drag, event.localPosition, _fingerLiftVx);
+      _letGo(drag, event.localPosition, _fingerLiftVx);
     }
   }
 
-  /// The finger is off the glass: if the reader's end does not follow shortly,
-  /// it is not coming, and the page must not wait for the 4 s watchdog.
-  void _releaseIfReaderSilent(_CurlDrag drag, Offset at, double vx) {
-    _fingerLiftTimer?.cancel();
-    _fingerLiftTimer = Timer(const Duration(milliseconds: 200), () {
-      if (!identical(_curlDrag, drag) || drag.released.isCompleted) return;
-      AnxLog.info('Page curl: finger lifted but the reader sent no end; '
-          'letting go here');
-      _curlDragWatchdog?.cancel();
-      drag.show?.call(drag.follow(at));
-      drag.released.complete(vx);
-      _armCurlRescue(drag);
-    });
+  /// The finger is off the glass: the page goes at once, without waiting for
+  /// the reader's end, which lags and after a chapter change never comes.
+  void _letGo(_CurlDrag drag, Offset at, double vx) {
+    if (drag.released.isCompleted) return;
+    _curlDragWatchdog?.cancel();
+    drag.followingNatively = true;
+    drag.show?.call(drag.follow(at));
+    drag.released.complete(vx);
+    _armCurlRescue(drag);
   }
 
   /// Turning back: a flick to the right, or a page more than half unrolled,
@@ -1614,7 +1600,6 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     _scrollDebounceTimer?.cancel();
     _curlDragWatchdog?.cancel();
     _curlRescueTimer?.cancel();
-    _fingerLiftTimer?.cancel();
     _forgetPageImages();
     _animationController?.dispose();
     saveReadingProgress();
@@ -1966,10 +1951,7 @@ class _CurlDrag {
     return finger = mapped.finger;
   }
 
-  /// When the reader last sent a move for this drag.
-  DateTime readerEventAt = DateTime.now();
-
-  /// The reader stopped sending moves; Flutter's own pointer events drive it.
+  /// Flutter's own pointer events drive the drag; the reader's are ignored.
   bool followingNatively = false;
 
   /// Where finger moves go once the curl is on screen.
