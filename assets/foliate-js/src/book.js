@@ -1365,6 +1365,8 @@ class Reader {
   }
 
   #onClickView({ detail: { x, y } }) {
+    if (Date.now() - this.#curlDragEndedAt < 500) return
+
     const selection = this.#doc?.getSelection?.()
     if (selection && getSelectionRange(selection)) {
       return
@@ -1486,6 +1488,8 @@ class Reader {
   // not scroll; a horizontal drag is streamed to Flutter in page coordinates so
   // the curl can follow the finger.
   #curlDrag = null
+  // iOS can still fire a click for a short drag; that click turned a second page.
+  #curlDragEndedAt = 0
 
   #curlPosition = (touch) => {
     const doc = touch?.target?.ownerDocument ?? document
@@ -1545,6 +1549,7 @@ class Reader {
     const drag = this.#curlDrag
     this.#curlDrag = null
     if (!drag?.started) return false
+    this.#curlDragEndedAt = Date.now()
     const position = e.touch ? this.#curlPosition(e.touch) : drag.last
     // The paginator measures velocity as screen movement backwards, in px/ms.
     callFlutter('onCurlDrag', {
