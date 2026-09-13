@@ -95,7 +95,12 @@ class KnowledgeLookupTool
     }
     return {
       'found': false,
-      'note': 'No article has exactly this title.',
+      // Told only that the title missed, the small model went on to search
+      // the reader's bookshelf for a plant and answered about the shelf.
+      'note': 'The offline encyclopedia has no article with this title. Try '
+          'the full or scientific name once; if that also finds nothing, tell '
+          'the reader the encyclopedia does not cover it. Do not guess, and do '
+          "not look for it in the reader's books.",
       if (result.suggestions.isNotEmpty) 'similar_titles': result.suggestions,
     };
   }

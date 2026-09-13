@@ -28,6 +28,7 @@ void main() {
       canLookUpFacts: true,
     );
     expect(withLookup, contains('knowledge_lookup'));
+    expect(withLookup, contains('exactly as it writes them'));
     expect(withLookup, isNot(contains('without any tool')));
     expect(withLookup, contains('Never invent'));
     expect(withLookup.length, lessThan(900));

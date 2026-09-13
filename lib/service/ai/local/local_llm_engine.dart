@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:anx_reader/service/ai/local/empty_think_filter.dart';
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/service/ai/local/local_llm_models.dart';
 import 'package:anx_reader/utils/log/common.dart';
@@ -145,6 +146,9 @@ class LocalLlmEngine {
             maxTokens: maxTokens,
           ),
         );
+        // With thinking off the model still opens every reply with an empty
+        // <think></think>, which the chat showed and fed back as history.
+        final thinkFilter = EmptyThinkFilter();
         await for (final chunk in stream) {
           final message = chunk.message;
           if (chunk.evalCount != null) tokens = chunk.evalCount!;
@@ -155,7 +159,8 @@ class LocalLlmEngine {
             deadline.cancel();
             pieces++;
             if (out.isClosed) break;
-            out.add(LocalLlmText(piece));
+            final visible = thinkFilter.add(piece);
+            if (visible.isNotEmpty) out.add(LocalLlmText(visible));
           }
 
           final calls = message.toolCalls;
@@ -167,6 +172,8 @@ class LocalLlmEngine {
             out.add(LocalLlmToolCalls(calls));
           }
         }
+        final held = thinkFilter.close();
+        if (held.isNotEmpty && !out.isClosed) out.add(LocalLlmText(held));
         final seconds = DateTime.now().difference(started).inMilliseconds / 1000;
         final generated = tokens > 0 ? tokens : pieces;
         final capped = tokens >= maxTokens ? ' — hit the $maxTokens token cap' : '';

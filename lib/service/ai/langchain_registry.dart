@@ -328,9 +328,12 @@ String localAgentGuidance({
   final factsLine = canLookUpFacts
       // A small model answering from memory invented a plant's family, genus
       // and origin; with an encyclopedia on the phone it checks.
+      // Given 阿房（Ēpáng）宫 it still answered "ài", so names and readings
+      // are to be kept as the article writes them.
       ? 'For facts about a name, species, place, event or term, call '
           'knowledge_lookup with its title first and answer from the '
-          'article; if nothing is found, say you are not sure.'
+          'article, keeping names and readings exactly as it writes them; if '
+          'nothing is found, say the encyclopedia does not cover it.'
       : 'For general questions, answer directly without any tool.';
   return "You are the reading assistant in Anx Reader, running on the reader's "
       'own phone. Today is $date.\n'
