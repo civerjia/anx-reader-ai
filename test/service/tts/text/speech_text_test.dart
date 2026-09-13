@@ -44,6 +44,7 @@ void main() {
       expect(symbols('他曾家境贫寒'), '他曾家境贫寒');
       expect(symbols('身份暴露了，他只好露了一手。'), '身份暴露了，他只好漏了一手。');
       expect(symbols('他很少露面'), '他很少漏面');
+      expect(symbols('不愿抛头露面'), '不愿抛头露面');
     });
 
     test('No.', () {
