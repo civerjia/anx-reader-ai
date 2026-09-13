@@ -69,6 +69,18 @@ void main() {
       });
     }
 
+    for (final text in const [
+      '他打的是一只野兔。', '这是物质的基础。', '他点着头说好。', '他吸着烟不说话。',
+      '太阳慢慢落下山去。', '他给家里打了一通电话。', '众人中只有他没来。',
+      '衣服放在太阳下暴晒。', '他长出一口气。', '这座城市大都是新楼。',
+    ]) {
+      test('no mark in $text', () => expect(marked(lexicon, text), isEmpty));
+    }
+
+    test('no reading a character does not have', () {
+      expect(marked(lexicon, '新技术很快取而代之。').values, isNot(contains('e2')));
+    });
+
     test('common readings and tone sandhi are left to the voice', () {
       expect(marked(lexicon, '有人在行走'), isEmpty);
       expect(marked(lexicon, '两个人一模一样。').keys, ['模4']);

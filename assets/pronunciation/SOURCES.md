@@ -10,8 +10,11 @@
 3. **Word readings** — `pinyin.txt` of phrase-pinyin-data
    (https://github.com/mozillazg/phrase-pinyin-data), reviewed list including
    manual corrections.
+4. **Character readings** — `pinyin.txt` of pinyin-data
+   (https://github.com/mozillazg/pinyin-data), used only to drop readings a
+   character does not have.
 
-phrase-pinyin-data is distributed under the MIT License:
+phrase-pinyin-data and pinyin-data (same author) are distributed under the MIT License:
 
 ```
 MIT License

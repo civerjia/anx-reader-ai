@@ -46,6 +46,69 @@ ProbeGroup lexiconProbeGroup(PronunciationLexicon lexicon) {
       '每句先听原样，再听词典标注。最后四句测 ü 的写法。', cases);
 }
 
+/// Sentences written around words the lexicon marks in real books: first
+/// rarer readings the voice may miss, then words whose marks were dropped
+/// because books use them another way, to hear that nothing is forced.
+ProbeGroup lexiconSampleGroup(PronunciationLexicon lexicon) {
+  const sentences = [
+    ('s01', '这些钥匙他挨个试了一遍。', '挨 āi'),
+    ('s02', '老人佝偻着背慢慢走。', '佝偻 gōu lóu'),
+    ('s03', '这不过是个噱头。', '噱 xué'),
+    ('s04', '他慢慢咀嚼着干粮。', '咀嚼 jǔ jué'),
+    ('s05', '大家都随声附和。', '和 hè'),
+    ('s06', '别连累了家里人。', '累 lěi'),
+    ('s07', '他强迫自己早起。', '强 qiǎng'),
+    ('s08', '你别想哄骗我。', '哄 hǒng'),
+    ('s09', '母亲把孩子搂抱在怀里。', '搂 lǒu'),
+    ('s10', '浓雾笼罩着整个山谷。', '笼 lǒng'),
+    ('s11', '一闻到这股味道就恶心。', '恶 ě'),
+    ('s12', '火势迅速蔓延开来。', '蔓 màn'),
+    ('s13', '司机正在倒车入库。', '倒 dào'),
+    ('s14', '门口有士兵站岗。', '岗 gǎng'),
+    ('s15', '他们几个在划拳喝酒。', '划 huá'),
+    ('s16', '他在戏里演一个小角色。', '角 jué'),
+    ('s17', '这件苦差事没人愿意干。', '差 chāi'),
+    ('s18', '他不过是个名不见经传的小人物。', '传 zhuàn'),
+    ('s19', '午后屋子里十分闷热。', '闷 mēn'),
+    ('s20', '镇上有好几家小作坊。', '作 zuō'),
+    ('s21', '他四处游说各国君主。', '说 shuì'),
+    ('s22', '这位老先生道行很深。', '行 héng'),
+    ('s23', '她从小就学女红。', '红 gōng'),
+    ('s24', '左右两边要匀称。', '称 chèn'),
+    ('s25', '他住在学校宿舍。', '宿 sù'),
+    ('s26', '他穿着一身朴素的衣服。', '朴 pǔ'),
+    ('s27', '他拼命挣扎着要起来。', '挣扎 zhēng zhá'),
+    ('s28', '远处传来阵阵号角。', '号 hào'),
+    ('s29', '他在东莞一家工厂上班。', '莞 guǎn'),
+    ('s30', '他长着一副好相貌。', '相 xiàng'),
+    ('x01', '他打的是一只野兔。', '打的 dǎ de，不该标'),
+    ('x02', '这是物质的基础。', '质的 zhì de，不该标'),
+    ('x03', '他点着头说好。', '点着 diǎn zhe，不该标'),
+    ('x04', '他吸着烟不说话。', '吸着 xī zhe，不该标'),
+    ('x05', '太阳慢慢落下山去。', '落下 luò xià，不该标'),
+    ('x06', '他给家里打了一通电话。', '一通 yì tōng，不该标'),
+    ('x07', '众人中只有他没来。', '人中 rén zhōng，不该标'),
+    ('x08', '衣服放在太阳下暴晒。', '暴晒 bào shài，不该标'),
+    ('x09', '新技术很快取而代之。', '而 ér，不该标错'),
+    ('x10', '他长出一口气。', '长出 cháng chū，不该标'),
+    ('x11', '这座城市大都是新楼。', '大都 dà dōu，不该标'),
+    ('x12', '他在旁边睡着了。', '睡着 shuì zháo'),
+  ];
+  final cases = <ProbeCase>[];
+  for (final (id, text, expect) in sentences) {
+    final marks = lexicon.marks(text);
+    final notes = marks.map((m) => '${text[m.start]}=${m.notation}').join(' ');
+    cases.add(ProbeCase(id, text, '原样，应读 $expect'));
+    cases.add(ProbeCase('$id-dict', text,
+        marks.isEmpty ? '词典没有标注（$expect）' : '词典标注 $notes（$expect）',
+        marks: [
+          for (final m in marks) ProbeMark(text[m.start], m.notation, start: m.start),
+        ]));
+  }
+  return ProbeGroup('词典抽样',
+      '书里会被标注的词，句子是另写的。s 组看苹果会不会读错、标注能不能修；x 组是容易被误标的词，标注不该让它读错。', cases);
+}
+
 /// Pronunciations attached to characters the voice misreads on its own, so
 /// a correct reading can only come from the attribute.
 const _notations = ProbeGroup(

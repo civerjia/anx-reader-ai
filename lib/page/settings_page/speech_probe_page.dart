@@ -31,7 +31,11 @@ class _SpeechProbePageState extends State<SpeechProbePage> {
     super.initState();
     PronunciationLexicon.load().then((lexicon) {
       if (mounted) {
-        setState(() => _groups = [...speechProbeGroups, lexiconProbeGroup(lexicon)]);
+        setState(() => _groups = [
+          ...speechProbeGroups,
+          lexiconProbeGroup(lexicon),
+          lexiconSampleGroup(lexicon),
+        ]);
       }
     });
   }

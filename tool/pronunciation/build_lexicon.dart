@@ -2,7 +2,7 @@
 // characters for the system voice.
 //
 //   dart run tool/pronunciation/build_lexicon.dart \
-//     pinyin.txt zdic_cybs.txt 1985.md assets/pronunciation/lexicon.txt
+//     pinyin.txt zdic_cybs.txt 1985.md chars.txt assets/pronunciation/lexicon.txt
 //
 // Sources, in rising precedence:
 // - pinyin.txt: phrase-pinyin-data's reviewed word list (mozillazg, MIT),
@@ -10,6 +10,10 @@
 // - zdic_cybs.txt: the idiom list in the same repository, from zdic.net.
 // - 1985.md: 普通话异读词审音表 (1985), the national standard for words with
 //   disputed readings, as text from https://github.com/zispace/data-yiduci
+// - chars.txt: pinyin-data's character readings (mozillazg, MIT),
+//   https://github.com/mozillazg/pinyin-data, used only to drop readings a
+//   character does not have: the word lists carry misaligned entries
+//   (取而代之 qǔ é, 人有旦夕祸福 with 人 as dì).
 //
 // Chosen by measurement: on 50 idioms with well-known traps both lists were
 // right on every one they had, where CC-CEDICT and mapull/chinese-dictionary
@@ -71,6 +75,38 @@ Map<String, Set<String>> readWordList(File file) {
   }
   return words;
 }
+
+/// Character → its readings, from lines like `U+4E2D: zhōng,zhòng  # 中`.
+Map<String, Set<String>> readCharReadings(File file) {
+  final readings = <String, Set<String>>{};
+  for (final line in file.readAsLinesSync()) {
+    final match = RegExp(r'^U\+([0-9A-F]+):\s*([^#]+)#').firstMatch(line);
+    if (match == null) continue;
+    final char = String.fromCharCode(int.parse(match[1]!, radix: 16));
+    readings[char] = {
+      for (final p in match[2]!.trim().split(','))
+        if (numbered(p.trim()) case final n?) n,
+    };
+  }
+  return readings;
+}
+
+/// Words whose listed reading is right for one sense but books mostly use
+/// another: marking them would make the voice wrong where it was right.
+/// Found by sampling the marks the lexicon puts on two books.
+const contextDependent = {
+  '打的', // 打的是… (de), not 打的 dī "take a taxi"
+  '质的', // 物质的 (de)
+  '人中', // 众人中 (zhōng in a phrase, not the philtrum)
+  '一通', // 一通电话 (tōng)
+  '落下', '落了', // 太阳落下 (luò)
+  '大都', // 大都是 (dōu)
+  '空地', // kòng and kōng both common
+  '点着', '吸着', '找着', '猜着', '蒙着', '熏着', '支着', '该着', // verb + 着 (zhe)
+  '暴晒', // bào in modern use; listed as pù
+  '长出', // 长出一口气 (cháng)
+  '上相', // 比不上相… cuts across words
+};
 
 class Shenyin {
   /// Characters read one way in every word (统读), with the words excepted
@@ -175,10 +211,11 @@ Shenyin readShenyin(File file) {
 }
 
 void main(List<String> args) {
-  if (args.length != 4) {
-    stderr.writeln('usage: build_lexicon.dart pinyin.txt zdic_cybs.txt 1985.md output');
+  if (args.length != 5) {
+    stderr.writeln('usage: build_lexicon.dart pinyin.txt zdic_cybs.txt 1985.md chars.txt output');
     exit(64);
   }
+  final charReadings = readCharReadings(File(args[3]));
   final words = readWordList(File(args[0]));
   final idioms = readWordList(File(args[1]));
   final shenyin = readShenyin(File(args[2]));
@@ -287,6 +324,23 @@ void main(List<String> args) {
     }
   });
 
+  // Drop readings a character does not have, and the words books use in
+  // another sense far more often than in the listed one.
+  var invalid = 0;
+  out.forEach((word, marks) {
+    if (marks == null) return;
+    for (var i = 0; i < word.length; i++) {
+      final known = charReadings[word[i]];
+      if (marks[i] != '_' && known != null && !known.contains(marks[i])) {
+        marks[i] = '_';
+        invalid++;
+      }
+    }
+  });
+  for (final word in contextDependent) {
+    if (out.containsKey(word)) out[word] = null;
+  }
+
   final lines = out.keys.toList()..sort();
   final buffer = StringBuffer();
   var marked = 0;
@@ -299,9 +353,11 @@ void main(List<String> args) {
       marked++;
     }
   }
-  File(args[3])
+  File(args[4])
     ..parent.createSync(recursive: true)
     ..writeAsStringSync(buffer.toString());
+  stdout.writeln('$invalid readings dropped as not the character\'s, '
+      '${contextDependent.length} context-dependent words unmarked');
   stdout.writeln('${lines.length} words, $marked with marks, '
       '$fromTable marks set by the 审音表 '
       '(${shenyin.words.length} example words, ${shenyin.uniform.length} uniform characters, '
