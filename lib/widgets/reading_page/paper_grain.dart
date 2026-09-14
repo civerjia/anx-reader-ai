@@ -5,7 +5,9 @@ import 'dart:ui' as ui;
 
 /// Side of the grain tile, in pixels. It tiles seamlessly; at the size of a
 /// page snapshot (about 1200 px wide) it repeats a little over twice, too few
-/// times for the repeat to be seen in fibres this fine.
+/// times for the repeat to be seen in grain this fine.
+///
+/// Generated once per run and shared by every page and every turn.
 const paperGrainSize = 512;
 
 /// Periodic 2D Perlin noise on a lattice of [period] cells, so the tile wraps.
@@ -66,13 +68,14 @@ class _Perlin {
 }
 
 /// Premultiplied RGBA pixels of a paper grain tile: black and white at low
-/// alpha, to lay over
-/// the paper colour. Broad cloudy unevenness from several octaves of Perlin
-/// noise, plus fine fibres from noise stretched along one direction.
+/// alpha, to lay over the paper colour. Faint cloudy unevenness from several
+/// octaves of Perlin noise, and thin fibres: short hairlines, slightly bent,
+/// at every angle, some darker and some lighter than the paper.
 Uint8List paperGrainPixels({int size = paperGrainSize, int seed = 7}) {
   final noise = _Perlin(seed);
-  final fibres = _Perlin(seed + 1);
-  final pixels = Uint8List(size * size * 4);
+  final random = math.Random(seed + 1);
+  // Signed tone per pixel: negative darker, positive lighter, about -1..1.
+  final tone = Float64List(size * size);
   const octaves = [
     // (cells across the tile, weight)
     (8, 0.45),
@@ -83,27 +86,53 @@ Uint8List paperGrainPixels({int size = paperGrainSize, int seed = 7}) {
     for (var px = 0; px < size; px++) {
       var cloud = 0.0;
       for (final (cells, weight) in octaves) {
-        cloud += weight *
-            noise.at(px * cells / size, py * cells / size, cells);
+        cloud +=
+            weight * noise.at(px * cells / size, py * cells / size, cells);
       }
-      // Fibres: 256 cells across but only 32 down, so each is a short streak.
-      final fibre = fibres.at(px * 256 / size, py * 32 / size, 256)
-          .abs();
-      final streak = math.max(0.0, 0.35 - fibre) / 0.35;
-      final value = (cloud * 1.4 - streak * streak * 0.5).clamp(-1.0, 1.0);
-      final i = (py * size + px) * 4;
-      if (value < 0) {
-        // Darker: a touch of black.
-        pixels[i + 3] = (-value * 34).round();
-      } else {
-        // Lighter: a touch of white, gentler than the dark. Premultiplied, as
-        // the image is read: full white at low alpha drew solid white blots.
-        final alpha = (value * 20).round();
-        pixels[i] = alpha;
-        pixels[i + 1] = alpha;
-        pixels[i + 2] = alpha;
-        pixels[i + 3] = alpha;
-      }
+      tone[py * size + px] = cloud * 0.9;
+    }
+  }
+
+  // Hairline fibres, wrapped at the edges so the tile still repeats unseen.
+  final fibres = size * size ~/ 400;
+  for (var f = 0; f < fibres; f++) {
+    var x = random.nextDouble() * size;
+    var y = random.nextDouble() * size;
+    var angle = random.nextDouble() * math.pi;
+    // Per half-pixel step; a whole fibre turns at most about a third of a
+    // radian. More, and they curled into loops like hairs.
+    final bend = (random.nextDouble() - 0.5) * 0.012;
+    final length = 10 + random.nextDouble() * 50;
+    final strength = (random.nextBool() ? -1 : 0.7) *
+        (0.35 + random.nextDouble() * 0.65);
+    for (var t = 0.0; t < length; t += 0.5) {
+      // Fading in and out, so a fibre has no blunt ends.
+      final along = t / length;
+      final fade = math.sin(along * math.pi);
+      final ix = x.floor() % size;
+      final iy = y.floor() % size;
+      final i = iy * size + ix;
+      tone[i] = tone[i] * 0.4 + strength * fade * 0.6 * 2;
+      x += math.cos(angle) * 0.5;
+      y += math.sin(angle) * 0.5;
+      angle += bend;
+    }
+  }
+
+  final pixels = Uint8List(size * size * 4);
+  for (var i = 0; i < size * size; i++) {
+    final value = tone[i].clamp(-1.0, 1.0);
+    final p = i * 4;
+    if (value < 0) {
+      pixels[p + 3] = (-value * 22).round();
+    } else {
+      // Premultiplied, as the image is read: full white at low alpha drew
+      // solid white blots.
+      final alpha = (value * 13).round();
+      pixels[p] = alpha;
+      pixels[p + 1] = alpha;
+      pixels[p + 2] = alpha;
+      pixels[p + 3] = alpha;
     }
   }
   return pixels;

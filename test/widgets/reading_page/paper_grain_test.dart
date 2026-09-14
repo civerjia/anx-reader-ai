@@ -32,7 +32,7 @@ void main() {
     final variance =
         values.map((v) => (v - mean) * (v - mean)).reduce((a, b) => a + b) /
             values.length;
-    expect(math.sqrt(variance), greaterThan(0.03));
+    expect(math.sqrt(variance), greaterThan(0.01));
     // Faint: never close to covering the paper.
     expect(values.map((v) => v.abs()).reduce(math.max), lessThan(0.2));
   });
