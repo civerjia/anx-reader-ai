@@ -28,7 +28,7 @@ class LibraryIndexStatus {
   final String title;
 }
 
-typedef _Job = ({int id, String path, String signature, String title});
+typedef LibraryIndexJob = ({int id, String path, String signature, String title});
 
 /// The library's full-text index: kept in its own database file beside the
 /// app's (which is synced, and this need not be), built off the UI isolate.
@@ -60,7 +60,7 @@ class LibraryIndex {
   }
 
   Future<void> _update() async {
-    final jobs = <_Job>[];
+    final jobs = <LibraryIndexJob>[];
     for (final book in await _books()) {
       final path = book.fileFullPath;
       if (!path.toLowerCase().endsWith('.epub')) continue;
@@ -87,14 +87,59 @@ class LibraryIndex {
     });
     status.value = LibraryIndexStatus(running: true, total: jobs.length);
     try {
-      await Isolate.run(() => _build(dbPath, jobs, port.sendPort));
+      await buildInIsolate(dbPath, jobs, port.sendPort);
+    } catch (e, st) {
+      AnxLog.severe('LibraryIndex: update failed: $e\n$st');
+      rethrow;
     } finally {
       port.close();
     }
     AnxLog.info('LibraryIndex: update finished in ${watch.elapsed.inSeconds} s');
   }
 
-  static void _build(String dbPath, List<_Job> jobs, SendPort out) {
+  /// Runs [_build] on a new isolate.
+  ///
+  /// Static, and given nothing but plain data: a closure made inside an
+  /// instance method carried its context — the ReceivePort, and this object
+  /// with its listeners — and the isolate refused it ("object is unsendable"),
+  /// so tapping Build did nothing.
+  @visibleForTesting
+  static Future<void> buildInIsolate(
+          String dbPath, List<LibraryIndexJob> jobs, SendPort out) =>
+      Isolate.run(() => _build(dbPath, jobs, out));
+
+  static Future<({int books, int chunks})> _countsInIsolate(String dbPath) =>
+      Isolate.run(() {
+        final store = LibraryIndexStore.open(dbPath);
+        try {
+          return store.counts();
+        } finally {
+          store.dispose();
+        }
+      });
+
+  static Future<Set<int>> _idsInIsolate(String dbPath) => Isolate.run(() {
+        final store = LibraryIndexStore.open(dbPath);
+        try {
+          return store.signatures().keys.toSet();
+        } finally {
+          store.dispose();
+        }
+      });
+
+  static Future<List<LibraryPassage>> _searchInIsolate(String dbPath,
+          String query, Map<int, String> paths, int? bookId, int limit) =>
+      Isolate.run(() {
+        final store = LibraryIndexStore.open(dbPath);
+        try {
+          return searchLibrary(store, query, paths,
+              bookId: bookId, limit: limit);
+        } finally {
+          store.dispose();
+        }
+      });
+
+  static void _build(String dbPath, List<LibraryIndexJob> jobs, SendPort out) {
     final store = LibraryIndexStore.open(dbPath);
     try {
       final known = store.signatures();
@@ -128,14 +173,7 @@ class LibraryIndex {
   Future<({int books, int chunks, int bytes})> stats() async {
     final dbPath = await _databasePath();
     if (!File(dbPath).existsSync()) return (books: 0, chunks: 0, bytes: 0);
-    final counts = await Isolate.run(() {
-      final store = LibraryIndexStore.open(dbPath);
-      try {
-        return store.counts();
-      } finally {
-        store.dispose();
-      }
-    });
+    final counts = await _countsInIsolate(dbPath);
     var bytes = 0;
     for (final suffix in ['', '-wal']) {
       final file = File('$dbPath$suffix');
@@ -148,14 +186,7 @@ class LibraryIndex {
   Future<Set<int>> indexedBookIds() async {
     final dbPath = await _databasePath();
     if (!File(dbPath).existsSync()) return const {};
-    return Isolate.run(() {
-      final store = LibraryIndexStore.open(dbPath);
-      try {
-        return store.signatures().keys.toSet();
-      } finally {
-        store.dispose();
-      }
-    });
+    return _idsInIsolate(dbPath);
   }
 
   /// The passages best matching [query], across the library or in [bookId].
@@ -167,14 +198,8 @@ class LibraryIndex {
     final paths = {for (final b in books) b.id: b.fileFullPath};
     final titles = {for (final b in books) b.id: b.title};
     final watch = Stopwatch()..start();
-    final passages = await Isolate.run(() {
-      final store = LibraryIndexStore.open(dbPath);
-      try {
-        return searchLibrary(store, query, paths, bookId: bookId, limit: limit);
-      } finally {
-        store.dispose();
-      }
-    });
+    final passages =
+        await _searchInIsolate(dbPath, query, paths, bookId, limit);
     AnxLog.info('LibraryIndex: "$query"${bookId == null ? '' : ' in #$bookId'} '
         '-> ${passages.length} passages in ${watch.elapsedMilliseconds} ms');
     return [for (final passage in passages) (passage, titles[passage.bookId] ?? '')];
