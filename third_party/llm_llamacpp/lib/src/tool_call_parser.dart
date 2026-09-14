@@ -93,6 +93,9 @@ class ToolCallParser {
     // Inside an explicit delimiter we already know the model meant to call a
     // tool, so malformed-but-recoverable syntax is worth salvaging. Outside one,
     // leniency would invent calls out of prose.
+    // Spark's key/value pairs sit inside the Hermes tag, so a payload is
+    // recognised by its shape whichever of the two was detected.
+    if (payload.contains('<arg_key>')) return _parseArgKeys(payload);
     if (format.isXml) return _parseXml(payload);
     if (format.isPythonic) return _parsePythonic(payload, lenient: true);
     return _parseJson(payload);
@@ -107,6 +110,34 @@ class ToolCallParser {
       for (final call in parsed)
         LLMToolCall(id: '', name: call.name, arguments: call.argumentsJson),
     ];
+  }
+
+  /// Inside `<tool_call>…</tool_call>`:
+  /// `fn<arg_key>a</arg_key><arg_value>1</arg_value>…` (Spark-X2.5).
+  static List<LLMToolCall> _parseArgKeys(String payload) {
+    final firstKey = payload.indexOf('<arg_key>');
+    final name = payload.substring(0, firstKey).trim();
+    if (name.isEmpty || name.contains('<')) return const [];
+    final arguments = <String, dynamic>{};
+    for (final match in RegExp(
+      r'<arg_key>([\s\S]*?)</arg_key>\s*<arg_value>([\s\S]*?)</arg_value>',
+    ).allMatches(payload)) {
+      final key = match[1]!.trim();
+      final raw = match[2]!;
+      dynamic value = raw;
+      // The template writes strings as they are and anything else as JSON.
+      final trimmed = raw.trim();
+      if (trimmed.isNotEmpty) {
+        try {
+          final decoded = json.decode(trimmed);
+          if (decoded is! String) value = decoded;
+        } catch (_) {
+          // Plain text, as most values are.
+        }
+      }
+      arguments[key] = value;
+    }
+    return [LLMToolCall(id: '', name: name, arguments: json.encode(arguments))];
   }
 
   /// What follows `<function name="`: `fn"><param name="a">1</param>…`.

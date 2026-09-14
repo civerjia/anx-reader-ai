@@ -195,6 +195,34 @@ Future<void> main(List<String> args) async {
       output.dependencies.add(input.packageRoot.resolve(relative));
     }
 
+    // A bundle built on this machine wins over any download: the release
+    // prebuilts track the package version, and this app needs a newer
+    // llama.cpp (Spark-X2.5's `spark2_5` architecture) than 0.5.0 ships. The
+    // directory holds the same static archives the iOS release asset does;
+    // see PATCH.md for how it is built.
+    final localBundle = Directory.fromUri(input.packageRoot.resolve(
+      '.native-build/${targetOS.toString().toLowerCase()}-'
+      '${_getArchString(targetArch ?? Architecture.arm64, targetOS)}-bundle/',
+    ));
+    if (localBundle.existsSync()) {
+      logger.info('Using locally built native bundle at ${localBundle.path}');
+      for (final entity in localBundle.listSync()) {
+        if (entity is File && !entity.path.endsWith('.dylib')) {
+          output.dependencies.add(entity.uri);
+        }
+      }
+      final libraries = await _collectNativeLibraries(
+        targetOS: targetOS,
+        targetArch: targetArch ?? Architecture.arm64,
+        libraryName: libraryName,
+        bundleDirectory: localBundle,
+        outputDirectory: localBundle,
+        logger: logger,
+      );
+      _addCodeAssets(output, libraries, input);
+      return;
+    }
+
     final prebuiltLibraries = await _tryDownloadPrebuilt(
       targetOS,
       targetArch,

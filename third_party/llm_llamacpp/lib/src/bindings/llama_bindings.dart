@@ -1264,7 +1264,7 @@ class LlamaBindings {
 
   /// Removes all tokens that belong to the specified sequence and have positions in [p0, p1)
   /// Returns false if a partial sequence cannot be removed. Removing a whole sequence never fails
-  /// seq_id < 0 : match any sequence
+  /// seq_id < 0 : match any sequence [TAG_LLAMA_SEQ_ID_NEG]
   /// p0 < 0     : [0,  p1]
   /// p1 < 0     : [p0, inf)
   bool llama_memory_seq_rm(llama_memory_t mem, int seq_id, int p0, int p1) {
@@ -2504,9 +2504,9 @@ class LlamaBindings {
   }
 
   late final _llama_sampler_chain_nPtr =
-      _lookup<ffi.NativeFunction<ffi.Int Function(ffi.Pointer<llama_sampler>)>>(
-        'llama_sampler_chain_n',
-      );
+      _lookup<
+        ffi.NativeFunction<ffi.Int32 Function(ffi.Pointer<llama_sampler>)>
+      >('llama_sampler_chain_n');
   late final _llama_sampler_chain_n = _llama_sampler_chain_nPtr
       .asFunction<int Function(ffi.Pointer<llama_sampler>)>();
 
@@ -3445,11 +3445,6 @@ class LlamaBindings {
         int Function(ffi.Pointer<llama_context>, ffi.Pointer<ffi.Uint8>)
       >();
 
-  /// Set whether the model is in warmup mode or not
-  /// If true, all model tensors are activated during llama_decode() to load and cache their weights.
-  ///
-  /// note: using this can cause extra graph reallocations because it changes the graph topology with MoE models,
-  /// so it is generally not recommended to use in practice. will be removed in the future
   @Deprecated(
     'user code should do warmup runs manually [TAG_LLAMA_GRAPH_NO_WARMUP]',
   )
@@ -4347,7 +4342,6 @@ class LlamaBindings {
   late final _llama_vocab_bos = _llama_vocab_bosPtr
       .asFunction<int Function(ffi.Pointer<llama_vocab>)>();
 
-  /// CLS is equivalent to BOS
   @Deprecated('use llama_vocab_bos instead')
   int llama_vocab_cls(ffi.Pointer<llama_vocab> vocab) {
     return _llama_vocab_cls(vocab);
@@ -4662,7 +4656,7 @@ const int LLAMA_FILE_MAGIC_GGSQ = 1734833009;
 
 const int LLAMA_SESSION_MAGIC = 1734833006;
 
-const int LLAMA_SESSION_VERSION = 9;
+const int LLAMA_SESSION_VERSION = 10;
 
 const int LLAMA_STATE_SEQ_FLAGS_NONE = 0;
 
@@ -4674,7 +4668,7 @@ const int LLAMA_STATE_SEQ_FLAGS_SWA_ONLY = 1;
 
 const int LLAMA_STATE_SEQ_MAGIC = 1734833009;
 
-const int LLAMA_STATE_SEQ_VERSION = 2;
+const int LLAMA_STATE_SEQ_VERSION = 3;
 
 const int LLAMA_TOKEN_NULL = -1;
 
@@ -5882,6 +5876,27 @@ enum llama_ftype {
   };
 }
 
+enum llama_lazy_mode {
+  /// always read the whole tensor up front
+  LLAMA_LAZY_MODE_OFF(0),
+
+  /// lazy only for marked tensors larger than 4 GiB (requires mmap)
+  LLAMA_LAZY_MODE_AUTO(1),
+
+  /// read the rows of tensors marked by the arch on demand (requires mmap)
+  LLAMA_LAZY_MODE_ON(2);
+
+  final int value;
+  const llama_lazy_mode(this.value);
+
+  static llama_lazy_mode fromValue(int value) => switch (value) {
+    0 => LLAMA_LAZY_MODE_OFF,
+    1 => LLAMA_LAZY_MODE_AUTO,
+    2 => LLAMA_LAZY_MODE_ON,
+    _ => throw ArgumentError('Unknown value for llama_lazy_mode: $value'),
+  };
+}
+
 enum llama_load_mode {
   /// auto-detect based on device capabilities
   LLAMA_LOAD_MODE_AUTO(-1),
@@ -6050,6 +6065,13 @@ final class llama_model_params extends ffi.Struct {
   llama_load_mode get load_mode => llama_load_mode.fromValue(load_modeAsInt);
   set load_mode(llama_load_mode value) => load_modeAsInt = value.value;
 
+  /// on-demand reading of tensors marked by the arch
+  @ffi.UnsignedInt()
+  external int lazy_modeAsInt;
+
+  llama_lazy_mode get lazy_mode => llama_lazy_mode.fromValue(lazy_modeAsInt);
+  set lazy_mode(llama_lazy_mode value) => lazy_modeAsInt = value.value;
+
   /// the GPU that is used for the entire model when split_mode is LLAMA_SPLIT_MODE_NONE
   @ffi.Int32()
   external int main_gpu;
@@ -6100,6 +6122,7 @@ final class llama_model_params extends ffi.Struct {
     required int n_gpu_layers,
     required llama_split_mode split_mode,
     required llama_load_mode load_mode,
+    required llama_lazy_mode lazy_mode,
     required int main_gpu,
     required ffi.Pointer<ffi.Float> tensor_split,
     required llama_progress_callback progress_callback,
@@ -6117,6 +6140,7 @@ final class llama_model_params extends ffi.Struct {
     ..ref.n_gpu_layers = n_gpu_layers
     ..ref.split_mode = split_mode
     ..ref.load_mode = load_mode
+    ..ref.lazy_mode = lazy_mode
     ..ref.main_gpu = main_gpu
     ..ref.tensor_split = tensor_split
     ..ref.progress_callback = progress_callback
@@ -6197,6 +6221,10 @@ final class llama_model_quantize_params extends ffi.Struct {
   /// pointer to layer indices to prune
   external ffi.Pointer<ffi.Int32> prune_layers;
 
+  /// max bytes of tensor rows kept in memory at once, 0 = default (8 GiB)
+  @ffi.Size()
+  external int max_buf_size;
+
   static ffi.Pointer<llama_model_quantize_params> $allocate(
     ffi.Allocator $allocator, {
     required int nthread,
@@ -6213,6 +6241,7 @@ final class llama_model_quantize_params extends ffi.Struct {
     required ffi.Pointer<llama_model_kv_override> kv_overrides,
     required ffi.Pointer<llama_model_tensor_override> tt_overrides,
     required ffi.Pointer<ffi.Int32> prune_layers,
+    required int max_buf_size,
   }) => $allocator<llama_model_quantize_params>()
     ..ref.nthread = nthread
     ..ref.ftype = ftype
@@ -6227,7 +6256,8 @@ final class llama_model_quantize_params extends ffi.Struct {
     ..ref.imatrix = imatrix
     ..ref.kv_overrides = kv_overrides
     ..ref.tt_overrides = tt_overrides
-    ..ref.prune_layers = prune_layers;
+    ..ref.prune_layers = prune_layers
+    ..ref.max_buf_size = max_buf_size;
 }
 
 typedef llama_model_set_tensor_data_t =

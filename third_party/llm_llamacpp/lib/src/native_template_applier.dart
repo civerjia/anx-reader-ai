@@ -59,6 +59,15 @@ String _applyNativeChatTemplate(
     );
   }
 
+  // llama.cpp has no built-in Spark-X2.5 template and would render ChatML.
+  if (isSparkChatTemplate(templateSource)) {
+    final rendered = renderSparkPrompt(messages);
+    // ignore: avoid_print
+    print('[native_template_applier] Rendered Spark-X2.5 prompt '
+        '(${rendered.length} chars)');
+    return rendered;
+  }
+
   final chatMessages = calloc<llama_chat_message>(messages.length);
   final allocatedPointers = <ffi.Pointer<Utf8>>[];
 

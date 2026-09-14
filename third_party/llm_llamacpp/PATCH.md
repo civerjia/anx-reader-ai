@@ -83,7 +83,23 @@ the iOS path only:
    ran. It is now a delimited format (`minicpmXml`) with an XML payload parser;
    the stream handler picks it up from the delimiters like the others.
 
-Patched files: `hook/build.dart`, `lib/src/loader/loader_flutter.dart`,
+9. **llama.cpp upgraded to b10950, built here, for Spark-X2.5.** 0.5.0's
+   prebuilts do not know the `spark2_5` architecture (added upstream on
+   2026-09-06, PR #27868). `tool/build_llamacpp_apple.sh` builds the iOS static
+   archives into `.native-build/ios-arm64-bundle/`, and the hook now uses a
+   bundle there before trying a download. `llama_model_params` gained a field
+   (`lazy_mode`) mid-struct, so the headers in `src/include` were replaced and
+   the bindings regenerated — which also changes the ABI fingerprint, so the
+   release prebuilt could never be picked up by mistake. llama.cpp's
+   `llama_chat_apply_template` has no Spark template and would render ChatML;
+   `spark_chat_template.dart` renders the model's own format (thinking closed
+   unless asked for), and Spark's `<tool_call>fn<arg_key>…</arg_key>
+   <arg_value>…</arg_value></tool_call>` calls are a new format, `sparkArgs`.
+   A prompt that starts with the BOS text the tokenizer also adds loses the
+   duplicate.
+
+Patched files: `hook/build.dart`, `lib/src/spark_chat_template.dart` (new),
+`lib/src/tool_calls/tool_definition_formatter.dart`, `lib/src/bindings/llama_bindings.dart` (regenerated), `src/include/*.h`, `lib/src/loader/loader_flutter.dart`,
 `lib/src/inference_isolate_handler.dart`, `lib/src/inference_isolate.dart`,
 `lib/src/embedding_isolate.dart`, `lib/src/inference_token_generator.dart`,
 `lib/src/inference_isolate_messages.dart`, `lib/src/persistent_inference_isolate.dart`,

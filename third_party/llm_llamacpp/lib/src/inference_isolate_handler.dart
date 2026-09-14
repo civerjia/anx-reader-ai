@@ -57,12 +57,28 @@ void _handleInferenceRequest(
       // `think` was accepted and ignored. For a template that knows <think>
       // (Qwen3), opening the reply with it is what its own enable_thinking
       // does; llama_chat_apply_template has no such flag.
-      if (request.think &&
+      if (usingChatTemplate && isSparkChatTemplate(modelTemplateStr)) {
+        // Spark thinks unless the reply is opened closed, as its template's
+        // enable_thinking=false does; a phone cannot wait for that by default.
+        prompt = request.think ? '$prompt<think>' : '$prompt</think>';
+      } else if (request.think &&
           usingChatTemplate &&
           (modelTemplateStr?.contains('<think>') ?? false)) {
         prompt = '$prompt<think>\n';
       }
       final addBosByTokenizer = bindings.llama_vocab_get_add_bos(vocab);
+      // A template that writes its own BOS text, tokenized with add_special,
+      // would start with two of them.
+      if (usingChatTemplate && addBosByTokenizer) {
+        final bosId = bindings.llama_vocab_bos(vocab);
+        if (bosId >= 0) {
+          final bosText =
+              bindings.llama_vocab_get_text(vocab, bosId).cast<Utf8>().toDartString();
+          if (bosText.isNotEmpty && prompt.startsWith(bosText)) {
+            prompt = prompt.substring(bosText.length);
+          }
+        }
+      }
       final templateRefersToBos =
           modelTemplateStr != null &&
           (modelTemplateStr.contains('bos_token') ||

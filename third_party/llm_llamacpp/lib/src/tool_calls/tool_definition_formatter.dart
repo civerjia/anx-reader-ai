@@ -51,6 +51,18 @@ String? formatToolDefinitions(
           '- param-value may be multi-line. If it contains <, & or newline characters, '
           'wrap it in a CDATA block: <param name="param-name"><![CDATA[...multi-line value...]]></param>',
 
+    // Spark-X2.5's template writes this into its system block (verified against
+    // XHToken/Spark-X2.5-1.7B chat_template.jinja). The template itself says
+    // nothing of how to call; the call shape is added so a prompt built outside
+    // the template still shows it.
+    ToolCallFormat.sparkArgs =>
+      '## Tools\nYou have access to the following functions:\n<tools>\n'
+          '${schemas.map(json.encode).join('\n')}\n</tools>\n\n'
+          'To call a function, write '
+          '<tool_call>function-name<arg_key>param-name</arg_key>'
+          '<arg_value>param-value</arg_value></tool_call>, one '
+          '<arg_key>/<arg_value> pair per argument.',
+
     ToolCallFormat.mistral =>
       '[AVAILABLE_TOOLS][${schemas.map(json.encode).join(', ')}][/AVAILABLE_TOOLS]',
 

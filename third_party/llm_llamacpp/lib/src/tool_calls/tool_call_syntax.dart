@@ -27,6 +27,13 @@ enum ToolCallFormat {
   /// text otherwise.
   minicpmXml,
 
+  /// iFlytek Spark-X2.5.
+  ///
+  /// `<tool_call>fn<arg_key>a</arg_key><arg_value>1</arg_value></tool_call>` —
+  /// the Hermes tag, but the name and key/value pairs instead of JSON. A value
+  /// is written as text when it is a string and as JSON otherwise.
+  sparkArgs,
+
   /// Hermes / Qwen and most ChatML tool-tuned models.
   ///
   /// `<tool_call>{"name": "fn", "arguments": {...}}</tool_call>`, repeated once
@@ -58,6 +65,7 @@ enum ToolCallFormat {
   (String open, String close)? get delimiters => switch (this) {
     lfm2 => ('<|tool_call_start|>', '<|tool_call_end|>'),
     minicpmXml => ('<function name="', '</function>'),
+    sparkArgs => ('<tool_call>', '</tool_call>'),
     hermes => ('<tool_call>', '</tool_call>'),
     mistral => ('[TOOL_CALLS]', ''),
     llama3Pythonic => ('<|python_tag|>', ''),
@@ -78,15 +86,18 @@ enum ToolCallFormat {
   static const List<ToolCallFormat> delimited = [
     lfm2,
     minicpmXml,
+    // Shares its opener with hermes; told apart by the chat template's
+    // `<arg_key>`, and by the payload when parsing.
+    sparkArgs,
     hermes,
     mistral,
     llama3Pythonic,
   ];
 
   /// Every opening delimiter, for the stream handler to watch for.
-  static List<String> get openingDelimiters => [
+  static List<String> get openingDelimiters => {
     for (final f in delimited) f.delimiters!.$1,
-  ];
+  }.toList();
 
   /// Infers the family from a GGUF chat template.
   ///
@@ -95,6 +106,10 @@ enum ToolCallFormat {
   /// nothing matches, in which case callers fall back to content detection.
   static ToolCallFormat? detectFromChatTemplate(String? template) {
     if (template == null || template.isEmpty) return null;
+
+    // Spark writes the Hermes tag, so it has to be recognised before the
+    // delimiter loop would call it hermes.
+    if (template.contains('<arg_key>')) return sparkArgs;
 
     // Match on emitted delimiters rather than model names: templates get copied
     // between fine-tunes, but a template that writes `<|tool_call_start|>` is by
