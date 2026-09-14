@@ -244,12 +244,17 @@ class PageCurlPainter extends CustomPainter {
     // Face up: the print, darkening as the paper rolls away from the light.
     final count = mesh.angles.length;
     final frontColors = Int32List(count);
+    final frontGrain = Int32List(count);
     final backShade = Int32List(count);
     for (var i = 0; i < count; i++) {
       final angle = mesh.angles[i];
       final up = math.min(angle, math.pi / 2) / (math.pi / 2);
       final light = (255 * (1 - 0.45 * math.pow(up, 1.6))).round();
       frontColors[i] = 0xFF000000 | (light << 16) | (light << 8) | light;
+      // Grain on the front only where it lifts: the part still lying flat
+      // must match the live page it hands back to, which has none.
+      final lift = (255 * up * up * (3 - 2 * up)).round();
+      frontGrain[i] = (lift << 24) | (lift << 16) | (lift << 8) | lift;
       final down = angle <= math.pi / 2
           ? 1.0
           : 1 - (angle - math.pi / 2) / (math.pi / 2);
@@ -268,6 +273,25 @@ class PageCurlPainter extends CustomPainter {
         BlendMode.modulate,
         Paint()..shader = texture,
       );
+      final grain = this.grain;
+      if (grain != null) {
+        // Modulating by premultiplied white of the lift's alpha scales the
+        // grain from nothing where flat to full where the page stands up.
+        canvas.drawVertices(
+          ui.Vertices.raw(
+            VertexMode.triangles,
+            mesh.positions,
+            textureCoordinates: mesh.textureCoordinates,
+            colors: frontGrain,
+            indices: mesh.front,
+          ),
+          BlendMode.modulate,
+          Paint()
+            ..shader = ImageShader(grain, TileMode.repeated, TileMode.repeated,
+                Matrix4.identity().storage,
+                filterQuality: FilterQuality.low),
+        );
+      }
     }
 
     // Face down: the back of the sheet, the print faintly showing through
