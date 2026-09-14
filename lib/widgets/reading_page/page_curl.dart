@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:anx_reader/utils/log/common.dart';
+import 'package:anx_reader/widgets/reading_page/paper_grain.dart';
 import 'package:flutter/material.dart';
 
 /// The line a page rolls around. The page lies flat on the side against
@@ -181,7 +182,11 @@ class PageCurlPainter extends CustomPainter {
     required this.grab,
     required this.finger,
     required this.paper,
+    this.grain,
   });
+
+  /// Paper texture tile laid over the back of the sheet, when ready.
+  final ui.Image? grain;
 
   final ui.Image page;
   final ui.Image? under;
@@ -298,6 +303,23 @@ class PageCurlPainter extends CustomPainter {
         BlendMode.dst,
         Paint(),
       );
+      // Paper is never one flat colour: its grain, carried with the sheet.
+      final grain = this.grain;
+      if (grain != null) {
+        canvas.drawVertices(
+          ui.Vertices.raw(
+            VertexMode.triangles,
+            mesh.positions,
+            textureCoordinates: mesh.textureCoordinates,
+            indices: mesh.back,
+          ),
+          BlendMode.src,
+          Paint()
+            ..shader = ImageShader(grain, TileMode.repeated, TileMode.repeated,
+                Matrix4.identity().storage,
+                filterQuality: FilterQuality.low),
+        );
+      }
       canvas.drawVertices(
         ui.Vertices.raw(
           VertexMode.triangles,
@@ -329,7 +351,8 @@ class PageCurlPainter extends CustomPainter {
       oldDelegate.under != under ||
       oldDelegate.grab != grab ||
       oldDelegate.finger != finger ||
-      oldDelegate.paper != paper;
+      oldDelegate.paper != paper ||
+      oldDelegate.grain != grain;
 }
 
 /// Draws a page curl over the reader from snapshots, following a finger.
@@ -355,6 +378,15 @@ class PageCurlOverlayState extends State<PageCurlOverlay>
   ui.Image? _under;
   Offset? _grab;
   Offset? _finger;
+  ui.Image? _grain;
+
+  @override
+  void initState() {
+    super.initState();
+    paperGrainImage().then((image) {
+      if (mounted) setState(() => _grain = image);
+    });
+  }
 
   bool get active => _page != null;
 
@@ -460,6 +492,7 @@ class PageCurlOverlayState extends State<PageCurlOverlay>
           grab: _grab,
           finger: _finger,
           paper: widget.paper,
+          grain: _grain,
         ),
       ),
     );
