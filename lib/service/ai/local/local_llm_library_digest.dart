@@ -45,8 +45,9 @@ Future<String?> buildLibraryDigest(WidgetRef ref) async {
     sections.add('$line\n'
         '  The reader has this book open. "This book", and any character, '
         'place or event the question names, mean this book: search it with '
-        'book_content_search (bookId ${book.id}), or read the current chapter '
-        'with current_chapter_content.');
+        'library_search (book_id ${book.id}) or book_content_search '
+        '(bookId ${book.id}), or read the current chapter with '
+        'current_chapter_content.');
   }
 
   sections.add('[Today] ${_date(now)}');

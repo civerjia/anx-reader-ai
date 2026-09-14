@@ -1,4 +1,5 @@
 import 'package:anx_reader/widgets/settings/knowledge_settings.dart';
+import 'package:anx_reader/widgets/settings/library_index_settings.dart';
 import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/enums/ai_prompts.dart';
 import 'package:anx_reader/enums/ai_chat_display_mode.dart';
@@ -267,6 +268,17 @@ class _AISettingsState extends ConsumerState<AISettings> {
         title: Text(l10n.settingsAiTools),
         tiles: [
           toolsTile,
+        ],
+      ),
+      SettingsSection(
+        title: Text(l10n.libraryIndexTitle),
+        tiles: [
+          CustomSettingsTile(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: const LibraryIndexSettings(),
+            ),
+          ),
         ],
       ),
       SettingsSection(

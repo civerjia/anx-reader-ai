@@ -151,6 +151,7 @@ class LangchainAiRegistry {
               today: DateTime.now(),
               languageName: _replyLanguageName(),
               isReading: isReading,
+              canSearchLibrary: enabledIds.contains('library_search'),
             ))
           : _buildAgentSystemMessage(
               isReading: isReading,
@@ -323,6 +324,7 @@ String localAgentGuidance({
   required String languageName,
   bool canLookUpFacts = false,
   bool isReading = false,
+  bool canSearchLibrary = false,
 }) {
   String two(int n) => n.toString().padLeft(2, '0');
   final date = '${today.year}-${two(today.month)}-${two(today.day)}';
@@ -341,6 +343,11 @@ String localAgentGuidance({
       : 'For general questions, answer directly without any tool.';
   // Asked about a character in the open book, the model went to the
   // encyclopedia; the book comes first.
+  // The library does not fit in a phone's context; its index does the finding.
+  final libraryLine = canSearchLibrary
+      ? 'To find which of the reader\'s books mentions something, or what '
+          'they say about it, call library_search.\n'
+      : '';
   final bookLine = isReading
       ? 'A book is open (see Now reading). Names, characters and events are '
           'searched in that book first.\n'
@@ -353,6 +360,7 @@ String localAgentGuidance({
       'answer. Call a tool only when they do not, or when the reader asks you '
       'to change something — organizing the shelf needs real book ids from '
       'those sections.\n'
+      '$libraryLine'
       '$bookLine'
       '$factsLine\n'
       'Never invent a title, a date, an id or a note.';
