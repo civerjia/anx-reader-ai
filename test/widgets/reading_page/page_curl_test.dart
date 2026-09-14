@@ -120,6 +120,43 @@ void main() {
     });
   });
 
+  testWidgets('the back of the sheet is mostly paper, not the print',
+      (tester) async {
+    await tester.runAsync(() async {
+      Future<ui.Image> solid(Color color) {
+        final recorder = ui.PictureRecorder();
+        Canvas(recorder).drawRect(Offset.zero & size, Paint()..color = color);
+        return recorder
+            .endRecording()
+            .toImage(size.width.toInt(), size.height.toInt());
+      }
+
+      final page = await solid(const Color(0xFF000000));
+      const grab = Offset(390, 600);
+      const finger = Offset(120, 600);
+      final recorder = ui.PictureRecorder();
+      PageCurlPainter(
+        page: page,
+        under: null,
+        grab: grab,
+        finger: finger,
+        paper: const Color(0xFFFFFFFF),
+      ).paint(Canvas(recorder), size);
+      final image = await recorder
+          .endRecording()
+          .toImage(size.width.toInt(), size.height.toInt());
+      final bytes =
+          (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+      int red(Offset at) =>
+          bytes.getUint8((at.dy.toInt() * size.width.toInt() + at.dx.toInt()) * 4);
+      // Just inside the turned-over flap, next to the grabbed edge: black print
+      // under white paper shows as light grey, not black.
+      expect(red(finger + const Offset(12, 0)), greaterThan(170));
+      // The page still lying flat shows its print unchanged.
+      expect(red(const Offset(20, 300)), lessThan(30));
+    });
+  });
+
   testWidgets('paints a curl and settles away', (tester) async {
     final key = GlobalKey<PageCurlOverlayState>();
     await tester.pumpWidget(Directionality(

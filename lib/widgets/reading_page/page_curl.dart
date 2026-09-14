@@ -266,12 +266,10 @@ class PageCurlPainter extends CustomPainter {
     }
 
     // Face down: the back of the sheet, the print faintly showing through
-    // mirrored, shaded where it bends over.
+    // mirrored, shaded where it bends over. Drawn in layers with vertex colours
+    // only: a colour filter on drawVertices was ignored on the phone, and the
+    // back showed the page as crisp as the front.
     if (mesh.back.isNotEmpty) {
-      const through = 0.16;
-      final r = paper.r * 255 * (1 - through);
-      final g = paper.g * 255 * (1 - through);
-      final b = paper.b * 255 * (1 - through);
       canvas.drawVertices(
         ui.Vertices.raw(
           VertexMode.triangles,
@@ -280,14 +278,25 @@ class PageCurlPainter extends CustomPainter {
           indices: mesh.back,
         ),
         BlendMode.src,
-        Paint()
-          ..shader = texture
-          ..colorFilter = ColorFilter.matrix(<double>[
-            through, 0, 0, 0, r, //
-            0, through, 0, 0, g, //
-            0, 0, through, 0, b, //
-            0, 0, 0, 1, 0,
-          ]),
+        Paint()..shader = texture,
+      );
+      // Paper over the print: how much of it still shows through.
+      const through = 0.18;
+      final veil = Int32List(count);
+      final paperArgb = (((1 - through) * 255).round() << 24) |
+          ((paper.r * 255).round() << 16) |
+          ((paper.g * 255).round() << 8) |
+          (paper.b * 255).round();
+      veil.fillRange(0, count, paperArgb);
+      canvas.drawVertices(
+        ui.Vertices.raw(
+          VertexMode.triangles,
+          mesh.positions,
+          colors: veil,
+          indices: mesh.back,
+        ),
+        BlendMode.dst,
+        Paint(),
       );
       canvas.drawVertices(
         ui.Vertices.raw(
