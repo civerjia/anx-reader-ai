@@ -82,7 +82,7 @@ class EpubPlayer extends ConsumerStatefulWidget {
 }
 
 class EpubPlayerState extends ConsumerState<EpubPlayer>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late InAppWebViewController webViewController;
   late ContextMenu contextMenu;
   String cfi = '';
@@ -1576,7 +1576,64 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         _animationController!.forward();
       });
     }
+    WidgetsBinding.instance.addObserver(this);
     super.initState();
+  }
+
+  /// Whether the reader page has finished loading at least once, so a later
+  /// check that finds no reader means it was lost, not still starting.
+  bool _pageLoaded = false;
+  bool _recovering = false;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !_pageLoaded) return;
+    // iOS may kill the web content process of an app in the background to
+    // reclaim memory. The page is then gone and the reader stays white; the
+    // termination callback is not always delivered, so look for ourselves.
+    Future.delayed(const Duration(milliseconds: 600), () async {
+      if (!mounted || _recovering) return;
+      Object? alive;
+      try {
+        alive = await webViewController
+            .evaluateJavascript(source: 'typeof reader')
+            .timeout(const Duration(seconds: 2));
+      } catch (e) {
+        alive = 'error: $e';
+      }
+      if (alive != 'object') {
+        await _recoverWebView('reader gone after resume ($alive)');
+      }
+    });
+  }
+
+  /// Loads the reader again at the current position after its page was lost.
+  Future<void> _recoverWebView(String why) async {
+    if (!mounted || _recovering) return;
+    _recovering = true;
+    final at = cfi.isNotEmpty ? cfi : widget.book.lastReadPosition;
+    AnxLog.info('Reader: $why; reloading at ${at.isEmpty ? 'the start' : at}');
+    try {
+      _forgetPageImages();
+      _pageCurlKey.currentState?.clear();
+      final bookUrl = 'http://127.0.0.1:${Server().port}/book/'
+          '${Uri.encodeComponent(widget.book.fileFullPath)}';
+      await webViewController.loadUrl(
+        urlRequest: URLRequest(
+          url: WebUri(generateUrl(
+            bookUrl,
+            at,
+            backgroundColor: backgroundColor,
+            textColor: textColor,
+            isDarkMode: Theme.of(context).brightness == Brightness.dark,
+          )),
+        ),
+      );
+    } catch (e) {
+      AnxLog.info('Reader: reload failed: $e');
+    } finally {
+      _recovering = false;
+    }
   }
 
   @override
@@ -1597,6 +1654,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scrollDebounceTimer?.cancel();
     _curlDragWatchdog?.cancel();
     _curlRescueTimer?.cancel();
@@ -1854,7 +1912,14 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       ),
       initialSettings: initialSettings,
       contextMenu: contextMenu,
-      onLoadStop: (controller, uri) => onWebViewCreated(controller),
+      onLoadStop: (controller, uri) {
+        _pageLoaded = true;
+        onWebViewCreated(controller);
+      },
+      onWebContentProcessDidTerminate: (controller) {
+        webViewController = controller;
+        _recoverWebView('web content process terminated');
+      },
       onConsoleMessage: webviewConsoleMessage,
     );
 
