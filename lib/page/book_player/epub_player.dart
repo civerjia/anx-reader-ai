@@ -144,6 +144,18 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   /// When the last turn finished, to tell a second tap from a steady read.
   DateTime? _lastCurlEndedAt;
 
+  /// How long the page is given to settle when turns are coming one after
+  /// another: enough to see it land, short enough to be ready for the next.
+  static const _rushedSettle = Duration(milliseconds: 120);
+
+  /// Whether the reader is going through pages rather than reading one.
+  bool get _rushing {
+    final ended = _lastCurlEndedAt;
+    return _pageCurlRunning > 1 ||
+        (ended != null &&
+            DateTime.now().difference(ended).inMilliseconds < 600);
+  }
+
   /// Which turn owns the overlay. A turn interrupted by the next one must not
   /// clear the page the new one is already showing.
   int _curlOwner = 0;
@@ -351,6 +363,9 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     final overlay = _pageCurlKey.currentState;
     if (overlay == null) return _turnInstantly(forward);
     final owner = ++_curlOwner;
+    final rushing = _rushing;
+    final settleWithin = rushing ? _rushedSettle : null;
+    if (rushing) _curlTiming?.note('rush', 'yes');
     final size = overlay.size;
     final grab = Offset(size.width, size.height * 0.9);
     final away = turnedAwayFinger(size, grab);
@@ -364,7 +379,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
           overlay.curl(
               page: previous, grab: grab, finger: rolledAtLeftFinger(size, grab));
           _curlTiming?.mark('shown');
-          await overlay.settle(grab);
+          await overlay.settle(grab, within: settleWithin);
           await _turnInstantly(false);
         } finally {
           if (owner == _curlOwner) overlay.clear();
@@ -385,7 +400,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         overlay.curl(page: current, grab: grab, finger: grab);
         _curlTiming?.mark('shown');
         await _turnInstantly(true);
-        await overlay.settle(away);
+        await overlay.settle(away, within: settleWithin);
         unawaited(_rememberArrival(from: from, picture: keep, forward: true));
         keep = null;
       } else {
@@ -401,7 +416,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
             under: current,
             grab: grab,
             finger: rolledAtLeftFinger(size, grab));
-        await overlay.settle(grab);
+        await overlay.settle(grab, within: settleWithin);
         unawaited(_rememberArrival(from: from, picture: keep, forward: false));
         keep = null;
       }
@@ -574,6 +589,9 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       return;
     }
     final owner = ++_curlOwner;
+    final rushing = _rushing;
+    final settleWithin = rushing ? _rushedSettle : null;
+    if (rushing) _curlTiming?.note('rush', 'yes');
     final size = overlay.size;
     final away = turnedAwayFinger(size, drag.grab);
     _curlTiming?.note('key', drag.key != null ? 'touch' : 'asked');
@@ -593,7 +611,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
           final vx = await drag.released.future;
           final laidDown = _laysDown(vx, drag);
           await overlay.settle(
-              laidDown ? drag.grab : rolledAtLeftFinger(size, drag.grab));
+              laidDown ? drag.grab : rolledAtLeftFinger(size, drag.grab),
+              within: settleWithin);
           if (laidDown) await _turnInstantly(false);
           return;
         }
@@ -601,6 +620,16 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
 
       final kept = _pageImageAt(here);
       _curlTiming?.note('here', kept != null ? 'hit' : 'miss');
+      // Taking a picture costs about 100 ms; through a run of turns that is
+      // the page falling behind the hand, so turn without the curl instead.
+      if (kept == null && rushing) {
+        _curlTiming?.note('skipped', 'no picture');
+        final vx = await drag.released.future;
+        if (drag.forward ? _turnsAway(vx, drag.finger, size) : _laysDown(vx, drag)) {
+          await _turnInstantly(drag.forward);
+        }
+        return;
+      }
       final current = kept ?? await _snapshotReader();
       if (current == null) {
         final vx = await drag.released.future;
@@ -635,11 +664,12 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       final bool completed;
       if (drag.forward) {
         completed = _turnsAway(vx, drag.finger, size);
-        await overlay.settle(completed ? away : drag.grab);
+        await overlay.settle(completed ? away : drag.grab, within: settleWithin);
       } else {
         completed = _laysDown(vx, drag);
         await overlay.settle(
-            completed ? drag.grab : rolledAtLeftFinger(size, drag.grab));
+            completed ? drag.grab : rolledAtLeftFinger(size, drag.grab),
+            within: settleWithin);
       }
       // The reader already shows the page the turn was heading for; if the
       // hand went the other way, put it back before uncovering it.

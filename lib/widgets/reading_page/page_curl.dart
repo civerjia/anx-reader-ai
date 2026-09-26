@@ -447,13 +447,18 @@ class PageCurlOverlayState extends State<PageCurlOverlay>
 
   Offset? get finger => _finger;
 
-  /// Carries the finger to [target] as a hand letting go would.
-  Future<void> settle(Offset target) async {
+  /// Where the settle in progress is heading.
+  Offset? _settleTarget;
+
+  /// Carries the finger to [target] as a hand letting go would, in [within]
+  /// when the next turn is already on its way.
+  Future<void> settle(Offset target, {Duration? within}) async {
     final from = _finger ?? _grab;
     if (from == null || _grab == null) return;
     final width = math.max(size.width, 1.0);
     final ms = (380 * (target - from).distance / (1.5 * width)).clamp(140, 420);
-    _settle.duration = Duration(milliseconds: ms.round());
+    _settleTarget = target;
+    _settle.duration = within ?? Duration(milliseconds: ms.round());
     void follow() {
       final t = Curves.easeOutCubic.transform(_settle.value);
       setState(() => _finger = Offset.lerp(from, target, t));
@@ -475,11 +480,17 @@ class PageCurlOverlayState extends State<PageCurlOverlay>
       if (mounted) setState(() => _finger = target);
     } finally {
       _settle.removeListener(follow);
+      _settleTarget = null;
     }
   }
 
-  /// Ends the settle animation where it stands, for a new turn to take over.
-  void finishNow() => _settle.stop();
+  /// Finishes the settle at once, for a new turn to take the page over: the
+  /// page goes where it was heading rather than stopping half way.
+  void finishNow() {
+    final target = _settleTarget;
+    _settle.stop();
+    if (target != null && mounted) setState(() => _finger = target);
+  }
 
   void clear() {
     _settle.stop();
