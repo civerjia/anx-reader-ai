@@ -227,6 +227,32 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     }
   }
 
+  bool _capturingHere = false;
+
+  /// Takes the picture of the page now showing while the curl is still
+  /// animating, so the next turn of a run has it in hand instead of waiting
+  /// for a snapshot of its own.
+  Future<void> _captureHereNow(double width) async {
+    if (_capturingHere) return;
+    _capturingHere = true;
+    final generation = _pageImagesGeneration;
+    try {
+      final at = await _readerPageKey();
+      if (at == null || at.isEmpty || _pageImages.containsKey(at)) return;
+      final image = await _snapshotReader(width: width, quiet: true);
+      if (image == null) return;
+      if (!mounted || generation != _pageImagesGeneration) {
+        image.dispose();
+        return;
+      }
+      _keepPageImage(at, image);
+    } catch (_) {
+      // The next turn takes its own picture.
+    } finally {
+      _capturingHere = false;
+    }
+  }
+
   /// A copy of the picture of the page at [at], for the overlay to own.
   ui.Image? _pageImageAt(String? at) =>
       at == null ? null : _pageImages[at]?.clone();
@@ -400,6 +426,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         overlay.curl(page: current, grab: grab, finger: grab);
         _curlTiming?.mark('shown');
         await _turnInstantly(true);
+        if (rushing) unawaited(_captureHereNow(size.width / 2));
         await overlay.settle(away, within: settleWithin);
         unawaited(_rememberArrival(from: from, picture: keep, forward: true));
         keep = null;
@@ -620,17 +647,10 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
 
       final kept = _pageImageAt(here);
       _curlTiming?.note('here', kept != null ? 'hit' : 'miss');
-      // Taking a picture costs about 100 ms; through a run of turns that is
-      // the page falling behind the hand, so turn without the curl instead.
-      if (kept == null && rushing) {
-        _curlTiming?.note('skipped', 'no picture');
-        final vx = await drag.released.future;
-        if (drag.forward ? _turnsAway(vx, drag.finger, size) : _laysDown(vx, drag)) {
-          await _turnInstantly(drag.forward);
-        }
-        return;
-      }
-      final current = kept ?? await _snapshotReader();
+      // A full-size picture costs about 100 ms, paid on nearly every turn of
+      // a run because the prefetch never gets an idle moment. Half the width
+      // is half the wait, and the curled page is shaded and bent anyway.
+      final current = kept ?? await _snapshotReader(width: rushing ? size.width / 2 : null);
       if (current == null) {
         final vx = await drag.released.future;
         if (drag.forward ? vx < 0 : vx > 0) await _turnInstantly(drag.forward);
@@ -643,6 +663,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         _curlTiming?.mark('shown');
         drag.show = overlay.moveFinger;
         await _turnInstantly(true);
+        if (rushing) unawaited(_captureHereNow(size.width / 2));
       } else {
         overlay.cover(current);
         _curlTiming?.mark('covered');
@@ -686,15 +707,16 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     }
   }
 
-  Future<ui.Image?> _snapshotReader() async {
+  Future<ui.Image?> _snapshotReader({double? width, bool quiet = false}) async {
     final watch = Stopwatch()..start();
-    final timing = _curlTiming;
+    final timing = quiet ? null : _curlTiming;
     final bytes = await _curlStep(
       webViewController.takeScreenshot(
         screenshotConfiguration: ScreenshotConfiguration(
           compressFormat: CompressFormat.JPEG,
           quality: 90,
           afterScreenUpdates: true,
+          snapshotWidth: width,
         ),
       ),
       1200,
