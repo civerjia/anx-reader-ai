@@ -189,8 +189,13 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     }
   }
 
-  Future<void> _turnInstantly(bool forward) async {
+  Future<void> _turnInstantly(bool forward, {bool quick = false}) async {
     final watch = Stopwatch()..start();
+    final frames = quick
+        // Through a run the page that follows is prefetched after its own
+        // paint, so one frame is enough to hand the turn back.
+        ? 'requestAnimationFrame(r)'
+        : 'requestAnimationFrame(() => requestAnimationFrame(r))';
     await _curlStep(
       webViewController.callAsyncJavaScript(
           functionBody:
@@ -198,7 +203,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
               "await ${forward ? 'nextPage' : 'prevPage'}(); "
               // Resolve once the new page has been drawn: a snapshot taken
               // right after would otherwise still show the page just left.
-              "await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));"),
+              "await new Promise(r => $frames);"),
       1500,
       'turning the reader',
     );
@@ -237,6 +242,8 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     _capturingHere = true;
     final generation = _pageImagesGeneration;
     try {
+      // The first frames of the curl are the ones worth protecting.
+      await Future<void>.delayed(const Duration(milliseconds: 60));
       final at = await _readerPageKey();
       if (at == null || at.isEmpty || _pageImages.containsKey(at)) return;
       final image = await _snapshotReader(width: width, quiet: true);
@@ -425,7 +432,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         keep = current.clone();
         overlay.curl(page: current, grab: grab, finger: grab);
         _curlTiming?.mark('shown');
-        await _turnInstantly(true);
+        await _turnInstantly(true, quick: rushing);
         if (rushing) unawaited(_captureHereNow(size.width / 2));
         await overlay.settle(away, within: settleWithin);
         unawaited(_rememberArrival(from: from, picture: keep, forward: true));
@@ -433,8 +440,9 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       } else {
         overlay.cover(current);
         _curlTiming?.mark('covered');
-        await _turnInstantly(false);
-        final previous = await _snapshotReader();
+        await _turnInstantly(false, quick: rushing);
+        final previous =
+            await _snapshotReader(width: rushing ? size.width / 2 : null);
         if (previous == null) return;
         _curlTiming?.mark('shown');
         keep = previous.clone();
@@ -662,13 +670,14 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
         overlay.curl(page: current, grab: drag.grab, finger: drag.finger);
         _curlTiming?.mark('shown');
         drag.show = overlay.moveFinger;
-        await _turnInstantly(true);
+        await _turnInstantly(true, quick: rushing);
         if (rushing) unawaited(_captureHereNow(size.width / 2));
       } else {
         overlay.cover(current);
         _curlTiming?.mark('covered');
-        await _turnInstantly(false);
-        final previous = await _snapshotReader();
+        await _turnInstantly(false, quick: rushing);
+        final previous =
+            await _snapshotReader(width: rushing ? size.width / 2 : null);
         if (previous == null) {
           await drag.released.future;
           return;
@@ -714,7 +723,9 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       webViewController.takeScreenshot(
         screenshotConfiguration: ScreenshotConfiguration(
           compressFormat: CompressFormat.JPEG,
-          quality: 90,
+          // A curled page is bent and shaded; through a run the bytes and the
+          // decode matter more than the last of the detail.
+          quality: width == null ? 90 : 75,
           afterScreenUpdates: true,
           snapshotWidth: width,
         ),
