@@ -451,11 +451,18 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     switch (phase) {
       case 'start':
         final overlay = _pageCurlKey.currentState;
-        if (drag != null || overlay == null) return;
-        // Letting go leaves the page settling for about 400 ms, and a drag
-        // begun in that time used to be dropped whole — the page did not
-        // follow the finger at all, which capped turning at about two pages a
-        // second. The settle ends here and this drag takes the page over.
+        if (overlay == null) return;
+        // Letting go leaves the page settling for about 400 ms, and the last
+        // drag is only forgotten once that has finished. A drag begun in that
+        // time was dropped whole — as a second finger, or as arriving while a
+        // curl ran — and the page did not follow the finger at all, which
+        // capped turning at about two pages a second. A drag whose finger is
+        // gone hands the page over here instead.
+        if (drag != null) {
+          if (!drag.released.isCompleted) return; // a second finger
+          AnxLog.info('Page curl: new drag takes over from the settling page');
+          _curlDrag = null;
+        }
         if (_pageCurlRunning > 0) overlay.finishNow();
         final forward = event['forward'] == true;
         final grab = Offset(overlay.size.width, point.dy);
