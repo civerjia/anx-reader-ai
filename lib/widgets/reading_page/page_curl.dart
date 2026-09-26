@@ -478,6 +478,9 @@ class PageCurlOverlayState extends State<PageCurlOverlay>
     }
   }
 
+  /// Ends the settle animation where it stands, for a new turn to take over.
+  void finishNow() => _settle.stop();
+
   void clear() {
     _settle.stop();
     void release() {

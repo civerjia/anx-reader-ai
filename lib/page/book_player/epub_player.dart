@@ -144,6 +144,10 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   /// When the last turn finished, to tell a second tap from a steady read.
   DateTime? _lastCurlEndedAt;
 
+  /// Which turn owns the overlay. A turn interrupted by the next one must not
+  /// clear the page the new one is already showing.
+  int _curlOwner = 0;
+
   /// Pictures of pages seen in this session, by cfi, oldest first, so a turn
   /// starts from a picture already in hand. Taking one when the finger goes
   /// down cost 110–150 ms on the phone — about half of a quick swipe — and
@@ -346,6 +350,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   Future<void> _playCurl(bool forward) async {
     final overlay = _pageCurlKey.currentState;
     if (overlay == null) return _turnInstantly(forward);
+    final owner = ++_curlOwner;
     final size = overlay.size;
     final grab = Offset(size.width, size.height * 0.9);
     final away = turnedAwayFinger(size, grab);
@@ -362,7 +367,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
           await overlay.settle(grab);
           await _turnInstantly(false);
         } finally {
-          overlay.clear();
+          if (owner == _curlOwner) overlay.clear();
         }
         return;
       }
@@ -402,7 +407,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       }
     } finally {
       keep?.dispose();
-      overlay.clear();
+      if (owner == _curlOwner) overlay.clear();
     }
   }
 
@@ -446,7 +451,12 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
     switch (phase) {
       case 'start':
         final overlay = _pageCurlKey.currentState;
-        if (drag != null || _pageCurlRunning > 0 || overlay == null) return;
+        if (drag != null || overlay == null) return;
+        // Letting go leaves the page settling for about 400 ms, and a drag
+        // begun in that time used to be dropped whole — the page did not
+        // follow the finger at all, which capped turning at about two pages a
+        // second. The settle ends here and this drag takes the page over.
+        if (_pageCurlRunning > 0) overlay.finishNow();
         final forward = event['forward'] == true;
         final grab = Offset(overlay.size.width, point.dy);
         final started = _CurlDrag(
@@ -556,6 +566,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       await drag.released.future;
       return;
     }
+    final owner = ++_curlOwner;
     final size = overlay.size;
     final away = turnedAwayFinger(size, drag.grab);
     _curlTiming?.note('key', drag.key != null ? 'touch' : 'asked');
@@ -634,7 +645,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       }
     } finally {
       keep?.dispose();
-      overlay.clear();
+      if (owner == _curlOwner) overlay.clear();
     }
   }
 
