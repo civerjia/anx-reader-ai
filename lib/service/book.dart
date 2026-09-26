@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:anx_reader/config/shared_preference_provider.dart';
 import 'package:anx_reader/dao/book.dart';
 import 'package:anx_reader/dao/theme.dart';
 import 'package:anx_reader/enums/sync_direction.dart';
@@ -485,6 +486,7 @@ Future<void> pushToReadingPage(
   final chapterContentBridge = ref.read(chapterContentBridgeProvider.notifier);
   final tocSearch = ref.read(tocSearchProvider.notifier);
 
+  Prefs().reopenBookId = book.id;
   await Navigator.push(
     navigatorKey.currentContext!,
     CupertinoPageRoute(
@@ -497,6 +499,7 @@ Future<void> pushToReadingPage(
       ),
     ),
   ).then((_) {
+    Prefs().reopenBookId = 0;
     AnxLog.info('ReadingPage: poped: ${book.title}');
     currentReading.finish();
     chapterContentBridge.state = null;

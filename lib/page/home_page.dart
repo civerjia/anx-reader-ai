@@ -31,6 +31,8 @@ import 'package:anx_reader/widgets/common/anx_surface.dart';
 import 'package:anx_reader/widgets/settings/about.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_floating_bottom_bar/flutter_floating_bottom_bar.dart';
+import 'package:anx_reader/dao/book.dart';
+import 'package:anx_reader/service/book.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -55,7 +57,27 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => initAnx());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await initAnx();
+      await _reopenLastBook();
+    });
+  }
+
+  /// iOS kills an app left in the background; the launch that follows is a
+  /// cold start and landed on the shelf. Whatever book was open comes back,
+  /// at the position saved when the app was put away.
+  Future<void> _reopenLastBook() async {
+    final id = Prefs().reopenBookId;
+    if (id <= 0 || !mounted) return;
+    try {
+      final book = await bookDao.selectBookById(id);
+      if (!mounted || book.isDeleted) return;
+      AnxLog.info('HomePage: reopening "${book.title}" after a cold start');
+      await pushToReadingPage(ref, context, book);
+    } catch (e) {
+      AnxLog.info('HomePage: could not reopen book $id: $e');
+      Prefs().reopenBookId = 0;
+    }
   }
 
   Future<void> _checkWindowsWebview() async {

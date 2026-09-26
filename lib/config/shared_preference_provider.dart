@@ -1219,6 +1219,14 @@ class Prefs extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The book the reader had open, so a launch after iOS killed the app in
+  /// the background comes back to it. 0 when no book is open.
+  int get reopenBookId => prefs.getInt('reopenBookId') ?? 0;
+
+  set reopenBookId(int id) {
+    prefs.setInt('reopenBookId', id);
+  }
+
   bool get openBookAnimation {
     return prefs.getBool('openBookAnimation') ?? true;
   }

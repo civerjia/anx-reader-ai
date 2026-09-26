@@ -141,6 +141,9 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
   /// a few quick taps do not run on page after page.
   int _curlTapsWaiting = 0;
 
+  /// When the last turn finished, to tell a second tap from a steady read.
+  DateTime? _lastCurlEndedAt;
+
   /// Pictures of pages seen in this session, by cfi, oldest first, so a turn
   /// starts from a picture already in hand. Taking one when the finger goes
   /// down cost 110–150 ms on the phone — about half of a quick swipe — and
@@ -293,16 +296,26 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       AnxLog.info('Page curl: tap during a drag ignored');
       return;
     }
-    if (_curlTapsWaiting > 0 && _pageCurlRunning > 0) {
-      AnxLog.info('Page curl: tap dropped; one is already waiting');
+    if (_curlTapsWaiting >= 3) {
+      AnxLog.info('Page curl: tap dropped; three are already waiting');
       return;
     }
+    final ended = _lastCurlEndedAt;
+    // Turning the page again while one is still going, or right after one,
+    // is someone looking for a page rather than reading: the curl takes about
+    // half a second, and playing them in turn caps it at two pages a second.
+    // Those turns go through at once, without the animation.
+    final rushing = _pageCurlRunning > 0 ||
+        (ended != null && DateTime.now().difference(ended).inMilliseconds < 400);
     _curlTapsWaiting++;
     _pageCurlQueue = _pageCurlQueue
         .then((_) {
           _curlTapsWaiting--;
-          return _runCurl(() => _playCurl(forward),
-              kind: 'tap', forward: forward);
+          final quick = rushing || _curlTapsWaiting > 0;
+          return _runCurl(
+              () => quick ? _turnInstantly(forward) : _playCurl(forward),
+              kind: quick ? 'quick' : 'tap',
+              forward: forward);
         })
         .catchError((Object e) => AnxLog.info('Page curl: turn failed: $e'));
   }
@@ -318,6 +331,7 @@ class EpubPlayerState extends ConsumerState<EpubPlayer>
       await body();
     } finally {
       _pageCurlRunning--;
+      _lastCurlEndedAt = DateTime.now();
       timing.mark('done');
       _scheduleSnapshotHere();
       if (identical(_curlTiming, timing)) _curlTiming = null;
