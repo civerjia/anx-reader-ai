@@ -160,7 +160,7 @@ Future<void> openAboutDialog() async {
                   onTap: () {
                     launchUrl(
                       Uri.parse(
-                          'https://github.com/Anxcye/anx-reader/graphs/contributors'),
+                          'https://github.com/civerjia/anx-reader-ai/graphs/contributors'),
                       mode: LaunchMode.externalApplication,
                     );
                   },
@@ -220,7 +220,7 @@ Future<void> openAboutDialog() async {
                             IonIcons.logo_github,
                             color: Theme.of(context).colorScheme.secondary,
                           ),
-                          url: 'https://github.com/Anxcye/anx-reader',
+                          url: 'https://github.com/civerjia/anx-reader-ai',
                           mode: LaunchMode.externalApplication),
                       if (EnvVar.showTelegramLink)
                         linkIcon(

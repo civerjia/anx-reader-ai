@@ -9,17 +9,17 @@
 <p align="center"><a href="https://trendshift.io/repositories/10329" target="_blank"><img src="https://trendshift.io/api/badge/repositories/10329" alt="Anxcye%2Fanx-reader | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a></p>
 
 <p align="center">
-  <a href="https://github.com/Anxcye/anx-reader#platform-support"><img src="https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20iOS%20%7C%20Android-lightgrey" alt="Platformlar"></a>
-  <a href="https://github.com/Anxcye/anx-reader#supported-formats"><img src="https://img.shields.io/badge/formats-epub%20%7C%20fb2%20%7C%20mobi%20%7C%20txt%20%7C%20azw3%20%7C%20pdf-brightgreen" alt="Desteklenen Formatlar"></a>
+  <a href="https://github.com/civerjia/anx-reader-ai#platform-support"><img src="https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20iOS%20%7C%20Android-lightgrey" alt="Platformlar"></a>
+  <a href="https://github.com/civerjia/anx-reader-ai#supported-formats"><img src="https://img.shields.io/badge/formats-epub%20%7C%20fb2%20%7C%20mobi%20%7C%20txt%20%7C%20azw3%20%7C%20pdf-brightgreen" alt="Desteklenen Formatlar"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Anxcye/anx-reader/releases/latest"><img src="https://img.shields.io/github/v/release/anxcye/anx-reader" alt="En Son Sürüm"></a>
-  <a href="https://github.com/Anxcye/anx-reader/releases"><img src="https://img.shields.io/github/v/release/anxcye/anx-reader?include_prereleases" alt="Ön Sürüm"></a>
-  <a href="https://github.com/Anxcye/anx-reader/blob/main/LICENSE"><img src="https://img.shields.io/github/license/anxcye/anx-reader" alt="Lisans" ></a>
-  <a href="https://github.com/Anxcye/anx-reader/releases"><img src="https://img.shields.io/github/downloads/anxcye/anx-reader/total" alt="İndirmeler"></a>
+  <a href="https://github.com/civerjia/anx-reader-ai/releases/latest"><img src="https://img.shields.io/github/v/release/civerjia/anx-reader-ai" alt="En Son Sürüm"></a>
+  <a href="https://github.com/civerjia/anx-reader-ai/releases"><img src="https://img.shields.io/github/v/release/civerjia/anx-reader-ai?include_prereleases" alt="Ön Sürüm"></a>
+  <a href="https://github.com/civerjia/anx-reader-ai/blob/main/LICENSE"><img src="https://img.shields.io/github/license/civerjia/anx-reader-ai" alt="Lisans" ></a>
+  <a href="https://github.com/civerjia/anx-reader-ai/releases"><img src="https://img.shields.io/github/downloads/civerjia/anx-reader-ai/total" alt="İndirmeler"></a>
   <a href="https://hellogithub.com/repository/819a2b3050204451bed552a8812114e5" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=819a2b3050204451bed552a8812114e5&claim_uid=WBA1XOQirm2GRqs&theme=small" alt="Öne Çıkan｜HelloGitHub"/></a>
-  <a href="https://github.com/anxcye/anx-reader/stargazers"><img src="https://img.shields.io/github/stars/anxcye/anx-reader" alt="Yıldızlar"></a>
+  <a href="https://github.com/civerjia/anx-reader-ai/stargazers"><img src="https://img.shields.io/github/stars/civerjia/anx-reader-ai" alt="Yıldızlar"></a>
 </p>
 
 Anx Reader, kitap severler için özenle hazırlanmış bir e-kitap okuma uygulamasıdır. Güçlü yapay zeka yetenekleri ve geniş format desteğiyle okuma deneyimini daha akıllı ve odaklı hâle getirir. Modern arayüz tasarımıyla, saf okuma keyfini sunmayı hedefliyoruz.
@@ -57,13 +57,13 @@ Anx Reader, kitap severler için özenle hazırlanmış bir e-kitap okuma uygula
     <td>macOS</td>
     <td>
       <a href="https://apps.apple.com/app/anx-reader/id6743196413" target="_blank"><img src="https://developer.apple.com/app-store/marketing/guidelines/images/badge-download-on-the-mac-app-store.svg" alt="Mac App Store" height="45"/></a>
-      <a href="https://github.com/Anxcye/anx-reader/releases/latest" target="_blank"><img src="https://github.com/user-attachments/assets/cf61e197-d756-4606-a8ad-fb591f79fdfc" alt="GitHub" height="45"/></a>
+      <a href="https://github.com/civerjia/anx-reader-ai/releases/latest" target="_blank"><img src="https://github.com/user-attachments/assets/cf61e197-d756-4606-a8ad-fb591f79fdfc" alt="GitHub" height="45"/></a>
     </td>
   </tr>
   <tr>
     <td>Windows</td>
     <td>
-      <a href="https://github.com/Anxcye/anx-reader/releases/latest" target="_blank">
+      <a href="https://github.com/civerjia/anx-reader-ai/releases/latest" target="_blank">
         <img src="https://github.com/user-attachments/assets/cf61e197-d756-4606-a8ad-fb591f79fdfc" alt="GitHub" height="45"/>
       </a>
     </td>
@@ -71,7 +71,7 @@ Anx Reader, kitap severler için özenle hazırlanmış bir e-kitap okuma uygula
   <tr>
     <td>Android</td>
     <td>
-      <a href="https://github.com/Anxcye/anx-reader/releases/latest" target="_blank">
+      <a href="https://github.com/civerjia/anx-reader-ai/releases/latest" target="_blank">
         <img src="https://github.com/user-attachments/assets/cf61e197-d756-4606-a8ad-fb591f79fdfc" alt="GitHub" height="45"/>
       </a>
       <a href="https://f-droid.org/packages/com.anxcye.anx_reader" target="_blank">
@@ -96,7 +96,7 @@ Calibre entegrasyonu ve ANX Reader cihazları için WebDAV sunucu işlevleri sun
 
 ## Bir Sorunla Karşılaştım, Ne Yapmalıyım?
 - [Sorun Giderme](./docs/troubleshooting.md#English) bölümünü kontrol edin.
-- Bir [sorun bildirin](https://github.com/Anxcye/anx-reader/issues/new/choose); en kısa sürede yanıtlayacağız.
+- Bir [sorun bildirin](https://github.com/civerjia/anx-reader-ai/issues/new/choose); en kısa sürede yanıtlayacağız.
 
 Telegram Grubu: [https://t.me/AnxReader](https://t.me/AnxReader)
 
@@ -133,7 +133,7 @@ Flutter sürüm uyumsuzluklarıyla karşılaşabilirsiniz. Detaylar için [Flutt
 
 
 ## Kod imzalama politikası
-- Katkıda bulunanlar ve gözden geçirenler: [Members ekibi](https://github.com/anxcye/anx-reader/graphs/contributors)
+- Katkıda bulunanlar ve gözden geçirenler: [Members ekibi](https://github.com/civerjia/anx-reader-ai/graphs/contributors)
 - Onaylayıcılar: [Owners](https://github.com/anxcye)
 - [Gizlilik Politikası](https://anx.anxcye.com/privacy.html)
 - [Hizmet Şartları](https://anx.anxcye.com/terms.html)

@@ -108,7 +108,7 @@ class _ReadingMoreSettingsState extends State<ReadingMoreSettings> {
     //         ),
     //         onTap: () {
     //           launchUrl(
-    //             Uri.parse('https://github.com/Anxcye/anx-reader/issues/49'),
+    //             Uri.parse('https://github.com/civerjia/anx-reader-ai/issues/49'),
     //             mode: LaunchMode.externalApplication,
     //           );
     //         },

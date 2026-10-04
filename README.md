@@ -1,5 +1,7 @@
 **English** | [简体中文](README_zh.md) | [Türkçe](README_tr.md) | [Русский](README_RU.md)
 
+> A personal fork of [Anxcye/anx-reader](https://github.com/Anxcye/anx-reader), with on-device AI, full-text search across the library, page curl and narration work. Upstream is where the releases come from.
+
 <br>
 
 <p align="center">
@@ -9,17 +11,17 @@
 <p align="center"><a href="https://trendshift.io/repositories/10329" target="_blank"><img src="https://trendshift.io/api/badge/repositories/10329" alt="Anxcye%2Fanx-reader | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a></p>
 
 <p align="center">
-  <a href="https://github.com/Anxcye/anx-reader#platform-support"><img src="https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20iOS%20%7C%20Android-lightgrey" alt="Platforms"></a>
-  <a href="https://github.com/Anxcye/anx-reader#supported-formats"><img src="https://img.shields.io/badge/formats-epub%20%7C%20fb2%20%7C%20mobi%20%7C%20txt%20%7C%20azw3%20%7C%20pdf-brightgreen" alt="Supported Formats"></a>
+  <a href="https://github.com/civerjia/anx-reader-ai#platform-support"><img src="https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20iOS%20%7C%20Android-lightgrey" alt="Platforms"></a>
+  <a href="https://github.com/civerjia/anx-reader-ai#supported-formats"><img src="https://img.shields.io/badge/formats-epub%20%7C%20fb2%20%7C%20mobi%20%7C%20txt%20%7C%20azw3%20%7C%20pdf-brightgreen" alt="Supported Formats"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Anxcye/anx-reader/releases/latest"><img src="https://img.shields.io/github/v/release/anxcye/anx-reader" alt="Latest Release"></a>
-  <a href="https://github.com/Anxcye/anx-reader/releases"><img src="https://img.shields.io/github/v/release/anxcye/anx-reader?include_prereleases" alt="Pre-release"></a>
-  <a href="https://github.com/Anxcye/anx-reader/blob/main/LICENSE"><img src="https://img.shields.io/github/license/anxcye/anx-reader" alt="License" ></a>
-  <a href="https://github.com/Anxcye/anx-reader/releases"><img src="https://img.shields.io/github/downloads/anxcye/anx-reader/total" alt="Downloads"></a>
+  <a href="https://github.com/civerjia/anx-reader-ai/releases/latest"><img src="https://img.shields.io/github/v/release/civerjia/anx-reader-ai" alt="Latest Release"></a>
+  <a href="https://github.com/civerjia/anx-reader-ai/releases"><img src="https://img.shields.io/github/v/release/civerjia/anx-reader-ai?include_prereleases" alt="Pre-release"></a>
+  <a href="https://github.com/civerjia/anx-reader-ai/blob/main/LICENSE"><img src="https://img.shields.io/github/license/civerjia/anx-reader-ai" alt="License" ></a>
+  <a href="https://github.com/civerjia/anx-reader-ai/releases"><img src="https://img.shields.io/github/downloads/civerjia/anx-reader-ai/total" alt="Downloads"></a>
   <a href="https://hellogithub.com/repository/819a2b3050204451bed552a8812114e5" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=819a2b3050204451bed552a8812114e5&claim_uid=WBA1XOQirm2GRqs&theme=small" alt="Featured｜HelloGitHub"/></a>
-  <a href="https://github.com/anxcye/anx-reader/stargazers"><img src="https://img.shields.io/github/stars/anxcye/anx-reader" alt="stars"></a>
+  <a href="https://github.com/civerjia/anx-reader-ai/stargazers"><img src="https://img.shields.io/github/stars/civerjia/anx-reader-ai" alt="stars"></a>
 </p>
 
 Anx Reader, a thoughtfully crafted e-book reader for book lovers. Featuring powerful AI capabilities and supporting various e-book formats, it makes reading smarter and more focused. With its modern interface design, we're committed to delivering pure reading pleasure.
@@ -57,13 +59,13 @@ Anx Reader, a thoughtfully crafted e-book reader for book lovers. Featuring powe
     <td>macOS</td>
     <td>
       <a href="https://apps.apple.com/app/anx-reader/id6743196413" target="_blank"><img src="https://developer.apple.com/app-store/marketing/guidelines/images/badge-download-on-the-mac-app-store.svg" alt="Mac App Store" height="45"/></a>
-      <a href="https://github.com/Anxcye/anx-reader/releases/latest" target="_blank"><img src="https://github.com/user-attachments/assets/cf61e197-d756-4606-a8ad-fb591f79fdfc" alt="GitHub" height="45"/></a>
+      <a href="https://github.com/civerjia/anx-reader-ai/releases/latest" target="_blank"><img src="https://github.com/user-attachments/assets/cf61e197-d756-4606-a8ad-fb591f79fdfc" alt="GitHub" height="45"/></a>
     </td>
   </tr>
   <tr>
     <td>Windows</td>
     <td>
-      <a href="https://github.com/Anxcye/anx-reader/releases/latest" target="_blank">
+      <a href="https://github.com/civerjia/anx-reader-ai/releases/latest" target="_blank">
         <img src="https://github.com/user-attachments/assets/cf61e197-d756-4606-a8ad-fb591f79fdfc" alt="GitHub" height="45"/>
       </a>
     </td>
@@ -71,7 +73,7 @@ Anx Reader, a thoughtfully crafted e-book reader for book lovers. Featuring powe
   <tr>
     <td>Android</td>
     <td>
-      <a href="https://github.com/Anxcye/anx-reader/releases/latest" target="_blank">
+      <a href="https://github.com/civerjia/anx-reader-ai/releases/latest" target="_blank">
         <img src="https://github.com/user-attachments/assets/cf61e197-d756-4606-a8ad-fb591f79fdfc" alt="GitHub" height="45"/>
       </a>
       <a href="https://f-droid.org/packages/com.anxcye.anx_reader" target="_blank">
@@ -102,7 +104,7 @@ A modern web application for managing your ebook library with Calibre integratio
 ## I Encountered a Problem, What Should I Do?
 Check [Troubleshooting](./docs/troubleshooting.md#English)
 
-Submit an [issue](https://github.com/Anxcye/anx-reader/issues/new/choose), and we will respond as soon as possible.
+Submit an [issue](https://github.com/civerjia/anx-reader-ai/issues/new/choose), and we will respond as soon as possible.
 
 Telegram Group: [https://t.me/AnxReader](https://t.me/AnxReader)
 
@@ -139,7 +141,7 @@ You may encounter Flutter version incompatibility issues. Please refer to the [F
 
 
 ## Code signing policy
-- Committers and reviewers: [Members team](https://github.com/anxcye/anx-reader/graphs/contributors)
+- Committers and reviewers: [Members team](https://github.com/civerjia/anx-reader-ai/graphs/contributors)
 - Approvers: [Owners](https://github.com/anxcye)
 - [Privacy Policy](https://anx.anxcye.com/privacy.html)
 - [Terms of Service](https://anx.anxcye.com/terms.html)

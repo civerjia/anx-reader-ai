@@ -1,15 +1,17 @@
 [English](README.md) | **简体中文** | [Türkçe](README_tr.md)
 
+> 这是 [Anxcye/anx-reader](https://github.com/Anxcye/anx-reader) 的个人分支，增加了本地 AI、书库全文检索、仿真翻页与朗读方面的改动。发行版请以上游为准。
+
 <p align="center">
   <img src="./docs/images/Anx-logo.jpg" alt="Anx-logo" width="100" />
 </p>
 <h1 align="center">Anx Reader - 让阅读更专注</h1>
 
 <p align="center">
-  <a href="https://github.com/Anxcye/anx-reader/blob/main/LICENSE"><img src="https://img.shields.io/github/license/anxcye/anx-reader" alt="License" ></a>
-  <a href="https://github.com/Anxcye/anx-reader/releases"><img src="https://img.shields.io/github/downloads/anxcye/anx-reader/total" alt="Downloads"></a>
+  <a href="https://github.com/civerjia/anx-reader-ai/blob/main/LICENSE"><img src="https://img.shields.io/github/license/civerjia/anx-reader-ai" alt="License" ></a>
+  <a href="https://github.com/civerjia/anx-reader-ai/releases"><img src="https://img.shields.io/github/downloads/civerjia/anx-reader-ai/total" alt="Downloads"></a>
   <a href="https://hellogithub.com/repository/819a2b3050204451bed552a8812114e5" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=819a2b3050204451bed552a8812114e5&claim_uid=WBA1XOQirm2GRqs&theme=small" alt="Featured｜HelloGitHub"/></a>
-  <a href="https://github.com/anxcye/anx-reader/stargazers"><img src="https://img.shields.io/github/stars/anxcye/anx-reader" alt="stars"></a>
+  <a href="https://github.com/civerjia/anx-reader-ai/stargazers"><img src="https://img.shields.io/github/stars/civerjia/anx-reader-ai" alt="stars"></a>
 </p>
 
 
@@ -49,7 +51,7 @@ Anx Reader，一款为热爱阅读的你精心打造的电子书阅读器。集�
       <a href="https://apps.apple.com/app/anx-reader/id6743196413" target="_blank">
         <img src="https://developer.apple.com/app-store/marketing/guidelines/images/badge-download-on-the-mac-app-store.svg" alt="Mac App Store" height="45"/>
       </a>
-      <a href="https://github.com/Anxcye/anx-reader/releases/latest" target="_blank">
+      <a href="https://github.com/civerjia/anx-reader-ai/releases/latest" target="_blank">
         <img src="https://github.com/user-attachments/assets/cf61e197-d756-4606-a8ad-fb591f79fdfc" alt="GitHub" height="45"/>
       </a>
     </td>
@@ -57,7 +59,7 @@ Anx Reader，一款为热爱阅读的你精心打造的电子书阅读器。集�
   <tr>
     <td>Windows</td>
     <td>
-      <a href="https://github.com/Anxcye/anx-reader/releases/latest" target="_blank">
+      <a href="https://github.com/civerjia/anx-reader-ai/releases/latest" target="_blank">
         <img src="https://github.com/user-attachments/assets/cf61e197-d756-4606-a8ad-fb591f79fdfc" alt="GitHub" height="45"/>
       </a>
     </td>
@@ -65,7 +67,7 @@ Anx Reader，一款为热爱阅读的你精心打造的电子书阅读器。集�
   <tr>
     <td>Android</td>
     <td>
-      <a href="https://github.com/Anxcye/anx-reader/releases/latest" target="_blank">
+      <a href="https://github.com/civerjia/anx-reader-ai/releases/latest" target="_blank">
         <img src="https://github.com/user-attachments/assets/cf61e197-d756-4606-a8ad-fb591f79fdfc" alt="GitHub" height="45"/>
       </a>
       <a href="https://f-droid.org/packages/com.anxcye.anx_reader" target="_blank">
@@ -79,7 +81,7 @@ Anx Reader，一款为热爱阅读的你精心打造的电子书阅读器。集�
 ### 我遇到了问题，怎么办？
 查看[故障排除](./docs/troubleshooting.md#简体中文)
 
-提出一个[issue](https://github.com/Anxcye/anx-reader/issues/new/choose)，将会尽快回复。
+提出一个[issue](https://github.com/civerjia/anx-reader-ai/issues/new/choose)，将会尽快回复。
 
 Telegram 群组：[https://t.me/AnxReader](https://t.me/AnxReader)
 

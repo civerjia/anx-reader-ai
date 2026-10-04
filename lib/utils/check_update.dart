@@ -85,7 +85,7 @@ $body'''),
               onPressed: () {
                 launchUrl(
                     Uri.parse(
-                        'https://github.com/Anxcye/anx-reader/releases/latest'),
+                        'https://github.com/civerjia/anx-reader-ai/releases/latest'),
                     mode: LaunchMode.externalApplication);
               },
               child: Text(L10n.of(context).updateViaGithub),

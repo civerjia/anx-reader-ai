@@ -88,16 +88,16 @@ Apply during triage based on impact:
 export GH_CONFIG_DIR=/home/ubuntu/.config/gh
 
 # Add a label
-gh issue edit NUM -R Anxcye/anx-reader --add-label "P2"
+gh issue edit NUM -R civerjia/anx-reader-ai --add-label "P2"
 
 # Remove a label
-gh issue edit NUM -R Anxcye/anx-reader --remove-label "question"
+gh issue edit NUM -R civerjia/anx-reader-ai --remove-label "question"
 
 # Add multiple labels
-gh issue edit NUM -R Anxcye/anx-reader --add-label "bug,P1"
+gh issue edit NUM -R civerjia/anx-reader-ai --add-label "bug,P1"
 
 # Check current labels
-gh issue view NUM -R Anxcye/anx-reader --json labels
+gh issue view NUM -R civerjia/anx-reader-ai --json labels
 ```
 
 ## Complexity Scale
