@@ -1,120 +1,96 @@
-[English](README.md) | **简体中文** | [Türkçe](README_tr.md)
-
-> 这是 [Anxcye/anx-reader](https://github.com/Anxcye/anx-reader) 的个人分支，增加了本地 AI、书库全文检索、仿真翻页与朗读方面的改动。发行版请以上游为准。
+[English](README.md) | **简体中文**
 
 <p align="center">
-  <img src="./docs/images/Anx-logo.jpg" alt="Anx-logo" width="100" />
+  <img src="./docs/images/Anx-logo.jpg" alt="logo" width="100" />
 </p>
-<h1 align="center">Anx Reader - 让阅读更专注</h1>
+<h1 align="center">Anx Reader — AI 分支</h1>
 
-<p align="center">
-  <a href="https://github.com/civerjia/anx-reader-ai/blob/main/LICENSE"><img src="https://img.shields.io/github/license/civerjia/anx-reader-ai" alt="License" ></a>
-  <a href="https://github.com/civerjia/anx-reader-ai/releases"><img src="https://img.shields.io/github/downloads/civerjia/anx-reader-ai/total" alt="Downloads"></a>
-  <a href="https://hellogithub.com/repository/819a2b3050204451bed552a8812114e5" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=819a2b3050204451bed552a8812114e5&claim_uid=WBA1XOQirm2GRqs&theme=small" alt="Featured｜HelloGitHub"/></a>
-  <a href="https://github.com/civerjia/anx-reader-ai/stargazers"><img src="https://img.shields.io/github/stars/civerjia/anx-reader-ai" alt="stars"></a>
-</p>
+这是 [Anxcye/anx-reader](https://github.com/Anxcye/anx-reader) 的个人分支。上游
+是一个 Flutter 写的电子书阅读器，这里的改动都是按我自己的读法做的：在 iPhone 上
+看中文书，离线，模型跑在手机上而不是别人的服务器上。发行版和支持请以上游为准，
+这个分支只放源码，不发二进制。
 
+下面列的是这个分支加的东西。书架、EPUB 引擎、同步、统计这些都是上游的。
 
-Anx Reader，一款为热爱阅读的你精心打造的电子书阅读器。集成多种 AI 能力，支持丰富的电子书格式，让阅读更智能、更专注。现代化界面设计，只为提供纯粹的阅读体验。
+## 像纸一样的仿真翻页
 
+- 手指按在哪里就从哪里把书页捏起来，页面绕着圆柱弯曲跟着手指走，松手才落下；
+  往回翻时上一页从左边卷着，随手指展开。
+- 书页背面是纸：正面的字淡淡透过来，还有自己的纹理——几层 Perlin 噪声叠出的深浅
+  起伏，加上细如发丝的纤维。正面只在卷起处才有纹理，平放的部分和底下真实的页面
+  保持一致。
+- 连续翻页跟得上手：新的拖动可以从还在落下的书页手里接管，落下动画自动压短，截图
+  用半幅，换页后趁动画还在播就把下一页截好。手机实测：原来每页约 500 毫秒，现在
+  190–340 毫秒。
+- 滑动翻页改用系统滚动吸附。每次翻页都会记录时间都花在哪儿，上面这些数字都是这么
+  测出来的，不是估的。
 
-![](./docs/images/main.jpg)
+## 跑在手机上的模型
 
+- llama.cpp 放进仓库自己编译（`third_party/llm_llamacpp`、
+  `tool/build_llamacpp_apple.sh`），因为官方发布的版本在 iOS 上根本加载不了，而且
+  太旧，不认识新模型。
+- 支持 Spark-X2.5：这个架构要 llama.cpp b10950，而 llama.cpp 没有它的对话模板，
+  所以提示词在 Dart 这边按模型自己的格式生成，它的 `<arg_key>/<arg_value>` 工具
+  调用也单独解析。MiniCPM5 的 XML 调用同样支持。
+- 对话长度会按实际加载的上下文裁剪：先缩短早期的长内容，再丢掉最早的几轮，而不是
+  一超出就整个请求失败。
+- 模型抄错的工具参数会被改回你的原话：问"林特·艾萨克"，2B 模型在书里搜的是
+  "林特·艾克撒克"，自然什么都搜不到。
+- 会告诉模型当前打开的是哪本书、书的编号是多少。"先思考再回答"是个开关，推理过程
+  收在"思考"里不混进答案。还有一个按钮把模型从内存里卸载——1.8 GB 一直占着，手机
+  会变卡，而提问只是偶尔的事。
 
-| 功能模块 | 详细说明 | 状态 |
-| --- | --- | --- |
-| 多种格式 | EPUB/MOBI/AZW3/FB2/TXT/PDF 已支持 | ✅ |
-| 全平台数据同步 | Android/iOS/macOS/Windows 多端覆盖<br>书籍文件、笔记、阅读进度一站式同步 | ✅ |
-| AI 助理 | 按阅读进度与风格整理书架<br>生成思维导图辅助理解<br>AI 词典与即时翻译<br>提供观点分析与内容总结 | ✅ |
-| 自定义阅读体验 | 调整字间距、段间距、行间距与边距<br>自定义字体大小、样式与字重<br>配置阅读配色、背景图片<br>设置对齐方式与自定义样式 | ✅ |
-| 记录笔记 | 多配色与样式选择<br>按时间、章节排序并可按颜色筛选<br>导出 TXT/Markdown/CSV 等多种格式<br>一键生成美观卡片便于分享 | ✅ |
-| 阅读统计 | 记录阅读时长<br>按年/月/周/日维度查看<br>阅读热力图呈现习惯变化 | ✅ |
-| 其他 | 听书功能：支持多模型、语速、音色与定时<br>书籍全文翻译：原文、译文对照阅读<br>节省空间：云端上传节省本地存储，随用随下<br>简繁转换：中文简繁体一键转换 | ✅ |
-| OPDS 书源 | 支持 OPDS 书源，支持自定义添加  |  🛠️  |
+## 搜整个书库，不只是当前这本
 
-<table border="1">
-  <tr>
-    <th>OS</th>
-    <th>Source</th>
-  </tr>
-  <tr>
-    <td>iOS</td>
-    <td>
-      <a href="https://apps.apple.com/app/anx-reader/id6743196413" target="_blank">
-        <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="App Store" height="45"/>
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td>macOS</td>
-    <td>
-      <a href="https://apps.apple.com/app/anx-reader/id6743196413" target="_blank">
-        <img src="https://developer.apple.com/app-store/marketing/guidelines/images/badge-download-on-the-mac-app-store.svg" alt="Mac App Store" height="45"/>
-      </a>
-      <a href="https://github.com/civerjia/anx-reader-ai/releases/latest" target="_blank">
-        <img src="https://github.com/user-attachments/assets/cf61e197-d756-4606-a8ad-fb591f79fdfc" alt="GitHub" height="45"/>
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td>Windows</td>
-    <td>
-      <a href="https://github.com/civerjia/anx-reader-ai/releases/latest" target="_blank">
-        <img src="https://github.com/user-attachments/assets/cf61e197-d756-4606-a8ad-fb591f79fdfc" alt="GitHub" height="45"/>
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td>Android</td>
-    <td>
-      <a href="https://github.com/civerjia/anx-reader-ai/releases/latest" target="_blank">
-        <img src="https://github.com/user-attachments/assets/cf61e197-d756-4606-a8ad-fb591f79fdfc" alt="GitHub" height="45"/>
-      </a>
-      <a href="https://f-droid.org/packages/com.anxcye.anx_reader" target="_blank">
-        <img src="./docs/get-it-on.png" alt="Get it on F-Droid" height="45" />
-      </a>
-    </td>
-  </tr>
-</table>
+- 每本 EPUB 都用 Dart 直接解析：按阅读顺序取正文，标题取自导航文件或 NCX，切成约
+  一千字一段，建在单独的数据库里。中文按相邻两字建索引，英文按单词，用不存原文的
+  FTS5 表，只记每段属于哪本书、哪个文件、第几个字到第几个字。搜到之后再从书里把
+  那几段原文取回来。
+- 实测一本 527 万字的书：读取 0.8 秒，建索引 1.9 秒，索引 7.2 MB，每次搜索
+  25–57 毫秒。
+- AI 可以用 `library_search` 工具搜全库；书内搜索也加了阅读页的按钮、选中文字后的
+  入口，以及搜不到时的提示。
 
+## 不联网也知道事情
 
-### 我遇到了问题，怎么办？
-查看[故障排除](./docs/troubleshooting.md#简体中文)
+- 离线维基百科：设备上的 ZIM 包、挑选下载的目录，以及一个查词条的工具，并要求模型
+  在陈述事实前先查。
+- 离线词典：选中单词查 StarDict 词典，内置一本英汉词典，优先用 iOS 自带词典，再考虑
+  在线翻译。
 
-提出一个[issue](https://github.com/civerjia/anx-reader-ai/issues/new/choose)，将会尽快回复。
+## 中文朗读
 
-Telegram 群组：[https://t.me/AnxReader](https://t.me/AnxReader)
+- 数字、十的幂、`No.`、单位和数量在送进系统语音前先改写；化学式按名字读（H₃O⁺ 读
+  水合氢离子，Na₂HPO₄ 读磷酸氢二钠），除非句子里本来就写了名字。
+- 读错的多音字用拼音加声调标注，标注听着别扭的（露富、女红）换成同音字。有一个发音
+  测试页，还有一个面板，听到读错当场就能改。
+- 朗读从停下的那句继续；锁屏界面可以快进三十秒。
 
-QQ群：1042905699
+## 书架、笔记、PDF
 
+- 从 EPUB 元数据读系列：排序、收进文件夹，同一系列按标题里的数字或罗马数字排。可以
+  多选几本书一起移进文件夹。
+- 解散文件夹收进编辑模式并加了确认；笔记可以在笔记页左滑删除；导入对话框改成导入完成
+  才打勾，全部成功就自动关闭。
+- 可以浏览 OPDS 书目并从中下载书。
+- PDF：支持划线和笔记，裁掉白边，支持双指缩放，翻页方式和 EPUB 一致。
 
-### 截图
-| ![](./docs/images/zh/wide1.png) | ![](./docs/images/zh/wide2.png) |
-| :--------------------------: | :--------------------------: |
-| ![](./docs/images/zh/wide3.png) | ![](./docs/images/zh/wide4.png) |
-| ![](./docs/images/zh/wide5.png) | ![](./docs/images/zh/wide6.png) |
-| ![](./docs/images/zh/wide7.png) | ![](./docs/images/zh/wide8.png) |
+## 回来还在原处
 
+- iOS 会回收后台 app 的网页进程，现在阅读器会按阅读位置自动重新加载，不再白屏。
+- 被系统杀掉后重新打开，会直接回到原来那本书。
 
-| ![](./docs/images/zh/mobile1.png) | ![](./docs/images/zh/mobile2.png) | ![](./docs/images/zh/mobile3.png) |
-| :----------------------------: | :----------------------------: | :----------------------------: |
-| ![](./docs/images/zh/mobile4.png) | ![](./docs/images/zh/mobile5.png) | ![](./docs/images/zh/mobile6.png) |
-| ![](./docs/images/zh/mobile7.png) | ![](./docs/images/zh/mobile8.png) | ![](./docs/images/zh/mobile9.png) |
+## 编译
 
-## 捐赠
-如果你喜欢安读，请考虑捐赠支持项目。您的支持将帮助我优化功能、修复问题，并为您带来更好的阅读体验！感谢您的慷慨支持！
+和上游一样用 Flutter。唯一多出来的一步是本地模型的原生库，它不在仓库里：
 
-❤️ [捐赠](https://anxcye.com/home/7)
+```sh
+cd third_party/llm_llamacpp && sh tool/build_llamacpp_apple.sh
+```
 
+GGUF 模型文件放在 app 的 `Documents/llm_models/` 目录下。
 
+## 许可证
 
-## 构建
-希望从源码构建安读？请参考以下步骤：
-- 安装 [Flutter](https://flutter.dev)。
-- 克隆并进入项目目录。
-- 运行 `flutter pub get` 。
-- 运行 `flutter gen-l10n` 生成多语言文件。
-- 运行 `dart run build_runner build --delete-conflicting-outputs` 生成 Riverpod 代码。
-- 运行 `flutter run` 启动应用。
-
-您可能遇到 Flutter 版本不兼容的问题，请参考 [Flutter 文档](https://flutter.dev/docs/get-started/install)。
+和上游一样是 MIT，见 [LICENSE](LICENSE)，版权署名保留原作者。
