@@ -69,6 +69,23 @@ engine, syncing, statistics — is upstream's work.
   English-Chinese dictionary, and iOS's own dictionaries before any online
   translation.
 
+## Voices on the device
+
+- An offline sherpa-onnx backend, vendored so it can be handed a `dict_dir` —
+  which is what the better Chinese models need. Families: Kokoro, VITS/Piper,
+  Matcha, Kitten, and ZipVoice, which clones a voice from a reference clip and
+  its transcript. The vocoder each family needs is wired up, voices are named
+  from the model's own ONNX metadata, and Kokoro's carry the quality grades
+  from its model card.
+- A sentence is synthesized in pieces so the audio starts sooner, every
+  sentence is matched for loudness by ITU-R BS.1770, and the pauses are trimmed
+  without eating the ends of words — which is what shortening them naively did.
+- Measured on the phone: Kokoro on two threads runs at 0.38 times real time
+  cold and 1.41 once the phone is warm, which is why threads default to two
+  below the core count, capped at four, and why the CPU is the default rather
+  than CoreML (0.65 against the CPU's 0.38). Reading at twice speed needs to
+  stay under 0.5. The engine logs its real-time factor once per model.
+
 ## Narration that reads Chinese properly
 
 - Numbers, powers of ten, `No.`, units and counts are rewritten before they
