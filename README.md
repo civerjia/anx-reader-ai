@@ -43,9 +43,6 @@ engine, syncing, statistics — is upstream's work.
 - The conversation is fitted to the context that is actually loaded — long
   earlier turns are shortened, then dropped — instead of failing the whole
   request once it overflows.
-- A tool argument the model mis-copied from the question is put back: asked
-  about 林特·艾萨克, a 2B model searched the book for 林特·艾克撒克 and found
-  nothing.
 - The model is told which book is open, with its id. Thinking is a switch, and
   what the model reasons goes to a thinking panel rather than into the answer.
   A button unloads the weights from memory, since 1.8 GB resident makes the
